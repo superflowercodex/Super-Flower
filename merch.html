@@ -15,7 +15,7 @@ text-align:center;
 }
 
 .container{
-max-width:1000px;
+max-width:900px;
 margin:auto;
 padding:20px;
 }
@@ -25,41 +25,55 @@ color:#d4af37;
 margin-bottom:30px;
 }
 
-.product{
+.grid{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:0;
 border:2px solid #d4af37;
 border-radius:12px;
-padding:20px;
-margin:20px auto;
-max-width:500px;
+overflow:hidden;
 background:rgba(212,175,55,0.05);
 }
 
-.product img{
-width:100%;
-max-width:350px;
-border-radius:10px;
-}
-
-.price{
-font-size:1.5rem;
-font-weight:bold;
-color:#d4af37;
-margin:15px 0;
-}
-
-.button{
-display:inline-block;
-padding:15px 30px;
-border:2px solid #d4af37;
-border-radius:10px;
-color:white;
+.tile{
+display:block;
 text-decoration:none;
-font-weight:bold;
-margin-top:10px;
+color:white;
+border:1px solid #d4af37;
+padding:15px;
 transition:0.3s;
 }
 
-.button:hover{
+.tile:hover{
+background:rgba(212,175,55,0.15);
+}
+
+.tile img{
+width:100%;
+display:block;
+border-radius:8px;
+margin-bottom:10px;
+}
+
+.tile-title{
+font-weight:bold;
+line-height:1.4;
+}
+
+.store{
+display:block;
+text-decoration:none;
+color:white;
+border:2px solid #d4af37;
+border-top:none;
+padding:18px;
+font-weight:bold;
+font-size:1.1rem;
+background:rgba(212,175,55,0.05);
+transition:0.3s;
+}
+
+.store:hover{
 background:rgba(212,175,55,0.15);
 }
 
@@ -68,6 +82,14 @@ display:inline-block;
 margin-top:30px;
 color:#d4af37;
 text-decoration:none;
+}
+
+@media(max-width:700px){
+
+.grid{
+grid-template-columns:1fr;
+}
+
 }
 
 </style>
@@ -80,25 +102,43 @@ text-decoration:none;
 
 <h1>Super Flower Merchandise</h1>
 
-<div class="product">
+<div class="grid">
 
-<img src="s-l1200.webp" alt="SF Tee 001 | Organic Cotton T-Shirt">
-
-<h2>SF Tee 001 | Organic Cotton T-Shirt</h2>
-
-<p>
-Official Super Flower merchandise.
-</p>
-
-<div class="price">
-£24.99
+<a class="tile" href="https://ebay.io/m/LQDsXc" target="_blank">
+<img src="s-1500(1).webp" alt="SF Tee 001">
+<div class="tile-title">
+SF Tee 001 | Organic Cotton T-Shirt
 </div>
+</a>
 
-<a class="button" href="https://ebay.io/m/MCfReH" target="_blank">
-Buy Now
+<a class="tile" href="https://ebay.io/m/ZyPlgw" target="_blank">
+<img src="s-l1200(1).jpg" alt="SF Tee 002">
+<div class="tile-title">
+SF Tee 002 | Organic Cotton T-Shirt
+</div>
+</a>
+
+<a class="tile" href="https://ebay.io/m/M6Gpfk" target="_blank">
+<img src="s-l1200(2).jpg" alt="SF 001 Dad Hat">
+<div class="tile-title">
+SF 001 Dad Hat
+</div>
+</a>
+
+<a class="tile" href="https://ebay.io/m/r6b0mo" target="_blank">
+<img src="s-l1200(3).jpg" alt="SF 001 Unisex Heavy Zip Hoodie">
+<div class="tile-title">
+SF 001 Unisex Heavy Zip Hoodie
+</div>
 </a>
 
 </div>
+
+<a class="store" href="https://ebay.io/m/w8uod1" target="_blank">
+VISIT EBAY STORE
+</a>
+
+<br>
 
 <a class="back" href="index.html">
 ← Back to Home
