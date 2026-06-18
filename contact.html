@@ -6,38 +6,54 @@
 
 <style>
 body{
-margin:0;
-min-height:100vh;
-background:#000;
-color:white;
-font-family:Arial,sans-serif;
-text-align:center;
+    margin:0;
+    min-height:100vh;
+    background:#000;
+    color:white;
+    font-family:Arial,sans-serif;
+    text-align:center;
 }
 
 .container{
-padding:40px 20px;
+    padding:40px 20px;
 }
 
 h1{
-color:#d4af37;
+    color:#d4af37;
+    margin-bottom:30px;
+}
+
+.contact-item{
+    margin:25px 0;
+}
+
+.label{
+    color:#ffffff;
+    font-weight:bold;
+    margin-bottom:8px;
 }
 
 a{
-color:#d4af37;
-text-decoration:none;
+    color:#d4af37;
+    text-decoration:none;
+    word-wrap:break-word;
+}
+
+a:hover{
+    text-decoration:underline;
 }
 
 .button{
-display:block;
-background:transparent;
-border:2px solid #d4af37;
-color:#fff;
-padding:18px;
-margin:20px auto;
-width:280px;
-text-decoration:none;
-border-radius:10px;
-font-weight:bold;
+    display:block;
+    background:transparent;
+    border:2px solid #d4af37;
+    color:#fff;
+    padding:18px;
+    margin:40px auto 20px auto;
+    width:280px;
+    text-decoration:none;
+    border-radius:10px;
+    font-weight:bold;
 }
 </style>
 </head>
@@ -48,13 +64,26 @@ font-weight:bold;
 
 <h1>Contact</h1>
 
-<p>Email:</p>
+<div class="contact-item">
+    <div class="label">Email</div>
+    <a href="mailto:superflowercodex@gmail.com">
+        superflowercodex@gmail.com
+    </a>
+</div>
 
-<p>
-<a href="mailto:YOUR_EMAIL_HERE">
-YOUR_EMAIL_HERE
-</a>
-</p>
+<div class="contact-item">
+    <div class="label">TikTok</div>
+    <a href="https://www.tiktok.com/@superflowercodex?_r=1&_t=ZN-97IGHSbpUk3" target="_blank">
+        @superflowercodex
+    </a>
+</div>
+
+<div class="contact-item">
+    <div class="label">Instagram</div>
+    <a href="https://www.instagram.com/superflowercodex?igsh=cXAwOGR1a2c4cXAy" target="_blank">
+        @superflowercodex
+    </a>
+</div>
 
 <a class="button" href="index.html">
 Back to Home
