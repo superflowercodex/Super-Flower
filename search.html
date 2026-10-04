@@ -2250,7 +2250,11 @@ async function performSearch(
 
         currentResults =
             uniqueBy(
-                pageResults,
+                pageResults
+                    .map(
+                        resolveSearchRecord
+                    )
+                    .filter(Boolean),
                 item =>
                     item.id ||
                     item.name_norm ||
@@ -2926,6 +2930,185 @@ function extractNumbers(
 
 
 /* =========================================================
+   SEARCH RESULT RESOLUTION
+========================================================= */
+
+function resolveSearchRecord(
+    source
+){
+
+    const record =
+        unwrapRecord(source) ||
+        source;
+
+
+    if(!record || typeof record !== "object"){
+
+        return null;
+
+    }
+
+
+    const name =
+        resolvedFieldValue(
+            record,
+            [
+                "name",
+                "strain_name",
+                "identity",
+                "title",
+                "strain"
+            ],
+            "UNKNOWN STRAIN"
+        );
+
+
+    const rawId =
+        first(
+            record,
+            [
+                "id",
+                "strain_id",
+                "catalog_id",
+                "uuid",
+                "slug",
+                "name_norm"
+            ]
+        );
+
+
+    const id =
+        resolveSourceDisplayValue(rawId) ||
+        name;
+
+
+    const type =
+        resolvedFieldValue(
+            record,
+            [
+                "type",
+                "strain_type",
+                "classification",
+                "category"
+            ],
+            "NOT REPORTED"
+        );
+
+
+    const breeder =
+        resolvedFieldValue(
+            record,
+            [
+                "breeder",
+                "breeder_name",
+                "breederName"
+            ],
+            "NOT REPORTED"
+        );
+
+
+    const thc =
+        resolvedFieldValue(
+            record,
+            [
+                "thc_range",
+                "thc",
+                "thc_percent",
+                "thc_percentage",
+                "total_thc",
+                "totalTHC"
+            ],
+            ""
+        );
+
+
+    const cbd =
+        resolvedFieldValue(
+            record,
+            [
+                "cbd_range",
+                "cbd",
+                "cbd_percent",
+                "cbd_percentage",
+                "total_cbd",
+                "totalCBD"
+            ],
+            ""
+        );
+
+
+    const cbg =
+        resolvedFieldValue(
+            record,
+            [
+                "cbg",
+                "CBG",
+                "cbg_percent",
+                "cbg_percentage",
+                "total_cbg",
+                "totalCBG"
+            ],
+            ""
+        );
+
+
+    const genetics =
+        resolvedFieldValue(
+            record,
+            [
+                "genetics",
+                "genetic_lineage",
+                "lineage",
+                "parentage",
+                "parents"
+            ],
+            "NOT REPORTED"
+        );
+
+
+    const topTerpenes =
+        findList(
+            record,
+            [
+                "top_terpenes",
+                "terpenes",
+                "terpene_profile",
+                "dominant_terpenes"
+            ]
+        );
+
+
+    return {
+
+        name,
+        id,
+        name_norm:
+            name
+                .toLowerCase()
+                .replace(/[^a-z0-9]+/g,"-")
+                .replace(/^-|-$/g,""),
+        type,
+        breeder,
+        thc_range: thc,
+        cbd_range: cbd,
+        cbg,
+        genetics,
+        top_terpenes: topTerpenes,
+        has_chemistry:
+            Boolean(
+                thc ||
+                cbd ||
+                cbg ||
+                topTerpenes.length
+            ),
+        source
+
+    };
+
+}
+
+
+/* =========================================================
    RENDER RESULTS
 ========================================================= */
 
@@ -3394,9 +3577,7 @@ function renderRecord(
 ){
 
     record =
-        unwrapRecord(
-            record
-        );
+        unwrapRecord(record);
 
 
     currentRecord =
@@ -3404,97 +3585,105 @@ function renderRecord(
 
 
     const name =
-        first(
+        resolvedFieldValue(
             record,
             [
                 "name",
+                "strain_name",
                 "identity",
-                "title"
-            ]
-        ) ||
-        slim?.name ||
-        "UNKNOWN STRAIN";
+                "title",
+                "strain"
+            ],
+            slim?.name || "UNKNOWN STRAIN"
+        );
 
 
     const id =
-        first(
+        resolvedFieldValue(
             record,
             [
                 "id",
-                "name_norm",
-                "slug"
-            ]
-        ) ||
-        slim?.id ||
-        "NOT REPORTED";
+                "strain_id",
+                "catalog_id",
+                "uuid",
+                "slug",
+                "name_norm"
+            ],
+            slim?.id || "NOT REPORTED"
+        );
 
 
     const genetics =
-        first(
+        resolvedFieldValue(
             record,
             [
                 "genetics",
                 "genetic_lineage",
-                "lineage"
-            ]
-        ) ||
-        lineageSummary(
-            record
-        ) ||
-        "NOT REPORTED";
+                "lineage",
+                "parentage",
+                "parents"
+            ],
+            slim?.genetics || "NOT REPORTED"
+        );
 
 
     const type =
-        first(
+        resolvedFieldValue(
             record,
             [
                 "type",
+                "strain_type",
                 "classification",
                 "category"
-            ]
-        ) ||
-        slim?.type ||
-        "NOT REPORTED";
+            ],
+            slim?.type || "NOT REPORTED"
+        );
 
 
     const thc =
-        first(
+        resolvedFieldValue(
             record,
             [
                 "thc_range",
-                "thc"
-            ]
-        ) ||
-        slim?.thc_range ||
-        "NOT REPORTED";
+                "thc",
+                "thc_percent",
+                "thc_percentage",
+                "total_thc",
+                "totalTHC"
+            ],
+            slim?.thc_range || "NOT REPORTED"
+        );
 
 
     const cbd =
-        first(
+        resolvedFieldValue(
             record,
             [
                 "cbd_range",
-                "cbd"
-            ]
-        ) ||
-        slim?.cbd_range ||
-        "NOT REPORTED";
+                "cbd",
+                "cbd_percent",
+                "cbd_percentage",
+                "total_cbd",
+                "totalCBD"
+            ],
+            slim?.cbd_range || "NOT REPORTED"
+        );
 
 
     const breeder =
-        first(
+        resolvedFieldValue(
             record,
             [
                 "breeder",
-                "breeder_name"
-            ]
-        ) ||
-        slim?.breeder ||
-        "NOT REPORTED";
+                "breeder_name",
+                "breederName"
+            ],
+            slim?.breeder || "NOT REPORTED"
+        );
 
 
     const aroma =
-        first(
+        resolvedFieldValue(
             record,
             [
                 "aroma",
@@ -3503,24 +3692,10 @@ function renderRecord(
                 "flavour",
                 "flavors",
                 "flavours"
-            ]
-        ) ||
-        "NOT REPORTED";
+            ],
+            "NOT REPORTED"
+        );
 
-
-    /*
-        SUPER FLOWER CODEX LAYER
-
-        This is deliberately separate from
-        CannaLib source fields.
-
-        Every strain receives a deterministic
-        Codex reference alignment based on its
-        stable identity.
-
-        Therefore the same strain receives the
-        same alignment every time it is loaded.
-    */
 
     const codex =
         resolveCodexAlignment(
@@ -3538,83 +3713,28 @@ function renderRecord(
         );
 
 
-    /*
-        Extract the REAL CannaLib pictures
-        from the COMPLETE record.
-    */
-
     const pictures =
-        extractPictures(
-            record
-        );
+        extractPictures(record);
 
 
-    renderFlower(
-        record
-    );
+    renderFlower(record);
 
 
     specimenFields.innerHTML =
-
-        field(
-            "SPECIMEN ID",
-            id
-        ) +
-
-        field(
-            "SPECIMEN IDENTITY",
-            name
-        ) +
-
-        field(
-            "GENETICS",
-            genetics
-        ) +
-
-        field(
-            "TYPE",
-            type
-        ) +
-
-        field(
-            "THC RANGE",
-            thc
-        ) +
-
-        field(
-            "CBD RANGE",
-            cbd
-        ) +
-
-        field(
-            "AROMA",
-            aroma
-        ) +
-
-        field(
-            "RAW CHAKRA",
-            codex.chakra
-        ) +
-
-        field(
-            "RAW PLANET",
-            codex.planet
-        ) +
-
-        field(
-            "CODEX FREQUENCY",
-            `${codex.frequency} Hz`
-        ) +
-
-        field(
-            "PRIMARY ARCHETYPE",
-            archetype
-        );
+        field("SPECIMEN ID",id) +
+        field("SPECIMEN IDENTITY",name) +
+        field("GENETICS",genetics) +
+        field("TYPE",type) +
+        field("THC RANGE",thc) +
+        field("CBD RANGE",cbd) +
+        field("AROMA",aroma) +
+        field("RAW CHAKRA",codex.chakra) +
+        field("RAW PLANET",codex.planet) +
+        field("CODEX FREQUENCY",`${codex.frequency} Hz`) +
+        field("PRIMARY ARCHETYPE",archetype);
 
 
-    renderResonance(
-        record
-    );
+    renderResonance(record);
 
 
     renderInfo(
@@ -3804,15 +3924,17 @@ function loadNextLiveFlower(
     flowerImage.alt =
         currentRecord
             ? (
-                first(
+                resolvedFieldValue(
                     currentRecord,
                     [
                         "name",
                         "strain_name",
-                        "title"
-                    ]
-                ) ||
-                "Super Flower specimen"
+                        "identity",
+                        "title",
+                        "strain"
+                    ],
+                    "Super Flower specimen"
+                )
             )
             : "Super Flower specimen";
 
@@ -4107,15 +4229,14 @@ function renderInfo(
 ){
 
     const terpenes =
-        normalizeList(
-            first(
-                record,
-                [
-                    "terpenes",
-                    "top_terpenes",
-                    "terpene_profile"
-                ]
-            )
+        findList(
+            record,
+            [
+                "terpenes",
+                "top_terpenes",
+                "terpene_profile",
+                "dominant_terpenes"
+            ]
         );
 
 
@@ -4149,7 +4270,8 @@ function renderInfo(
             [
                 "parents",
                 "parent_strains",
-                "parent"
+                "parent",
+                "parentage"
             ]
         );
 
@@ -4166,17 +4288,18 @@ function renderInfo(
 
 
     const flowering =
-        first(
+        resolvedFieldValue(
             record,
             [
                 "flowering_days",
-                "flowering_time"
+                "flowering_time",
+                "flowering"
             ]
         );
 
 
     const height =
-        first(
+        resolvedFieldValue(
             record,
             [
                 "height_cm",
@@ -4187,41 +4310,111 @@ function renderInfo(
 
 
     const photoperiod =
-        findDeep(
+        resolvedFieldValue(
             record,
-            "photoperiod"
+            [
+                "photoperiod"
+            ]
         );
 
 
     const autoflower =
-        findDeep(
+        resolvedFieldValue(
             record,
-            "autoflower"
+            [
+                "autoflower",
+                "auto_flowering",
+                "autoflowering"
+            ]
         );
 
 
     const yieldValue =
-        findDeep(
+        resolvedFieldValue(
             record,
-            "yield"
+            [
+                "yield",
+                "yield_value",
+                "yield_range",
+                "yield_per_m2"
+            ]
         );
 
 
     const origin =
-        findDeep(
+        resolvedFieldValue(
             record,
-            "origin"
+            [
+                "origin",
+                "country_of_origin",
+                "region_of_origin"
+            ]
         );
 
 
     const aliases =
-        normalizeList(
-            first(
-                record,
-                [
-                    "aliases"
-                ]
-            )
+        findList(
+            record,
+            [
+                "aliases",
+                "alias"
+            ]
+        );
+
+
+    const cbg =
+        resolvedFieldValue(
+            record,
+            [
+                "cbg",
+                "CBG",
+                "cbg_percent",
+                "cbg_percentage",
+                "total_cbg",
+                "totalCBG"
+            ]
+        );
+
+
+    const cbn =
+        resolvedFieldValue(
+            record,
+            [
+                "cbn",
+                "CBN",
+                "cbn_percent",
+                "cbn_percentage",
+                "total_cbn",
+                "totalCBN"
+            ]
+        );
+
+
+    const cbc =
+        resolvedFieldValue(
+            record,
+            [
+                "cbc",
+                "CBC",
+                "cbc_percent",
+                "cbc_percentage",
+                "total_cbc",
+                "totalCBC"
+            ]
+        );
+
+
+    const thcv =
+        resolvedFieldValue(
+            record,
+            [
+                "thcv",
+                "THCV",
+                "thcv_percent",
+                "thcv_percentage",
+                "total_thcv",
+                "totalTHCV"
+            ]
         );
 
 
@@ -4229,65 +4422,47 @@ function renderInfo(
 
         <div class="info-grid">
 
-
-            <!-- =============================================
-                 IDENTITY
-            ============================================== -->
-
             <section class="info-panel">
 
                 <div class="info-panel-title">
                     SPECIMEN IDENTITY
                 </div>
 
-
                 <div class="info-data-grid">
 
-                    ${dataItem(
-                        "STRAIN",
-                        summary.name
-                    )}
+                    ${dataItem("STRAIN",summary.name)}
 
                     ${dataItem(
                         "BREEDER",
-                        summary.breeder ||
-                        "NOT REPORTED"
+                        summary.breeder || "NOT REPORTED"
                     )}
 
                     ${dataItem(
                         "TYPE",
-                        first(
+                        resolvedFieldValue(
                             record,
                             [
                                 "type",
+                                "strain_type",
                                 "classification",
                                 "category"
                             ]
-                        ) ||
-                        "NOT REPORTED"
+                        )
                     )}
 
                     ${dataItem(
                         "ORIGIN",
-                        origin ||
-                        "NOT REPORTED"
+                        origin
                     )}
 
                 </div>
 
-
                 ${
                     aliases.length
                         ? `
-                            <div
-                                class="info-panel-note"
-                            >
+                            <div class="info-panel-note">
                                 ALIASES:
-                                ${escapeHTML(
-                                    aliases.join(
-                                        " · "
-                                    )
-                                )}
+                                ${escapeHTML(aliases.join(" · "))}
                             </div>
                           `
                         : ""
@@ -4295,74 +4470,24 @@ function renderInfo(
 
             </section>
 
-
-            <!-- =============================================
-                 CANNABINOIDS
-            ============================================== -->
-
             <section class="info-panel">
 
                 <div class="info-panel-title">
                     CANNABINOID PROFILE
                 </div>
 
-
                 <div class="info-data-grid">
 
-                    ${dataItem(
-                        "THC",
-                        summary.thc
-                    )}
-
-                    ${dataItem(
-                        "CBD",
-                        summary.cbd
-                    )}
-
-                    ${dataItem(
-                        "CBG",
-                        findDeep(
-                            record,
-                            "cbg"
-                        ) ||
-                        "NOT REPORTED"
-                    )}
-
-                    ${dataItem(
-                        "CBN",
-                        findDeep(
-                            record,
-                            "cbn"
-                        ) ||
-                        "NOT REPORTED"
-                    )}
-
-                    ${dataItem(
-                        "CBC",
-                        findDeep(
-                            record,
-                            "cbc"
-                        ) ||
-                        "NOT REPORTED"
-                    )}
-
-                    ${dataItem(
-                        "THCV",
-                        findDeep(
-                            record,
-                            "thcv"
-                        ) ||
-                        "NOT REPORTED"
-                    )}
+                    ${dataItem("THC",summary.thc)}
+                    ${dataItem("CBD",summary.cbd)}
+                    ${dataItem("CBG",cbg)}
+                    ${dataItem("CBN",cbn)}
+                    ${dataItem("CBC",cbc)}
+                    ${dataItem("THCV",thcv)}
 
                 </div>
 
             </section>
-
-
-            <!-- =============================================
-                 TERPENES
-            ============================================== -->
 
             <section class="info-panel">
 
@@ -4370,17 +4495,9 @@ function renderInfo(
                     TERPENE PROFILE
                 </div>
 
-
-                ${renderChips(
-                    terpenes
-                )}
+                ${renderChips(terpenes)}
 
             </section>
-
-
-            <!-- =============================================
-                 EFFECTS
-            ============================================== -->
 
             <section class="info-panel">
 
@@ -4388,17 +4505,9 @@ function renderInfo(
                     EFFECTS / REPORTED CHARACTER
                 </div>
 
-
-                ${renderChips(
-                    effects
-                )}
+                ${renderChips(effects)}
 
             </section>
-
-
-            <!-- =============================================
-                 FLAVOUR
-            ============================================== -->
 
             <section class="info-panel">
 
@@ -4406,17 +4515,9 @@ function renderInfo(
                     FLAVOUR / AROMA
                 </div>
 
-
-                ${renderChips(
-                    flavours
-                )}
+                ${renderChips(flavours)}
 
             </section>
-
-
-            <!-- =============================================
-                 LINEAGE
-            ============================================== -->
 
             <section class="info-panel">
 
@@ -4424,67 +4525,38 @@ function renderInfo(
                     GENETIC LINEAGE
                 </div>
 
-
                 <div class="lineage">
 
                     ${
                         parents.length
                             ? `
-                                <strong>
-                                    RECORDED PARENTS
-                                </strong>
-
+                                <strong>RECORDED PARENTS</strong>
                                 <br>
-
-                                ${escapeHTML(
-                                    parents.join(
-                                        " × "
-                                    )
-                                )}
-
+                                ${escapeHTML(parents.join(" × "))}
                                 <br><br>
                               `
                             : ""
                     }
 
-
                     ${
                         children.length
                             ? `
-                                <strong>
-                                    RECORDED DESCENDANTS
-                                </strong>
-
+                                <strong>RECORDED DESCENDANTS</strong>
                                 <br>
-
-                                ${escapeHTML(
-                                    children.join(
-                                        " · "
-                                    )
-                                )}
+                                ${escapeHTML(children.join(" · "))}
                               `
                             : ""
                     }
 
-
                     ${
-                        !parents.length &&
-                        !children.length
-                            ? `
-                                NO LINEAGE DATA
-                                REPORTED.
-                              `
+                        !parents.length && !children.length
+                            ? `NO LINEAGE DATA REPORTED.`
                             : ""
                     }
 
                 </div>
 
             </section>
-
-
-            <!-- =============================================
-                 GROW
-            ============================================== -->
 
             <section class="info-panel">
 
@@ -4492,53 +4564,18 @@ function renderInfo(
                     CULTIVATION / GROW DATA
                 </div>
 
-
                 <div class="info-data-grid">
 
-                    ${dataItem(
-                        "FLOWERING",
-                        flowering ||
-                        "NOT REPORTED"
-                    )}
-
-                    ${dataItem(
-                        "HEIGHT",
-                        height ||
-                        "NOT REPORTED"
-                    )}
-
-                    ${dataItem(
-                        "PHOTOPERIOD",
-                        photoperiod ||
-                        "NOT REPORTED"
-                    )}
-
-                    ${dataItem(
-                        "AUTOFLOWER",
-                        autoflower ||
-                        "NOT REPORTED"
-                    )}
-
-                    ${dataItem(
-                        "YIELD",
-                        yieldValue ||
-                        "NOT REPORTED"
-                    )}
-
-                    ${dataItem(
-                        "ORIGIN",
-                        origin ||
-                        "NOT REPORTED"
-                    )}
+                    ${dataItem("FLOWERING",flowering)}
+                    ${dataItem("HEIGHT",height)}
+                    ${dataItem("PHOTOPERIOD",photoperiod)}
+                    ${dataItem("AUTOFLOWER",autoflower)}
+                    ${dataItem("YIELD",yieldValue)}
+                    ${dataItem("ORIGIN",origin)}
 
                 </div>
 
             </section>
-
-
-            <!-- =============================================
-                 CODEX LAYER
-            ============================================== -->
 
             <section class="info-panel full">
 
@@ -4546,19 +4583,16 @@ function renderInfo(
                     SUPER FLOWER CODEX CLASSIFICATION
                 </div>
 
-
                 <div class="info-data-grid">
 
                     ${dataItem(
                         "RAW CHAKRA",
-                        summary.codex?.chakra ||
-                        "NOT ASSIGNED"
+                        summary.codex?.chakra || "NOT ASSIGNED"
                     )}
 
                     ${dataItem(
                         "RAW PLANET",
-                        summary.codex?.planet ||
-                        "NOT ASSIGNED"
+                        summary.codex?.planet || "NOT ASSIGNED"
                     )}
 
                     ${dataItem(
@@ -4570,65 +4604,40 @@ function renderInfo(
 
                     ${dataItem(
                         "PRIMARY ARCHETYPE",
-                        summary.archetype ||
-                        "NOT ASSIGNED"
+                        summary.archetype || "NOT ASSIGNED"
                     )}
 
                     ${dataItem(
                         "RESONANCE",
-                        hasResonanceData(
-                            record
-                        )
+                        hasResonanceData(record)
                             ? "SOURCE VALUE PRESENT"
                             : "NOT ASSIGNED"
                     )}
 
                 </div>
 
-
                 <div class="info-panel-note">
-
                     CHAKRA / PLANET / FREQUENCY ARE
                     SUPER FLOWER CODEX REFERENCE
                     ALIGNMENTS, NOT CANNALIB SOURCE FIELDS.
-
                     <br><br>
-
                     ${escapeHTML(
                         summary.codex?.basis ||
                         "SUPER FLOWER CODEX REFERENCE ALIGNMENT"
                     )}
-
                 </div>
 
             </section>
-
-
-            <!-- =============================================
-                 PHOTOS
-            ============================================== -->
 
             <section class="info-panel full">
 
                 <div class="info-panel-title">
-
-                    SPECIMEN PHOTOGRAPHS /
-                    SOURCE CREDIT
-
+                    SPECIMEN PHOTOGRAPHS / SOURCE CREDIT
                 </div>
 
-
-                ${renderPhotos(
-                    summary.pictures,
-                    summary.name
-                )}
+                ${renderPhotos(summary.pictures,summary.name)}
 
             </section>
-
-
-            <!-- =============================================
-                 SOURCES
-            ============================================== -->
 
             <section class="info-panel full">
 
@@ -4636,17 +4645,9 @@ function renderInfo(
                     RECEIPTS / SOURCES
                 </div>
 
-
-                ${renderSources(
-                    record
-                )}
+                ${renderSources(record)}
 
             </section>
-
-
-            <!-- =============================================
-                 RAW
-            ============================================== -->
 
             <section class="info-panel full">
 
@@ -4654,74 +4655,42 @@ function renderInfo(
                     COMPLETE LIVE SOURCE RECORD
                 </div>
 
-
                 <details class="raw-data">
-
-                    <summary>
-                        OPEN FULL SOURCE JSON
-                    </summary>
-
-
-                    <pre>${escapeHTML(
-                        JSON.stringify(
-                            record,
-                            null,
-                            2
-                        )
-                    )}</pre>
-
+                    <summary>OPEN FULL SOURCE JSON</summary>
+                    <pre>${escapeHTML(JSON.stringify(record,null,2))}</pre>
                 </details>
 
             </section>
-
 
         </div>
 
     `;
 
 
-    /*
-        Gallery images are also real CannaLib
-        photographs only.
-
-        If an individual gallery image fails,
-        remove that failed card instead of
-        replacing it with a fake flower.
-    */
-
     const galleryImages =
-        infoContent.querySelectorAll(
-            ".photo-card img"
+        infoContent.querySelectorAll(".photo-card img");
+
+
+    galleryImages.forEach(image => {
+
+        image.addEventListener(
+            "error",
+            () => {
+
+                const card =
+                    image.closest(".photo-card");
+
+                if(card){
+
+                    card.remove();
+
+                }
+
+            },
+            {once:true}
         );
 
-
-    galleryImages.forEach(
-        image => {
-
-            image.addEventListener(
-                "error",
-                () => {
-
-                    const card =
-                        image.closest(
-                            ".photo-card"
-                        );
-
-
-                    if(card){
-
-                        card.remove();
-
-                    }
-
-                },
-                {
-                    once:true
-                }
-            );
-
-        }
-    );
+    });
 
 }
 
@@ -5682,83 +5651,43 @@ function findList(
     keys
 ){
 
-    for(
-        const key of keys
-    ){
-
-        const value =
-            findDeep(
-                object,
-                key
-            );
+    const value =
+        first(object,keys);
 
 
-        if(
-            Array.isArray(
-                value
-            )
-        ){
+    if(!hasUsableValue(value)){
 
-            return value
-                .flatMap(
-                    item => {
-
-                        if(
-                            typeof item === "object" &&
-                            item !== null
-                        ){
-
-                            return [
-
-                                item.name ||
-                                item.label ||
-                                item.slug ||
-                                item.value ||
-                                JSON.stringify(
-                                    item
-                                )
-
-                            ];
-
-                        }
-
-
-                        return [
-                            item
-                        ];
-
-                    }
-                )
-                .filter(
-                    Boolean
-                );
-
-        }
-
-
-        if(
-            typeof value === "string" &&
-            value.trim()
-        ){
-
-            return value
-                .split(
-                    /[,|•]/
-                )
-                .map(
-                    item =>
-                        item.trim()
-                )
-                .filter(
-                    Boolean
-                );
-
-        }
+        return [];
 
     }
 
 
-    return [];
+    if(Array.isArray(value)){
+
+        return value
+            .map(item =>
+                resolveSourceDisplayValue(item)
+            )
+            .filter(Boolean);
+
+    }
+
+
+    const scalar =
+        resolveSourceDisplayValue(value);
+
+
+    if(!scalar){
+
+        return [];
+
+    }
+
+
+    return scalar
+        .split(/[,|•]/)
+        .map(item => item.trim())
+        .filter(Boolean);
 
 }
 
@@ -5771,80 +5700,40 @@ function normalizeList(
     value
 ){
 
-    if(
-        value === undefined ||
-        value === null
-    ){
+    if(!hasUsableValue(value)){
 
         return [];
 
     }
 
 
-    if(
-        Array.isArray(
-            value
-        )
-    ){
+    if(Array.isArray(value)){
 
         return value
-            .flatMap(
-                item => {
-
-                    if(
-                        typeof item === "object" &&
-                        item !== null
-                    ){
-
-                        return [
-
-                            item.name ||
-                            item.label ||
-                            item.slug ||
-                            item.value ||
-                            JSON.stringify(
-                                item
-                            )
-
-                        ];
-
-                    }
-
-
-                    return [
-                        String(
-                            item
-                        )
-                    ];
-
-                }
+            .map(item =>
+                resolveSourceDisplayValue(item)
             )
-            .filter(
-                Boolean
-            );
+            .filter(Boolean);
 
     }
 
 
-    return String(
-        value
-    )
-    .split(
-        /[,|•]/
-    )
-    .map(
-        item =>
-            item.trim()
-    )
-    .filter(
-        Boolean
-    );
+    const scalar =
+        resolveSourceDisplayValue(value);
+
+
+    return scalar
+        ? scalar
+            .split(/[,|•]/)
+            .map(item => item.trim())
+            .filter(Boolean)
+        : [];
 
 }
 
 
 /* =========================================================
-   FIRST VALUE
+   FIRST VALUE — ALIAS ORDERED
 ========================================================= */
 
 function first(
@@ -5852,22 +5741,20 @@ function first(
     keys
 ){
 
-    for(
-        const key of keys
-    ){
+    if(!object || !Array.isArray(keys)){
+
+        return null;
+
+    }
+
+
+    for(const key of keys){
 
         const value =
-            findDeep(
-                object,
-                key
-            );
+            findDeep(object,key);
 
 
-        if(
-            value !== undefined &&
-            value !== null &&
-            value !== ""
-        ){
+        if(hasUsableValue(value)){
 
             return value;
 
@@ -5882,7 +5769,7 @@ function first(
 
 
 /* =========================================================
-   DEEP FIND
+   DEEP FIND — CONTROLLED DIRECT-FIRST RESOLUTION
 ========================================================= */
 
 function findDeep(
@@ -5890,59 +5777,106 @@ function findDeep(
     wantedKey
 ){
 
-    let found =
-        undefined;
+    if(
+        object === undefined ||
+        object === null ||
+        wantedKey === undefined ||
+        wantedKey === null
+    ){
+
+        return undefined;
+
+    }
 
 
     const target =
-        String(
-            wantedKey
-        )
-        .toLowerCase();
+        String(wantedKey)
+            .trim()
+            .toLowerCase();
 
 
-    walkObject(
-        object,
-        (
-            key,
-            value
-        ) => {
-
-            if(
-                found !== undefined
-            ){
-
-                return;
-
-            }
+    const queue = [];
+    const seen = new WeakSet();
 
 
-            if(
-                String(
-                    key
-                )
-                .toLowerCase() ===
-                target
-            ){
+    if(
+        typeof object === "object" &&
+        object !== null
+    ){
+
+        queue.push(object);
+        seen.add(object);
+
+    }
+
+
+    while(queue.length){
+
+        const current =
+            queue.shift();
+
+
+        if(Array.isArray(current)){
+
+            for(const item of current){
 
                 if(
-                    value !== undefined &&
-                    value !== null &&
-                    value !== ""
+                    item &&
+                    typeof item === "object" &&
+                    !seen.has(item)
                 ){
 
-                    found =
-                        value;
+                    seen.add(item);
+                    queue.push(item);
 
                 }
 
             }
 
+            continue;
+
         }
-    );
 
 
-    return found;
+        /*
+            Search THIS level completely before moving
+            deeper. This prevents an unrelated nested
+            object from winning over the real field.
+        */
+
+        for(const [key,value] of Object.entries(current)){
+
+            if(
+                String(key).trim().toLowerCase() === target &&
+                hasUsableValue(value)
+            ){
+
+                return value;
+
+            }
+
+        }
+
+
+        for(const value of Object.values(current)){
+
+            if(
+                value &&
+                typeof value === "object" &&
+                !seen.has(value)
+            ){
+
+                seen.add(value);
+                queue.push(value);
+
+            }
+
+        }
+
+    }
+
+
+    return undefined;
 
 }
 
@@ -6079,52 +6013,262 @@ function uniqueBy(
 
 
 /* =========================================================
-   FORMAT
+   SOURCE VALUE SCALARISER
 ========================================================= */
 
-function formatValue(
-    value
+function resolveSourceDisplayValue(
+    value,
+    depth = 0
 ){
 
+    if(depth > 8){
+
+        return "";
+
+    }
+
+
     if(
-        Array.isArray(
-            value
-        )
+        value === undefined ||
+        value === null
     ){
+
+        return "";
+
+    }
+
+
+    if(typeof value === "string"){
+
+        return value.trim();
+
+    }
+
+
+    if(
+        typeof value === "number" ||
+        typeof value === "boolean"
+    ){
+
+        return String(value);
+
+    }
+
+
+    if(Array.isArray(value)){
 
         return value
-            .map(
-                item =>
-                    typeof item === "object"
-                        ? JSON.stringify(
-                            item
-                        )
-                        : item
+            .map(item =>
+                resolveSourceDisplayValue(
+                    item,
+                    depth + 1
+                )
             )
-            .join(
-                " · "
-            );
+            .filter(Boolean)
+            .join(" · ");
 
     }
 
+
+    if(typeof value === "object"){
+
+        const preferred = [
+            "display_name",
+            "displayName",
+            "name",
+            "label",
+            "title",
+            "text",
+            "description",
+            "value",
+            "amount",
+            "percentage",
+            "percent",
+            "range"
+        ];
+
+
+        for(const key of preferred){
+
+            if(hasUsableValue(value[key])){
+
+                const resolved =
+                    resolveSourceDisplayValue(
+                        value[key],
+                        depth + 1
+                    );
+
+
+                if(resolved){
+
+                    if(
+                        ["value","amount","percentage","percent"]
+                            .includes(key)
+                    ){
+
+                        const unit =
+                            value.unit ||
+                            value.units ||
+                            value.symbol ||
+                            "";
+
+                        return unit
+                            ? resolved + " " + unit
+                            : resolved;
+
+                    }
+
+                    return resolved;
+
+                }
+
+            }
+
+        }
+
+
+        const min =
+            value.min ??
+            value.minimum ??
+            value.low ??
+            value.from;
+
+        const max =
+            value.max ??
+            value.maximum ??
+            value.high ??
+            value.to;
+
+        const unit =
+            value.unit ||
+            value.units ||
+            value.symbol ||
+            "";
+
+
+        if(
+            min !== undefined &&
+            min !== null &&
+            max !== undefined &&
+            max !== null
+        ){
+
+            const left =
+                resolveSourceDisplayValue(
+                    min,
+                    depth + 1
+                );
+
+            const right =
+                resolveSourceDisplayValue(
+                    max,
+                    depth + 1
+                );
+
+            if(left && right){
+
+                return `${left}–${right}${unit ? " " + unit : ""}`;
+
+            }
+
+        }
+
+
+        if(
+            min !== undefined &&
+            min !== null
+        ){
+
+            const left =
+                resolveSourceDisplayValue(
+                    min,
+                    depth + 1
+                );
+
+            if(left){
+
+                return `≥ ${left}${unit ? " " + unit : ""}`;
+
+            }
+
+        }
+
+
+        if(
+            max !== undefined &&
+            max !== null
+        ){
+
+            const right =
+                resolveSourceDisplayValue(
+                    max,
+                    depth + 1
+                );
+
+            if(right){
+
+                return `≤ ${right}${unit ? " " + unit : ""}`;
+
+            }
+
+        }
+
+    }
+
+
+    return "";
+
+}
+
+
+function hasUsableValue(value){
 
     if(
-        typeof value === "object" &&
-        value !== null
+        value === undefined ||
+        value === null
     ){
 
-        return JSON.stringify(
-            value
-        );
+        return false;
 
     }
 
+    if(typeof value === "string"){
 
-    return String(
-        value ??
-        "NOT REPORTED"
-    );
+        return value.trim() !== "";
 
+    }
+
+    if(Array.isArray(value)){
+
+        return value.length > 0;
+
+    }
+
+    if(typeof value === "object"){
+
+        return Object.keys(value).length > 0;
+
+    }
+
+    return true;
+
+}
+
+
+function resolvedFieldValue(
+    object,
+    keys,
+    fallback = "NOT REPORTED"
+){
+
+    const value =
+        first(object,keys);
+
+    const display =
+        resolveSourceDisplayValue(value);
+
+
+    return display || fallback;
 }
 
 
@@ -6419,3 +6563,4 @@ loadFromHash();
 </body>
 
 </html>
+
