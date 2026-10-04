@@ -1,4551 +1,6421 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
+
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <meta
-  name="description"
-  content="SEARCH THE LIVING SUPER FLOWER RECORD — the living searchable Super Flower Cannabis Codex."
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
 >
 
-<meta name="theme-color" content="#000000">
+<meta
+    name="description"
+    content="SEARCH THE LIVING SUPER FLOWER RECORD — the living searchable Super Flower Cannabis Codex."
+>
+
+<meta
+    name="theme-color"
+    content="#000000"
+>
 
 <title>SEARCH THE LIVING SUPER FLOWER RECORD</title>
 
-<style>
-/* =========================================================
-   SUPER FLOWER CODEX — SEARCH THE LIVING RECORD
-   PUBLIC SEARCH VERSION
+<link
+    rel="icon"
+    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23000'/%3E%3Ctext x='50' y='68' text-anchor='middle' font-size='58' fill='%23ffd21a'%3ESF%3C/text%3E%3C/svg%3E"
+>
 
-   NO API KEY
-   NO FAKE DATA
-   NO GENERIC FLOWER FALLBACK
-   ========================================================= */
+<style>
+
+/* =========================================================
+   SUPER FLOWER
+   SEARCH THE LIVING SUPER FLOWER RECORD
+========================================================= */
 
 :root{
-  --black:#000;
-  --gold:#d8b45a;
-  --gold-soft:#b99645;
-  --gold-bright:#f0d98a;
-  --white:#f4f1e8;
-  --muted:#81775f;
-  --line:rgba(216,180,90,.45);
-  --line-soft:rgba(216,180,90,.18);
-  --panel:#050505;
+    --black:#000;
+    --black-soft:#050505;
+    --black-panel:#090909;
+
+    --gold:#ffd21a;
+    --gold-soft:#d4af37;
+    --gold-hot:#fff3a3;
+    --gold-dark:#715d08;
+
+    --white:#fff;
+    --white-soft:rgba(255,255,255,.72);
+    --white-dim:rgba(255,255,255,.42);
+
+    --red:#ff5757;
+    --green:#78e08f;
+
+    --line:rgba(255,210,26,.78);
+    --line-soft:rgba(255,210,26,.28);
+
+    --shadow:
+        0 0 8px rgba(255,210,26,.45),
+        0 0 28px rgba(255,210,26,.12);
 }
 
 *{
-  box-sizing:border-box;
+    box-sizing:border-box;
 }
 
-html,
-body{
-  margin:0;
-  padding:0;
-  background:#000;
-  color:var(--white);
-  font-family:Georgia,"Times New Roman",serif;
+html{
+    scroll-behavior:smooth;
 }
 
 body{
-  min-height:100vh;
-}
-
-/* =========================================================
-   PAGE
-   ========================================================= */
-
-.page{
-  width:min(1500px,96vw);
-  margin:0 auto;
-  padding:22px 0 60px;
-}
-
-/* =========================================================
-   HEADER
-   ========================================================= */
-
-.site-header{
-  border:1px solid var(--line);
-  padding:22px 24px 18px;
-  margin-bottom:16px;
-  background:#000;
-}
-
-.kicker{
-  color:var(--gold);
-  font-size:11px;
-  letter-spacing:.28em;
-  text-transform:uppercase;
-  margin-bottom:8px;
-}
-
-h1{
-  margin:0;
-  color:var(--gold-bright);
-  font-size:clamp(25px,4vw,48px);
-  font-weight:normal;
-  letter-spacing:.08em;
-  line-height:1.05;
-}
-
-.subtitle{
-  margin-top:10px;
-  color:#aaa08a;
-  font-size:13px;
-  letter-spacing:.08em;
-}
-
-/* =========================================================
-   SEARCH
-   ========================================================= */
-
-.search-panel{
-  border:1px solid var(--line);
-  padding:14px;
-  margin-bottom:16px;
-  background:#000;
-}
-
-.search-row{
-  display:grid;
-  grid-template-columns:1fr auto auto;
-  gap:8px;
-}
-
-.search-input{
-  width:100%;
-  min-height:44px;
-  padding:0 14px;
-  border:1px solid var(--line);
-  background:#020202;
-  color:var(--white);
-  font:inherit;
-  letter-spacing:.04em;
-  outline:none;
-}
-
-.search-input:focus{
-  border-color:var(--gold-bright);
-  box-shadow:0 0 0 1px rgba(216,180,90,.2);
+    margin:0;
+    min-height:100vh;
+    background:#000;
+    color:#fff;
+    font-family:"Courier New",Courier,monospace;
+    overflow-x:hidden;
 }
 
 button,
+input,
 select{
-  min-height:44px;
-  border:1px solid var(--line);
-  background:#050505;
-  color:var(--gold-bright);
-  padding:0 15px;
-  font-family:Georgia,"Times New Roman",serif;
-  letter-spacing:.08em;
-  cursor:pointer;
+    font:inherit;
 }
 
-button:hover{
-  border-color:var(--gold-bright);
-  background:#0b0b0b;
+button{
+    -webkit-tap-highlight-color:transparent;
+}
+
+body::before{
+    content:"";
+    position:fixed;
+    inset:0;
+    pointer-events:none;
+    z-index:-10;
+    background:
+        radial-gradient(
+            circle at 50% 8%,
+            rgba(255,210,26,.10),
+            transparent 35%
+        ),
+        radial-gradient(
+            circle at 10% 65%,
+            rgba(255,255,255,.035),
+            transparent 30%
+        ),
+        radial-gradient(
+            circle at 90% 80%,
+            rgba(255,210,26,.05),
+            transparent 30%
+        ),
+        #000;
+}
+
+
+/* =========================================================
+   PAGE
+========================================================= */
+
+.page{
+    width:min(1450px,calc(100% - 28px));
+    margin:0 auto;
+    padding:28px 0 90px;
+}
+
+
+/* =========================================================
+   HEADER
+========================================================= */
+
+.search-header{
+    text-align:center;
+    padding:25px 0 20px;
+}
+
+.search-title{
+    margin:0;
+    color:var(--gold);
+    font-family:Georgia,"Times New Roman",serif;
+    font-size:clamp(1.5rem,4vw,3.2rem);
+    line-height:1.1;
+    letter-spacing:.08em;
+    text-shadow:
+        0 0 6px #fff,
+        0 0 18px var(--gold),
+        0 0 38px rgba(255,210,26,.35);
+}
+
+.search-subtitle{
+    margin:12px 0 0;
+    color:var(--white-soft);
+    font-size:.72rem;
+    letter-spacing:.20em;
+    text-transform:uppercase;
+}
+
+
+/* =========================================================
+   SEARCH PANEL
+========================================================= */
+
+.search-panel{
+    border:1px solid var(--gold);
+    background:rgba(0,0,0,.94);
+    box-shadow:var(--shadow);
+    padding:18px;
+    margin-bottom:24px;
+}
+
+.search-row{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto auto;
+    gap:10px;
+    align-items:stretch;
+}
+
+.search-input{
+    width:100%;
+    min-width:0;
+    height:58px;
+    padding:0 18px;
+    border:1px solid var(--gold);
+    outline:none;
+    background:#000;
+    color:var(--gold-hot);
+    font-size:1.02rem;
+    letter-spacing:.05em;
+}
+
+.search-input::placeholder{
+    color:rgba(255,255,255,.40);
+}
+
+.search-input:focus{
+    box-shadow:
+        0 0 8px rgba(255,210,26,.8),
+        inset 0 0 18px rgba(255,210,26,.06);
+}
+
+.search-button,
+.filter-toggle{
+    height:58px;
+    padding:0 20px;
+    border:1px solid var(--gold);
+    background:#000;
+    color:var(--gold);
+    font-weight:bold;
+    letter-spacing:.08em;
+    cursor:pointer;
+    transition:
+        background .2s ease,
+        color .2s ease,
+        box-shadow .2s ease;
+}
+
+.search-button:hover,
+.filter-toggle:hover{
+    background:var(--gold);
+    color:#000;
+    box-shadow:0 0 18px rgba(255,210,26,.5);
+}
+
+.search-button:focus-visible,
+.filter-toggle:focus-visible,
+.result:focus-visible{
+    outline:2px solid var(--gold-hot);
+    outline-offset:2px;
+}
+
+
+/* =========================================================
+   FILTER MENU
+========================================================= */
+
+.filter-menu{
+    margin-top:10px;
+    padding:15px;
+    border:1px solid rgba(255,210,26,.55);
+    background:rgba(0,0,0,.98);
+}
+
+.filter-menu[hidden]{
+    display:none;
+}
+
+.filter-menu-header{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    gap:15px;
+    margin-bottom:12px;
+    color:var(--gold);
+    font-size:.65rem;
+    letter-spacing:.12em;
+}
+
+.filter-menu-header span{
+    color:rgba(255,255,255,.35);
+    font-size:.52rem;
+    letter-spacing:.08em;
 }
 
 .filters{
-  margin-top:10px;
-  padding:12px;
-  border:1px solid var(--line-soft);
-  display:none;
-  grid-template-columns:repeat(5,minmax(0,1fr));
-  gap:8px;
+    display:grid;
+    grid-template-columns:repeat(5,minmax(0,1fr));
+    gap:9px;
 }
 
-.filters.open{
-  display:grid;
+.filter-group{
+    display:flex;
+    flex-direction:column;
+    gap:5px;
 }
 
 .filter-label{
-  display:block;
-  color:var(--muted);
-  font-size:10px;
-  letter-spacing:.14em;
-  text-transform:uppercase;
-  margin-bottom:5px;
+    color:var(--gold-soft);
+    font-size:.58rem;
+    letter-spacing:.13em;
+    text-transform:uppercase;
 }
 
-.filter-control{
-  width:100%;
+.filter-select{
+    width:100%;
+    height:42px;
+    padding:0 10px;
+    background:#000;
+    color:#fff;
+    border:1px solid rgba(255,210,26,.6);
+    outline:none;
 }
 
-.search-meta{
-  margin-top:10px;
-  display:flex;
-  justify-content:space-between;
-  gap:12px;
-  flex-wrap:wrap;
+.filter-select:focus{
+    border-color:var(--gold);
+    box-shadow:0 0 8px rgba(255,210,26,.35);
 }
 
-.status{
-  color:var(--gold);
-  font-size:11px;
-  letter-spacing:.08em;
+.filter-bottom{
+    display:flex;
+    flex-direction:column;
+    gap:12px;
+    margin-top:14px;
+    padding-top:12px;
+    border-top:1px solid rgba(255,210,26,.16);
 }
 
-.source-note{
-  color:#655d4c;
-  font-size:10px;
-  letter-spacing:.06em;
+.clear-filters-button{
+    align-self:flex-start;
+    height:34px;
+    padding:0 12px;
+    background:#000;
+    border:1px solid rgba(255,210,26,.45);
+    color:var(--gold);
+    cursor:pointer;
+    font-size:.58rem;
+    letter-spacing:.08em;
 }
+
+.clear-filters-button:hover{
+    background:var(--gold);
+    color:#000;
+}
+
+
+/* =========================================================
+   STATUS
+========================================================= */
+
+.search-status{
+    min-height:22px;
+    margin-top:12px;
+    color:var(--white-soft);
+    font-size:.68rem;
+    letter-spacing:.08em;
+}
+
+.search-status.error{
+    color:var(--red);
+}
+
+.search-status.success{
+    color:var(--green);
+}
+
 
 /* =========================================================
    RESULTS
-   ========================================================= */
+========================================================= */
 
 .results{
-  display:none;
-  border:1px solid var(--line);
-  margin-bottom:16px;
-  background:#000;
+    display:none;
+    border:1px solid rgba(255,210,26,.5);
+    margin-top:14px;
+    max-height:460px;
+    overflow-y:auto;
+    background:#000;
 }
 
-.results-head{
-  padding:10px 13px;
-  border-bottom:1px solid var(--line-soft);
-  color:var(--gold);
-  font-size:11px;
-  letter-spacing:.16em;
-  text-transform:uppercase;
-}
-
-.result-list{
-  max-height:330px;
-  overflow:auto;
+.results.visible{
+    display:block;
 }
 
 .result{
-  width:100%;
-  display:grid;
-  grid-template-columns:70px 1fr auto;
-  gap:12px;
-  align-items:center;
-  padding:11px 13px;
-  border:0;
-  border-bottom:1px solid var(--line-soft);
-  background:#000;
-  color:var(--white);
-  text-align:left;
-  cursor:pointer;
-}
-
-.result:hover{
-  background:#080706;
+    width:100%;
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto;
+    gap:15px;
+    text-align:left;
+    padding:13px 14px;
+    background:#000;
+    border:0;
+    border-bottom:1px solid rgba(255,210,26,.18);
+    color:#fff;
+    cursor:pointer;
 }
 
 .result:last-child{
-  border-bottom:0;
+    border-bottom:0;
 }
 
-.result-id{
-  color:var(--gold);
-  font-size:11px;
-  letter-spacing:.08em;
+.result:hover{
+    background:rgba(255,210,26,.055);
 }
 
 .result-name{
-  color:var(--gold-bright);
-  font-size:15px;
+    color:var(--gold);
+    font-size:.9rem;
+    font-weight:bold;
 }
 
 .result-meta{
-  color:#81775f;
-  font-size:11px;
-  margin-top:3px;
+    margin-top:5px;
+    color:rgba(255,255,255,.48);
+    font-size:.6rem;
+    line-height:1.5;
 }
 
-.result-arrow{
-  color:var(--gold);
-  font-size:18px;
+.result-right{
+    text-align:right;
+    color:var(--gold-soft);
+    font-size:.62rem;
 }
+
+.result-badge{
+    display:inline-block;
+    margin-top:5px;
+    padding:3px 5px;
+    border:1px solid rgba(255,210,26,.35);
+    color:rgba(255,210,26,.65);
+    font-size:.44rem;
+    letter-spacing:.06em;
+}
+
+.no-results{
+    padding:25px;
+    text-align:center;
+    color:rgba(255,255,255,.45);
+    font-size:.7rem;
+    line-height:1.7;
+}
+
 
 /* =========================================================
-   SPECIMEN SHEET
-   ========================================================= */
+   LOADING
+========================================================= */
+
+.loading{
+    text-align:center;
+    padding:45px;
+    color:var(--gold-soft);
+    font-size:.7rem;
+    line-height:1.5;
+}
+
+.spinner{
+    display:inline-block;
+    width:16px;
+    height:16px;
+    border:2px solid rgba(255,210,26,.2);
+    border-top-color:var(--gold);
+    border-radius:50%;
+    animation:spin .7s linear infinite;
+}
+
+@keyframes spin{
+    to{
+        transform:rotate(360deg);
+    }
+}
+
+
+/* =========================================================
+   SPECIMEN
+========================================================= */
 
 .specimen{
-  border:1px solid var(--gold);
-  background:#000;
+    width:100%;
+    border:2px solid var(--gold);
+    background:#000;
+    box-shadow:0 0 12px rgba(255,210,26,.18);
 }
 
-.specimen-top{
-  display:grid;
-  grid-template-columns:minmax(0,1.15fr) minmax(360px,.85fr);
-  min-height:590px;
+.specimen-header{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) 250px;
+    border-bottom:2px solid var(--gold);
 }
 
-.photo-column{
-  position:relative;
-  min-height:590px;
-  border-right:1px solid var(--line);
-  overflow:hidden;
-  background:#000;
+.specimen-header-main{
+    padding:12px 18px;
+    border-right:1px solid var(--gold);
+    color:var(--gold);
+    font-weight:bold;
+    font-size:clamp(.85rem,2vw,1.2rem);
+    letter-spacing:.05em;
 }
 
-.photo-frame{
-  position:absolute;
-  inset:22px;
-  border:1px solid var(--line-soft);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  overflow:hidden;
-  background:#000;
+.specimen-header-lock{
+    display:flex;
+    align-items:center;
+    padding:8px 12px;
+    color:var(--gold-soft);
+    font-size:.55rem;
+    letter-spacing:.05em;
+}
+
+.specimen-main{
+    display:grid;
+    grid-template-columns:minmax(0,1.45fr) minmax(290px,.72fr);
+}
+
+
+/* =========================================================
+   FLOWER WINDOW
+========================================================= */
+
+.flower-window{
+    min-height:670px;
+    border-right:2px solid var(--gold);
+    position:relative;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    overflow:hidden;
+    background:
+        radial-gradient(
+            circle at 50% 50%,
+            rgba(255,210,26,.045),
+            transparent 48%
+        ),
+        #000;
+}
+
+.flower-window::before{
+    content:"";
+    position:absolute;
+    inset:20px;
+    border:1px solid rgba(255,210,26,.10);
+    pointer-events:none;
+}
+
+.flower-window::after{
+    content:"";
+    position:absolute;
+    inset:30px;
+    background:
+        linear-gradient(
+            90deg,
+            transparent 49.8%,
+            rgba(255,210,26,.035) 50%,
+            transparent 50.2%
+        ),
+        linear-gradient(
+            0deg,
+            transparent 49.8%,
+            rgba(255,210,26,.035) 50%,
+            transparent 50.2%
+        );
+    pointer-events:none;
 }
 
 .flower-image{
-  width:100%;
-  height:100%;
-  object-fit:cover;
-  display:none;
+    max-width:94%;
+    max-height:650px;
+    width:auto;
+    height:auto;
+    object-fit:contain;
+    display:none;
+    position:relative;
+    z-index:2;
+    filter:contrast(1.04) saturate(1.04);
 }
 
-.no-photo{
-  padding:30px;
-  text-align:center;
-  color:#4d473b;
-  font-size:11px;
-  line-height:1.8;
-  letter-spacing:.18em;
+.flower-reference-label{
+    position:absolute;
+    left:30px;
+    bottom:28px;
+    z-index:4;
+    padding:7px 10px;
+    border:1px solid rgba(255,210,26,.55);
+    background:rgba(0,0,0,.86);
+    color:var(--gold);
+    font-size:.5rem;
+    letter-spacing:.10em;
+    text-transform:uppercase;
 }
 
-.photo-credit{
-  position:absolute;
-  left:34px;
-  right:34px;
-  bottom:31px;
-  color:#81775f;
-  font-size:9px;
-  letter-spacing:.06em;
-  background:rgba(0,0,0,.72);
-  padding:5px 7px;
-  display:none;
+.flower-credit{
+    position:absolute;
+    right:20px;
+    bottom:20px;
+    z-index:4;
+    max-width:48%;
+    text-align:right;
+    color:rgba(255,255,255,.38);
+    font-size:.44rem;
+    line-height:1.4;
 }
+
 
 /* =========================================================
-   DATA COLUMN
-   ========================================================= */
+   TECHNICAL SIDE
+========================================================= */
 
-.data-column{
-  padding:22px;
+.specimen-fields{
+    display:grid;
+    grid-template-columns:1fr;
 }
 
-.codex-title-row{
-  display:flex;
-  justify-content:space-between;
-  gap:15px;
-  align-items:flex-start;
-  border-bottom:1px solid var(--line);
-  padding-bottom:12px;
-  margin-bottom:18px;
+.specimen-field{
+    min-height:72px;
+    padding:10px 14px;
+    border-bottom:1px solid var(--gold);
 }
 
-.codex-title{
-  color:var(--gold-bright);
-  font-size:18px;
-  letter-spacing:.12em;
-}
-
-.master-lock{
-  color:var(--gold);
-  font-size:9px;
-  letter-spacing:.13em;
-  text-align:right;
-  line-height:1.5;
-}
-
-.field{
-  display:grid;
-  grid-template-columns:150px 1fr;
-  gap:15px;
-  border-bottom:1px solid var(--line-soft);
-  padding:8px 0;
+.specimen-field:last-child{
+    border-bottom:0;
 }
 
 .field-label{
-  color:var(--muted);
-  font-size:10px;
-  letter-spacing:.1em;
-  text-transform:uppercase;
+    color:var(--gold-soft);
+    font-size:.58rem;
+    letter-spacing:.07em;
+    margin-bottom:8px;
 }
 
 .field-value{
-  color:var(--white);
-  font-size:13px;
-  min-height:15px;
+    color:var(--gold);
+    font-size:.78rem;
+    min-height:14px;
+    line-height:1.4;
+    word-break:break-word;
 }
 
-.field-value.codex{
-  color:var(--gold-bright);
+.field-value.empty{
+    color:rgba(255,210,26,.16);
 }
+
 
 /* =========================================================
    RESONANCE
-   ========================================================= */
+========================================================= */
 
 .resonance{
-  margin-top:20px;
-  border-top:1px solid var(--line);
-  padding-top:12px;
+    border-top:2px solid var(--gold);
+    padding:10px 14px 12px;
 }
 
-.section-label{
-  color:var(--gold);
-  font-size:10px;
-  letter-spacing:.18em;
-  text-transform:uppercase;
-  margin-bottom:9px;
+.resonance-title{
+    color:var(--gold-soft);
+    font-size:.68rem;
+    letter-spacing:.08em;
+    margin-bottom:9px;
+}
+
+.resonance-note{
+    color:rgba(255,255,255,.28);
+    font-size:.48rem;
+    margin-bottom:9px;
 }
 
 .resonance-grid{
-  display:grid;
-  grid-template-columns:1fr 60px;
-  gap:0 10px;
+    display:grid;
+    grid-template-columns:repeat(5,1fr);
+    gap:8px;
 }
 
-.res-name,
-.res-score{
-  border-bottom:1px solid var(--line-soft);
-  padding:6px 0;
-  font-size:11px;
+.resonance-box{
+    border:1px solid var(--gold);
+    min-height:86px;
+    padding:7px;
+    text-align:center;
 }
 
-.res-name{
-  color:#9e947d;
+.resonance-name{
+    color:var(--gold-soft);
+    font-size:.5rem;
 }
 
-.res-score{
-  color:var(--gold-bright);
-  text-align:right;
+.resonance-number{
+    margin:8px 0;
+    color:var(--gold);
+    font-size:1.4rem;
 }
+
+.resonance-graph{
+    height:22px;
+    display:flex;
+    align-items:flex-end;
+    justify-content:center;
+    gap:2px;
+}
+
+.resonance-graph i{
+    display:block;
+    width:3px;
+    min-height:3px;
+    background:rgba(255,210,26,.25);
+}
+
+
+/* =========================================================
+   FOOT
+========================================================= */
+
+.specimen-foot{
+    display:grid;
+    grid-template-columns:1fr 1fr 1fr;
+    border-top:2px solid var(--gold);
+}
+
+.specimen-foot div{
+    padding:8px;
+    color:var(--gold-soft);
+    text-align:center;
+    font-size:.55rem;
+    border-right:1px solid var(--gold);
+}
+
+.specimen-foot div:last-child{
+    border-right:0;
+}
+
 
 /* =========================================================
    INFO
-   ========================================================= */
+========================================================= */
 
-.info-section{
-  border-top:1px solid var(--gold);
-  padding:22px;
-  min-height:360px;
+.info{
+    margin-top:24px;
+    border:2px solid var(--gold);
+    min-height:430px;
+    background:#000;
 }
 
-.info-heading{
-  color:var(--gold-bright);
-  font-size:13px;
-  letter-spacing:.2em;
-  margin-bottom:16px;
+.info-header{
+    padding:12px 18px;
+    border-bottom:1px solid var(--gold);
+    color:var(--gold);
+    font-size:1.3rem;
+    letter-spacing:.12em;
+    font-weight:bold;
+}
+
+.info-empty{
+    min-height:360px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:30px;
+    color:rgba(255,255,255,.18);
+    text-align:center;
+    letter-spacing:.14em;
+    font-size:.7rem;
 }
 
 .info-grid{
-  display:grid;
-  grid-template-columns:repeat(2,minmax(0,1fr));
-  gap:0 30px;
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:12px;
+    padding:14px;
 }
 
-.info-item{
-  padding:9px 0;
-  border-bottom:1px solid var(--line-soft);
+.info-panel{
+    border:1px solid rgba(255,210,26,.65);
+    padding:13px;
+    background:rgba(255,210,26,.015);
 }
 
-.info-key{
-  color:var(--muted);
-  font-size:9px;
-  letter-spacing:.12em;
-  text-transform:uppercase;
-  margin-bottom:4px;
+.info-panel.full{
+    grid-column:1/-1;
 }
 
-.info-value{
-  color:#c9c1ad;
-  font-size:12px;
-  line-height:1.5;
+.info-panel-title{
+    color:var(--gold);
+    font-size:.7rem;
+    letter-spacing:.08em;
+    border-bottom:1px solid rgba(255,210,26,.3);
+    padding-bottom:8px;
+    margin-bottom:10px;
 }
 
-.info-description{
-  margin-top:20px;
-  padding-top:16px;
-  border-top:1px solid var(--line-soft);
-  color:#918873;
-  font-size:12px;
-  line-height:1.7;
+.info-panel-note{
+    margin-top:8px;
+    color:rgba(255,255,255,.30);
+    font-size:.48rem;
+    line-height:1.5;
 }
+
+.info-data-grid{
+    display:grid;
+    grid-template-columns:repeat(2,minmax(0,1fr));
+    gap:7px;
+}
+
+.data-item{
+    border:1px solid rgba(255,210,26,.18);
+    padding:8px;
+}
+
+.data-key{
+    color:var(--gold-soft);
+    font-size:.5rem;
+}
+
+.data-value{
+    margin-top:5px;
+    color:#ddd;
+    font-size:.65rem;
+    line-height:1.45;
+    word-break:break-word;
+}
+
+.chips{
+    display:flex;
+    flex-wrap:wrap;
+    gap:6px;
+}
+
+.chip{
+    border:1px solid rgba(255,210,26,.65);
+    padding:5px 7px;
+    color:var(--gold);
+    font-size:.55rem;
+}
+
+.lineage{
+    color:#ddd;
+    font-size:.65rem;
+    line-height:1.6;
+}
+
+.lineage strong{
+    color:var(--gold);
+}
+
+.photo-grid{
+    display:grid;
+    grid-template-columns:repeat(auto-fill,minmax(130px,1fr));
+    gap:9px;
+}
+
+.photo-card{
+    border:1px solid rgba(255,210,26,.3);
+    background:#000;
+}
+
+.photo-card img{
+    display:block;
+    width:100%;
+    height:150px;
+    object-fit:cover;
+}
+
+.photo-credit{
+    padding:6px;
+    color:rgba(255,255,255,.45);
+    font-size:.45rem;
+    line-height:1.4;
+}
+
+.source-list{
+    margin:0;
+    padding-left:18px;
+}
+
+.source-list li{
+    margin:7px 0;
+    color:#aaa;
+    font-size:.58rem;
+    line-height:1.4;
+}
+
+.source-list a{
+    color:var(--gold);
+    word-break:break-all;
+}
+
+.raw-data{
+    border:1px solid rgba(255,210,26,.3);
+}
+
+.raw-data summary{
+    padding:10px;
+    cursor:pointer;
+    color:var(--gold);
+    font-size:.6rem;
+}
+
+.raw-data pre{
+    max-height:600px;
+    overflow:auto;
+    margin:0;
+    padding:12px;
+    color:#c8bd95;
+    background:#020202;
+    font-size:.52rem;
+    line-height:1.5;
+}
+
 
 /* =========================================================
-   PHOTO GALLERY
-   ========================================================= */
+   CREDIT
+========================================================= */
 
-.gallery{
-  border-top:1px solid var(--line);
-  padding:22px;
+.credit{
+    margin-top:20px;
+    text-align:center;
+    color:rgba(255,255,255,.38);
+    font-size:.55rem;
+    line-height:1.7;
 }
 
-.gallery-grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(130px,1fr));
-  gap:10px;
+.credit a{
+    color:var(--gold);
 }
 
-.gallery-card{
-  border:1px solid var(--line-soft);
-  background:#030303;
-  aspect-ratio:1;
-  overflow:hidden;
-}
-
-.gallery-card img{
-  width:100%;
-  height:100%;
-  object-fit:cover;
-  display:block;
-}
 
 /* =========================================================
-   FOOTER
-   ========================================================= */
+   TABLET
+========================================================= */
 
-.specimen-footer{
-  border-top:1px solid var(--gold);
-  padding:12px 18px;
-  text-align:center;
-  color:var(--gold);
-  font-size:9px;
-  letter-spacing:.18em;
+@media(max-width:1000px){
+
+    .filters{
+        grid-template-columns:repeat(2,1fr);
+    }
+
+    .specimen-main{
+        grid-template-columns:1fr;
+    }
+
+    .flower-window{
+        border-right:0;
+        border-bottom:2px solid var(--gold);
+        min-height:500px;
+    }
+
+    .info-grid{
+        grid-template-columns:1fr;
+    }
+
+    .info-panel.full{
+        grid-column:auto;
+    }
+
 }
 
-.empty-message{
-  padding:20px;
-  text-align:center;
-  color:#655d4c;
-  font-size:11px;
-  letter-spacing:.1em;
-}
 
 /* =========================================================
-   RESPONSIVE
-   ========================================================= */
+   MOBILE
+========================================================= */
 
-@media(max-width:900px){
+@media(max-width:650px){
 
-  .specimen-top{
-    grid-template-columns:1fr;
-  }
+    .page{
+        width:calc(100% - 12px);
+        padding-top:15px;
+    }
 
-  .photo-column{
-    min-height:420px;
-    border-right:0;
-    border-bottom:1px solid var(--line);
-  }
+    .search-row{
+        grid-template-columns:1fr 1fr;
+    }
 
-  .filters.open{
-    grid-template-columns:1fr 1fr;
-  }
+    .search-input{
+        grid-column:1/-1;
+    }
 
-  .info-grid{
-    grid-template-columns:1fr;
-  }
+    .search-button,
+    .filter-toggle{
+        width:100%;
+        padding:0 10px;
+        font-size:.62rem;
+    }
+
+    .filter-menu-header{
+        flex-direction:column;
+        align-items:flex-start;
+    }
+
+    .filters{
+        grid-template-columns:1fr;
+    }
+
+    .specimen-header{
+        grid-template-columns:1fr;
+    }
+
+    .specimen-header-main{
+        border-right:0;
+        border-bottom:1px solid var(--gold);
+    }
+
+    .flower-window{
+        min-height:430px;
+    }
+
+    .flower-reference-label{
+        left:15px;
+        bottom:15px;
+        font-size:.42rem;
+    }
+
+    .flower-credit{
+        right:15px;
+        bottom:15px;
+        max-width:45%;
+        font-size:.38rem;
+    }
+
+    .resonance-grid{
+        grid-template-columns:repeat(2,1fr);
+    }
+
+    .resonance-box:last-child{
+        grid-column:1/-1;
+    }
+
+    .specimen-foot{
+        grid-template-columns:1fr;
+    }
+
+    .specimen-foot div{
+        border-right:0;
+        border-bottom:1px solid var(--gold);
+    }
+
+    .specimen-foot div:last-child{
+        border-bottom:0;
+    }
+
+    .info-data-grid{
+        grid-template-columns:1fr;
+    }
+
+    .result{
+        grid-template-columns:minmax(0,1fr) 42px;
+    }
+
 }
 
-@media(max-width:620px){
 
-  .page{
-    width:94vw;
-    padding-top:10px;
-  }
+/* =========================================================
+   VERY SMALL
+========================================================= */
 
-  .search-row{
-    grid-template-columns:1fr 1fr;
-  }
+@media(max-width:390px){
 
-  .search-row .search-input{
-    grid-column:1 / -1;
-  }
+    .search-title{
+        font-size:1.35rem;
+    }
 
-  .filters.open{
-    grid-template-columns:1fr;
-  }
+    .search-subtitle{
+        font-size:.55rem;
+    }
 
-  .field{
-    grid-template-columns:125px 1fr;
-  }
+    .search-panel{
+        padding:10px;
+    }
 
-  .photo-column{
-    min-height:330px;
-  }
+    .specimen-header-main{
+        font-size:.75rem;
+    }
 
-  .photo-frame{
-    inset:12px;
-  }
-
-  .result{
-    grid-template-columns:55px 1fr auto;
-  }
 }
+
 </style>
+
 </head>
+
 
 <body>
 
 <div class="page">
 
-  <!-- =====================================================
-       HEADER
-       ===================================================== -->
 
-  <header class="site-header">
+<!-- =======================================================
+     HEADER
+======================================================== -->
 
-    <div class="kicker">
-      SUPER FLOWER — CANNABIS CODEX
-    </div>
+<header class="search-header">
 
-    <h1>
-      SEARCH THE LIVING SUPER FLOWER RECORD
+    <h1 class="search-title">
+        SEARCH THE LIVING SUPER FLOWER RECORD
     </h1>
 
-    <div class="subtitle">
-      A living searchable archival record of cannabis specimens.
-    </div>
+    <p class="search-subtitle">
+        SUPER FLOWER — CANNABIS CODEX
+        / LIVE ARCHIVAL SEARCH
+    </p>
 
-  </header>
+</header>
 
 
-  <!-- =====================================================
-       SEARCH PANEL
-       ===================================================== -->
+<!-- =======================================================
+     SEARCH ENGINE
+======================================================== -->
 
-  <section class="search-panel">
+<section class="search-panel">
 
     <div class="search-row">
 
-      <input
-        id="searchInput"
-        class="search-input"
-        type="search"
-        autocomplete="off"
-        placeholder="SEARCH STRAIN, BREEDER, GENETICS..."
-        aria-label="Search the Super Flower Record"
-      >
+        <input
+            id="searchInput"
+            class="search-input"
+            type="search"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="SEARCH THE LIVING SUPER FLOWER RECORD..."
+            aria-label="Search the Living Super Flower Record"
+        >
 
-      <button id="searchButton" type="button">
-        SEARCH
-      </button>
+        <button
+            id="searchButton"
+            class="search-button"
+            type="button"
+        >
+            SEARCH
+        </button>
 
-      <button id="filterButton" type="button">
-        FILTERS
-      </button>
-
-    </div>
-
-
-    <div id="filters" class="filters">
-
-      <div>
-        <label class="filter-label" for="typeFilter">
-          TYPE
-        </label>
-
-        <select id="typeFilter" class="filter-control">
-          <option value="">ALL TYPES</option>
-        </select>
-      </div>
-
-
-      <div>
-        <label class="filter-label" for="breederFilter">
-          BREEDER
-        </label>
-
-        <select id="breederFilter" class="filter-control">
-          <option value="">ALL BREEDERS</option>
-        </select>
-      </div>
-
-
-      <div>
-        <label class="filter-label" for="thcFilter">
-          THC
-        </label>
-
-        <select id="thcFilter" class="filter-control">
-          <option value="">ANY THC</option>
-          <option value="10">10%+</option>
-          <option value="15">15%+</option>
-          <option value="20">20%+</option>
-          <option value="25">25%+</option>
-          <option value="30">30%+</option>
-        </select>
-      </div>
-
-
-      <div>
-        <label class="filter-label" for="cbdFilter">
-          CBD
-        </label>
-
-        <select id="cbdFilter" class="filter-control">
-          <option value="">ANY CBD</option>
-          <option value="1">1%+</option>
-          <option value="5">5%+</option>
-          <option value="10">10%+</option>
-          <option value="15">15%+</option>
-        </select>
-      </div>
-
-
-      <div>
-        <label class="filter-label" for="terpeneFilter">
-          TERPENE
-        </label>
-
-        <select id="terpeneFilter" class="filter-control">
-          <option value="">ANY TERPENE</option>
-        </select>
-      </div>
+        <button
+            id="filterToggle"
+            class="filter-toggle"
+            type="button"
+            aria-expanded="false"
+            aria-controls="filterMenu"
+        >
+            FILTERS ▾
+        </button>
 
     </div>
 
 
-    <div class="search-meta">
-
-      <div id="status" class="status">
-        READY — SEARCH THE LIVING RECORD
-      </div>
-
-      <div class="source-note">
-        SOURCE: CANNALIB PUBLIC RECORD
-      </div>
-
-    </div>
-
-  </section>
-
-
-  <!-- =====================================================
-       SEARCH RESULTS
-       ===================================================== -->
-
-  <section id="results" class="results">
-
-    <div class="results-head">
-      LIVE RECORDS
-    </div>
-
-    <div id="resultList" class="result-list"></div>
-
-  </section>
-
-
-  <!-- =====================================================
-       SPECIMEN SHEET
-       ===================================================== -->
-
-  <main id="specimen" class="specimen">
-
-    <div class="specimen-top">
-
-      <section class="photo-column">
-
-        <div class="photo-frame">
-
-          <img
-            id="flowerImage"
-            class="flower-image"
-            alt=""
-          >
-
-          <div id="noPhoto" class="no-photo">
-            NO LIVE PHOTOGRAPH ON RECORD
-          </div>
-
-        </div>
-
-        <div id="photoCredit" class="photo-credit"></div>
-
-      </section>
-
-
-      <section class="data-column">
-
-        <div class="codex-title-row">
-
-          <div class="codex-title">
-            SUPER FLOWER — CANNABIS CODEX
-          </div>
-
-          <div class="master-lock">
-            MASTER LOCK<br>
-            FINAL ARCHIVAL SYSTEM
-          </div>
-
-        </div>
-
-
-        <div class="field">
-          <div class="field-label">SPECIMEN ID</div>
-          <div id="fieldId" class="field-value"></div>
-        </div>
-
-        <div class="field">
-          <div class="field-label">SPECIMEN IDENTITY</div>
-          <div id="fieldName" class="field-value"></div>
-        </div>
-
-        <div class="field">
-          <div class="field-label">GENETICS</div>
-          <div id="fieldGenetics" class="field-value"></div>
-        </div>
-
-        <div class="field">
-          <div class="field-label">TYPE</div>
-          <div id="fieldType" class="field-value"></div>
-        </div>
-
-        <div class="field">
-          <div class="field-label">THC RANGE</div>
-          <div id="fieldTHC" class="field-value"></div>
-        </div>
-
-        <div class="field">
-          <div class="field-label">CBD RANGE</div>
-          <div id="fieldCBD" class="field-value"></div>
-        </div>
-
-        <div class="field">
-          <div class="field-label">AROMA</div>
-          <div id="fieldAroma" class="field-value"></div>
-        </div>
-
-        <div class="field">
-          <div class="field-label">RAW CHAKRA</div>
-          <div id="fieldChakra" class="field-value codex"></div>
-        </div>
-
-        <div class="field">
-          <div class="field-label">RAW PLANET</div>
-          <div id="fieldPlanet" class="field-value codex"></div>
-        </div>
-
-        <div class="field">
-          <div class="field-label">PRIMARY ARCHETYPE</div>
-          <div id="fieldArchetype" class="field-value codex"></div>
-        </div>
-
-        <div class="field">
-          <div class="field-label">CODEX FREQUENCY</div>
-          <div id="fieldFrequency" class="field-value codex"></div>
-        </div>
-
-
-        <div class="resonance">
-
-          <div class="section-label">
-            RESONANCE PROFILE
-          </div>
-
-          <div class="resonance-grid">
-
-            <div class="res-name">RELAXATION</div>
-            <div id="resRelaxation" class="res-score"></div>
-
-            <div class="res-name">FOCUS</div>
-            <div id="resFocus" class="res-score"></div>
-
-            <div class="res-name">CREATIVITY</div>
-            <div id="resCreativity" class="res-score"></div>
-
-            <div class="res-name">MEDITATION</div>
-            <div id="resMeditation" class="res-score"></div>
-
-            <div class="res-name">RECOVERY</div>
-            <div id="resRecovery" class="res-score"></div>
-
-          </div>
-
-        </div>
-
-      </section>
-
-    </div>
-
-
-    <!-- ===================================================
-         INFO
-         =================================================== -->
-
-    <section class="info-section">
-
-      <div class="info-heading">
-        INFO
-      </div>
-
-      <div id="infoGrid" class="info-grid">
-
-        <div class="info-item">
-          <div class="info-key">BREEDER</div>
-          <div id="infoBreeder" class="info-value"></div>
-        </div>
-
-        <div class="info-item">
-          <div class="info-key">LINEAGE</div>
-          <div id="infoLineage" class="info-value"></div>
-        </div>
-
-        <div class="info-item">
-          <div class="info-key">FLOWERING</div>
-          <div id="infoFlowering" class="info-value"></div>
-        </div>
-
-        <div class="info-item">
-          <div class="info-key">YIELD</div>
-          <div id="infoYield" class="info-value"></div>
-        </div>
-
-        <div class="info-item">
-          <div class="info-key">GROW METHOD</div>
-          <div id="infoGrowMethod" class="info-value"></div>
-        </div>
-
-        <div class="info-item">
-          <div class="info-key">TERPENES</div>
-          <div id="infoTerpenes" class="info-value"></div>
-        </div>
-
-        <div class="info-item">
-          <div class="info-key">CANNALIB RECORD</div>
-          <div id="infoSource" class="info-value"></div>
-        </div>
-
-        <div class="info-item">
-          <div class="info-key">CODEX ALIGNMENT BASIS</div>
-          <div id="infoAlignment" class="info-value"></div>
-        </div>
-
-      </div>
-
-
-      <div
-        id="infoDescription"
-        class="info-description"
-      ></div>
-
-    </section>
-
-
-    <!-- ===================================================
-         PHOTO GALLERY
-         =================================================== -->
-
-    <section
-      id="gallery"
-      class="gallery"
-      style="display:none;"
+    <div
+        id="filterMenu"
+        class="filter-menu"
+        hidden
     >
 
-      <div class="section-label">
-        ARCHIVAL PHOTOGRAPHS
-      </div>
+        <div class="filter-menu-header">
 
-      <div
-        id="galleryGrid"
-        class="gallery-grid"
-      ></div>
+            <strong>
+                OPTIONAL SEARCH FILTERS
+            </strong>
 
-    </section>
+            <span>
+                REFINE THE CURRENT LIVE RESULTS
+            </span>
+
+        </div>
 
 
-    <!-- ===================================================
-         FOOTER
-         =================================================== -->
+        <div class="filters">
 
-    <footer class="specimen-footer">
-      ONE ARCHIVAL SYSTEM |
-      ALL SPECIMENS — ALL TRUTHS — |
-      ONE CODEX
-    </footer>
+            <div class="filter-group">
 
-  </main>
+                <label
+                    class="filter-label"
+                    for="typeFilter"
+                >
+                    TYPE
+                </label>
+
+                <select
+                    id="typeFilter"
+                    class="filter-select"
+                >
+
+                    <option value="">
+                        ALL TYPES
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <div class="filter-group">
+
+                <label
+                    class="filter-label"
+                    for="breederFilter"
+                >
+                    BREEDER
+                </label>
+
+                <select
+                    id="breederFilter"
+                    class="filter-select"
+                >
+
+                    <option value="">
+                        ALL BREEDERS
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <div class="filter-group">
+
+                <label
+                    class="filter-label"
+                    for="thcFilter"
+                >
+                    THC
+                </label>
+
+                <select
+                    id="thcFilter"
+                    class="filter-select"
+                >
+
+                    <option value="">
+                        ALL THC
+                    </option>
+
+                    <option value="reported">
+                        REPORTED
+                    </option>
+
+                    <option value="high">
+                        20%+
+                    </option>
+
+                    <option value="medium">
+                        10–19.9%
+                    </option>
+
+                    <option value="low">
+                        UNDER 10%
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <div class="filter-group">
+
+                <label
+                    class="filter-label"
+                    for="cbdFilter"
+                >
+                    CBD
+                </label>
+
+                <select
+                    id="cbdFilter"
+                    class="filter-select"
+                >
+
+                    <option value="">
+                        ALL CBD
+                    </option>
+
+                    <option value="reported">
+                        REPORTED
+                    </option>
+
+                    <option value="high">
+                        5%+
+                    </option>
+
+                    <option value="low">
+                        UNDER 5%
+                    </option>
+
+                </select>
+
+            </div>
+
+
+            <div class="filter-group">
+
+                <label
+                    class="filter-label"
+                    for="terpeneFilter"
+                >
+                    TERPENE
+                </label>
+
+                <select
+                    id="terpeneFilter"
+                    class="filter-select"
+                >
+
+                    <option value="">
+                        ALL TERPENES
+                    </option>
+
+                </select>
+
+            </div>
+
+        </div>
+
+
+        <div class="filter-bottom">
+
+            <button
+                id="clearFiltersButton"
+                class="clear-filters-button"
+                type="button"
+            >
+                CLEAR FILTERS
+            </button>
+
+        </div>
+
+    </div>
+
+
+    <div
+        id="searchStatus"
+        class="search-status"
+    >
+        SEARCH THE LIVING RECORD.
+    </div>
+
+
+    <div
+        id="results"
+        class="results"
+        aria-live="polite"
+    ></div>
+
+</section>
+
+
+<!-- =======================================================
+     MASTER SPECIMEN
+======================================================== -->
+
+<section
+    id="specimen"
+    class="specimen"
+>
+
+    <div class="specimen-header">
+
+        <div class="specimen-header-main">
+            SUPER FLOWER — CANNABIS CODEX
+        </div>
+
+        <div class="specimen-header-lock">
+            MASTER LOCK — FINAL ARCHIVAL SYSTEM
+        </div>
+
+    </div>
+
+
+    <div class="specimen-main">
+
+
+        <!-- =================================================
+             FLOWER WINDOW
+        ================================================== -->
+
+        <div
+            id="flowerWindow"
+            class="flower-window"
+        >
+
+            <img
+                id="flowerImage"
+                class="flower-image"
+                alt="Super Flower specimen photograph"
+                loading="eager"
+                decoding="async"
+            >
+
+
+            <div
+                id="flowerReferenceLabel"
+                class="flower-reference-label"
+            >
+                NO LIVE PHOTOGRAPH ON RECORD
+            </div>
+
+
+            <div
+                id="flowerCredit"
+                class="flower-credit"
+            ></div>
+
+        </div>
+
+
+        <!-- =================================================
+             TECHNICAL FIELDS
+        ================================================== -->
+
+        <div
+            id="specimenFields"
+            class="specimen-fields"
+        ></div>
+
+    </div>
+
+
+    <!-- =====================================================
+         RESONANCE
+    ====================================================== -->
+
+    <div class="resonance">
+
+        <div class="resonance-title">
+            RESONANCE PROFILE:
+        </div>
+
+        <div class="resonance-note">
+            SUPER FLOWER CODEX RESONANCE VALUES ARE SHOWN ONLY
+            WHEN AN ACTUAL SOURCE VALUE IS AVAILABLE.
+        </div>
+
+        <div
+            id="resonanceGrid"
+            class="resonance-grid"
+        ></div>
+
+    </div>
+
+
+    <!-- =====================================================
+         FOOT
+    ====================================================== -->
+
+    <div class="specimen-foot">
+
+        <div>
+            ONE ARCHIVAL SYSTEM
+        </div>
+
+        <div>
+            ALL SPECIMENS — ALL TRUTHS
+        </div>
+
+        <div>
+            ONE CODEX
+        </div>
+
+    </div>
+
+</section>
+
+
+<!-- =======================================================
+     INFO
+======================================================== -->
+
+<section class="info">
+
+    <div class="info-header">
+        INFO
+    </div>
+
+    <div
+        id="infoContent"
+        class="info-empty"
+    >
+        SPECIMEN INFORMATION WILL APPEAR HERE
+        AFTER A STRAIN IS SELECTED.
+    </div>
+
+</section>
+
+
+<!-- =======================================================
+     CREDIT
+======================================================== -->
+
+<div class="credit">
+
+    <a
+        href="https://cannalib.org"
+        target="_blank"
+        rel="noopener noreferrer"
+    >
+        Data by CannaLib
+    </a>
+
+    <br>
+
+    SUPER FLOWER CODEX —
+    SEARCH THE LIVING SUPER FLOWER RECORD
+
+</div>
+
 
 </div>
 
 
 <script>
-/* =========================================================
-   SUPER FLOWER CODEX
-   PUBLIC CANNALIB SEARCH ENGINE
 
-   NO API KEY
-   NO FAKE STRAIN DATA
-   NO GENERIC FLOWER FALLBACK
-   REAL CANNALIB RECORDS ONLY
-   SUPER FLOWER CODEX = INTERPRETIVE ALIGNMENT LAYER
-   ========================================================= */
+(() => {
+
+"use strict";
 
 
 /* =========================================================
-   API
-   ========================================================= */
+   PUBLIC CANNALIB API
+========================================================= */
 
 const API_BASE =
-  "https://api.cannalib.org";
+    "https://api.cannalib.org";
 
 const SEARCH_ENDPOINT =
-  API_BASE + "/v1/catalogs/strains";
+    API_BASE +
+    "/v1/catalogs/strains";
 
 const RECORD_ENDPOINT =
-  API_BASE + "/v1/catalogs/strains/";
-
-const PUBLIC_RESULT_LIMIT = 10;
-
-
-/* =========================================================
-   API HEADERS
-   ========================================================= */
-
-function getHeaders(){
-
-  return {
-    "Accept":"application/json"
-  };
-
-}
+    id =>
+        API_BASE +
+        "/v1/catalogs/strains/" +
+        encodeURIComponent(id);
 
 
-/* =========================================================
-   STATE
-   ========================================================= */
+/*
+    PUBLIC CANNALIB ACCESS ONLY.
 
-let currentResults = [];
+    This page requests up to 10 live search results.
 
-let currentRecord = null;
+    No API key is stored.
 
-let currentPictureQueue = [];
+    No API key is sent.
 
-let currentPictureIndex = 0;
+    No keyed/public quota system is used.
+*/
 
-let flowerLoadToken = 0;
-
-let searchTimer = null;
-
-let searchRequestToken = 0;
+const RESULTS_PER_PAGE =
+    10;
 
 
 /* =========================================================
-   SUPER FLOWER CODEX FREQUENCY SYSTEM
-   ========================================================= */
+   SUPER FLOWER CODEX ALIGNMENT
+========================================================= */
+
+/*
+    THESE ARE THE GLCTC1 AUDIO ANALYSE
+    FREQUENCY → CHAKRA → PLANET ALIGNMENTS.
+
+    They form the unique Super Flower Codex
+    interpretation layer.
+
+    CannaLib remains the biological/source
+    record.
+
+    The Codex alignment is NOT claimed to be
+    a CannaLib field.
+*/
 
 const GLCTC1_CODEX_FREQUENCIES = [
 
-  {
-    frequency:396,
-    chakra:"ROOT",
-    planet:"MARS"
-  },
+    {
+        frequency:396,
+        chakra:"ROOT",
+        planet:"MARS"
+    },
 
-  {
-    frequency:417,
-    chakra:"SACRAL",
-    planet:"VENUS"
-  },
+    {
+        frequency:417,
+        chakra:"SACRAL",
+        planet:"VENUS"
+    },
 
-  {
-    frequency:528,
-    chakra:"SOLAR PLEXUS",
-    planet:"SUN"
-  },
+    {
+        frequency:528,
+        chakra:"SOLAR PLEXUS",
+        planet:"SUN"
+    },
 
-  {
-    frequency:639,
-    chakra:"HEART",
-    planet:"EARTH"
-  },
+    {
+        frequency:639,
+        chakra:"HEART",
+        planet:"EARTH"
+    },
 
-  {
-    frequency:741,
-    chakra:"THROAT",
-    planet:"MERCURY"
-  },
+    {
+        frequency:741,
+        chakra:"THROAT",
+        planet:"MERCURY"
+    },
 
-  {
-    frequency:852,
-    chakra:"THIRD EYE",
-    planet:"JUPITER"
-  },
+    {
+        frequency:852,
+        chakra:"THIRD EYE",
+        planet:"JUPITER"
+    },
 
-  {
-    frequency:963,
-    chakra:"CROWN",
-    planet:"SATURN / NEPTUNE"
-  }
+    {
+        frequency:963,
+        chakra:"CROWN",
+        planet:"SATURN / NEPTUNE"
+    }
 
 ];
 
 
-/* =========================================================
-   OPTIONAL EXPLICIT CODEX OVERRIDES
+/*
+    Optional permanent Codex overrides.
 
-   These are intentionally empty until a permanent
-   Super Flower Codex alignment is explicitly defined.
-   ========================================================= */
+    Leave empty until an explicit Super Flower
+    Codex assignment is deliberately made.
+
+    Keys are stable strain identities.
+
+    Example:
+
+    "001":{
+        frequency:639,
+        chakra:"HEART",
+        planet:"EARTH",
+        archetype:"THE DIVINE"
+    }
+
+*/
 
 const SUPER_FLOWER_CODEX_OVERRIDES = {};
 
 
 /* =========================================================
-   DOM HELPER
-   ========================================================= */
-
-const $ = id =>
-  document.getElementById(id);
-
-
-/* =========================================================
-   TEXT HELPERS
-   ========================================================= */
-
-function escapeHTML(value){
-
-  return String(value ?? "")
-    .replace(/&/g,"&amp;")
-    .replace(/</g,"&lt;")
-    .replace(/>/g,"&gt;")
-    .replace(/"/g,"&quot;")
-    .replace(/'/g,"&#039;");
-
-}
-
-
-function normalizeToken(value){
-
-  return String(value ?? "")
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g," ");
-
-}
-
-
-function first(...values){
-
-  for(const value of values){
-
-    if(
-      value !== undefined &&
-      value !== null &&
-      String(value).trim() !== ""
-    ){
-
-      return value;
-
-    }
-
-  }
-
-  return "";
-
-}
-
-
-function displayValue(value){
-
-  if(
-    value === undefined ||
-    value === null ||
-    value === ""
-  ){
-
-    return "";
-
-  }
-
-  if(Array.isArray(value)){
-
-    return value
-      .map(displayValue)
-      .filter(Boolean)
-      .join(", ");
-
-  }
-
-  if(typeof value === "object"){
-
-    return first(
-      value.name,
-      value.value,
-      value.label,
-      value.title,
-      value.text,
-      value.description,
-      ""
-    );
-
-  }
-
-  return String(value);
-
-}
-
-
-/* =========================================================
-   DEEP VALUE SEARCH
-   ========================================================= */
-
-function findDeep(object, keys){
-
-  const wanted = new Set(
-    keys.map(
-      key =>
-        String(key).toLowerCase()
-    )
-  );
-
-  const visited = new Set();
-
-
-  function walk(node){
-
-    if(
-      node === null ||
-      node === undefined ||
-      typeof node !== "object"
-    ){
-
-      return "";
-
-    }
-
-
-    if(visited.has(node)){
-
-      return "";
-
-    }
-
-
-    visited.add(node);
-
-
-    if(Array.isArray(node)){
-
-      for(const item of node){
-
-        const found =
-          walk(item);
-
-        if(found !== ""){
-
-          return found;
-
-        }
-
-      }
-
-      return "";
-
-    }
-
-
-    for(const key of Object.keys(node)){
-
-      if(
-        wanted.has(
-          key.toLowerCase()
-        )
-      ){
-
-        const result =
-          node[key];
-
-        if(
-          result !== undefined &&
-          result !== null &&
-          result !== ""
-        ){
-
-          return result;
-
-        }
-
-      }
-
-    }
-
-
-    for(const key of Object.keys(node)){
-
-      const found =
-        walk(node[key]);
-
-      if(found !== ""){
-
-        return found;
-
-      }
-
-    }
-
-
-    return "";
-
-  }
-
-
-  return walk(object);
-
-}
-
-
-function value(record, keys){
-
-  for(const key of keys){
-
-    const result =
-      findDeep(
-        record,
-        [key]
-      );
-
-    if(
-      result !== undefined &&
-      result !== null &&
-      result !== ""
-    ){
-
-      return result;
-
-    }
-
-  }
-
-  return "";
-
-}
-
-
-function findList(record, keys){
-
-  const result =
-    value(record,keys);
-
-
-  if(Array.isArray(result)){
-
-    return result;
-
-  }
-
-
-  if(
-    result &&
-    typeof result === "object"
-  ){
-
-    return Object.values(result);
-
-  }
-
-
-  if(typeof result === "string"){
-
-    return result
-      .split(/[,|;]/)
-      .map(
-        value =>
-          value.trim()
-      )
-      .filter(Boolean);
-
-  }
-
-
-  return [];
-
-}
-
-
-/* =========================================================
-   NUMBERS
-   ========================================================= */
-
-function extractNumbers(value){
-
-  if(
-    value === undefined ||
-    value === null
-  ){
-
-    return [];
-
-  }
-
-
-  if(Array.isArray(value)){
-
-    return value.flatMap(
-      extractNumbers
-    );
-
-  }
-
-
-  if(typeof value === "number"){
-
-    return [value];
-
-  }
-
-
-  return [
-    ...String(value).matchAll(
-      /-?\d+(?:\.\d+)?/g
-    )
-  ].map(
-    match =>
-      Number(match[0])
-  );
-
-}
-
-
-/* =========================================================
    STABLE HASH
-   ========================================================= */
+========================================================= */
 
-function stableHash(text){
-
-  let hash = 2166136261;
-
-  const input =
-    String(text || "");
-
-
-  for(
-    let i = 0;
-    i < input.length;
-    i++
-  ){
-
-    hash ^= input.charCodeAt(i);
-
-    hash +=
-      (hash << 1) +
-      (hash << 4) +
-      (hash << 7) +
-      (hash << 8) +
-      (hash << 24);
-
-  }
-
-
-  return hash >>> 0;
-
-}
-
-
-/* =========================================================
-   CODEX IDENTITY
-   ========================================================= */
-
-function getRecordIdentity(
-  record,
-  slim = {}
+function stableHash(
+    input
 ){
 
-  /*
-   * ID is preferred because it is the most stable
-   * individual record identity.
-   *
-   * Name is the fallback when an ID does not exist.
-   */
+    let hash =
+        2166136261;
 
-  return normalizeToken(
 
-    first(
+    for(
+        let i = 0;
+        i < input.length;
+        i++
+    ){
 
-      value(
-        record,
-        [
-          "id",
-          "strain_id",
-          "catalog_id",
-          "uuid"
-        ]
-      ),
+        hash ^=
+            input.charCodeAt(
+                i
+            );
 
-      slim.id,
 
-      value(
-        record,
-        [
-          "name",
-          "strain_name",
-          "title"
-        ]
-      ),
+        hash =
+            Math.imul(
+                hash,
+                16777619
+            );
 
-      slim.name
+    }
 
+
+    return hash >>> 0;
+
+}
+
+
+/* =========================================================
+   STABLE STRAIN IDENTITY
+========================================================= */
+
+function getStableStrainIdentity(
+    record,
+    slim,
+    name
+){
+
+    const id =
+        first(
+            record,
+            [
+                "id",
+                "strain_id",
+                "catalog_id",
+                "uuid",
+                "slug",
+                "name_norm"
+            ]
+        ) ||
+        slim?.id ||
+        slim?.name_norm;
+
+
+    return String(
+        id ||
+        name ||
+        "UNKNOWN STRAIN"
     )
-
-  );
+    .trim()
+    .toLowerCase()
+    .replace(
+        /\s+/g,
+        " "
+    );
 
 }
 
 
 /* =========================================================
    CODEX ALIGNMENT
-   ========================================================= */
+========================================================= */
 
 function resolveCodexAlignment(
-  record,
-  slim,
-  name
-){
-
-  const identity =
-    getRecordIdentity(
-      record,
-      slim
-    ) ||
-    normalizeToken(name);
-
-
-  const override =
-    SUPER_FLOWER_CODEX_OVERRIDES[
-      identity
-    ];
-
-
-  if(override){
-
-    const frequency =
-      GLCTC1_CODEX_FREQUENCIES.find(
-        item =>
-          item.frequency ===
-          Number(
-            override.frequency
-          )
-      );
-
-
-    if(frequency){
-
-      return {
-        ...frequency,
-        basis:
-          "SUPER FLOWER CODEX EXPLICIT ALIGNMENT"
-      };
-
-    }
-
-  }
-
-
-  /*
-   * Every strain receives one of the seven
-   * Super Flower Codex alignments.
-   *
-   * This is NOT presented as CannaLib data.
-   */
-
-  const index =
-    stableHash(identity) %
-    GLCTC1_CODEX_FREQUENCIES.length;
-
-
-  return {
-
-    ...GLCTC1_CODEX_FREQUENCIES[index],
-
-    basis:
-      "SUPER FLOWER CODEX REFERENCE ALIGNMENT"
-
-  };
-
-}
-
-
-/* =========================================================
-   ARCHETYPE
-   ========================================================= */
-
-function resolveArchetype(record){
-
-  /*
-   * IMPORTANT:
-   *
-   * We do NOT derive an archetype from Chakra.
-   * We do NOT invent one.
-   *
-   * It is displayed only if the actual record
-   * contains an archetype field.
-   */
-
-  const explicit =
-    value(
-      record,
-      [
-        "primary_archetype",
-        "primary_archetypes",
-        "archetype",
-        "archetypes"
-      ]
-    );
-
-
-  if(!explicit){
-
-    return "";
-
-  }
-
-
-  return displayValue(explicit);
-
-}
-
-
-/* =========================================================
-   IMAGE URL NORMALIZATION
-   ========================================================= */
-
-const IMAGE_EXTENSIONS =
-  /\.(?:jpg|jpeg|png|webp|gif|avif)(?:[?#].*)?$/i;
-
-
-function normalizePictureURL(raw){
-
-  if(
-    raw === undefined ||
-    raw === null
-  ){
-
-    return "";
-
-  }
-
-
-  const url =
-    String(raw).trim();
-
-
-  if(!url){
-
-    return "";
-
-  }
-
-
-  if(
-    url.startsWith("data:image/")
-  ){
-
-    return url;
-
-  }
-
-
-  if(
-    /^https?:\/\//i.test(url)
-  ){
-
-    return url;
-
-  }
-
-
-  if(
-    url.startsWith("//")
-  ){
-
-    return "https:" + url;
-
-  }
-
-
-  if(
-    url.startsWith("/")
-  ){
-
-    return API_BASE + url;
-
-  }
-
-
-  if(
-    url.startsWith("media/")
-  ){
-
-    return (
-      API_BASE +
-      "/" +
-      url
-    );
-
-  }
-
-
-  if(
-    url.startsWith("images/")
-  ){
-
-    return (
-      API_BASE +
-      "/" +
-      url
-    );
-
-  }
-
-
-  if(
-    url.startsWith("photos/")
-  ){
-
-    return (
-      API_BASE +
-      "/" +
-      url
-    );
-
-  }
-
-
-  if(
-    url.startsWith("pictures/")
-  ){
-
-    return (
-      API_BASE +
-      "/" +
-      url
-    );
-
-  }
-
-
-  if(
-    url.includes("/media/")
-  ){
-
-    return (
-      API_BASE +
-      "/" +
-      url.replace(/^\/+/,"")
-    );
-
-  }
-
-
-  return url;
-
-}
-
-
-/* =========================================================
-   IMAGE DETECTION
-   ========================================================= */
-
-const PICTURE_KEYS = [
-
-  "pictures",
-  "picture",
-  "images",
-  "image",
-  "photos",
-  "photo",
-  "photographs",
-  "photograph",
-  "media",
-  "medias"
-
-];
-
-
-const IMAGE_URL_KEYS = [
-
-  "image_url",
-  "image",
-  "src",
-  "media_url",
-  "path",
-  "file",
-  "original_url",
-  "full_url",
-  "url",
-  "href"
-
-];
-
-
-function looksLikeImageURL(url){
-
-  const text =
-    String(url || "")
-      .toLowerCase();
-
-
-  return (
-
-    text.includes("/media/") ||
-
-    text.includes("/images/") ||
-
-    text.includes("/photos/") ||
-
-    text.includes("/pictures/") ||
-
-    IMAGE_EXTENSIONS.test(text)
-
-  );
-
-}
-
-
-/* =========================================================
-   IMAGE OBJECT EXTRACTION — CORRECTED
-   ========================================================= */
-
-function extractURLFromPictureObject(object){
-
-  if(
-    object === null ||
-    object === undefined
-  ){
-
-    return "";
-
-  }
-
-
-  if(
-    typeof object === "string"
-  ){
-
-    return normalizePictureURL(
-      object
-    );
-
-  }
-
-
-  if(
-    typeof object !== "object"
-  ){
-
-    return "";
-
-  }
-
-
-  for(
-    const key of IMAGE_URL_KEYS
-  ){
-
-    const raw =
-      object[key];
-
-
-    if(
-      raw === undefined ||
-      raw === null
-    ){
-
-      continue;
-
-    }
-
-
-    /*
-     * If the image field contains another object,
-     * inspect that object rather than converting it
-     * to "[object Object]".
-     */
-
-    if(
-      typeof raw === "object"
-    ){
-
-      const nested =
-        extractURLFromPictureObject(
-          raw
-        );
-
-
-      if(nested){
-
-        return nested;
-
-      }
-
-
-      continue;
-
-    }
-
-
-    const candidate =
-      normalizePictureURL(
-        raw
-      );
-
-
-    if(!candidate){
-
-      continue;
-
-    }
-
-
-    /*
-     * href is accepted only when it actually
-     * looks like an image/media resource.
-     */
-
-    if(
-      key === "href" &&
-      !looksLikeImageURL(candidate) &&
-      !candidate.startsWith(
-        "data:image/"
-      )
-    ){
-
-      continue;
-
-    }
-
-
-    return candidate;
-
-  }
-
-
-  return "";
-
-}
-
-
-/* =========================================================
-   EXTRACT ALL REAL CANNALIB PICTURES
-   ========================================================= */
-
-function extractPictures(record){
-
-  const pictures = [];
-
-  const seenURLs =
-    new Set();
-
-  const visited =
-    new Set();
-
-
-  function addPicture(raw){
-
-    const url =
-      extractURLFromPictureObject(
-        raw
-      );
-
-
-    if(!url){
-
-      return;
-
-    }
-
-
-    if(
-      !url.startsWith("http") &&
-      !url.startsWith("data:image/")
-    ){
-
-      return;
-
-    }
-
-
-    if(
-      seenURLs.has(url)
-    ){
-
-      return;
-
-    }
-
-
-    seenURLs.add(url);
-
-
-    pictures.push({
-
-      url,
-
-      credit:
-        raw &&
-        typeof raw === "object"
-          ? first(
-              raw.credit,
-              raw.credits,
-              raw.attribution,
-              raw.source,
-              raw.photographer,
-              raw.author
-            )
-          : ""
-
-    });
-
-  }
-
-
-  function walk(
-    node,
-    inPictureContext = false
-  ){
-
-    if(
-      node === null ||
-      node === undefined
-    ){
-
-      return;
-
-    }
-
-
-    if(
-      typeof node === "string"
-    ){
-
-      if(inPictureContext){
-
-        addPicture(node);
-
-      }
-
-      return;
-
-    }
-
-
-    if(
-      typeof node !== "object"
-    ){
-
-      return;
-
-    }
-
-
-    if(visited.has(node)){
-
-      return;
-
-    }
-
-
-    visited.add(node);
-
-
-    if(Array.isArray(node)){
-
-      for(
-        const item of node
-      ){
-
-        walk(
-          item,
-          inPictureContext
-        );
-
-      }
-
-      return;
-
-    }
-
-
-    /*
-     * Explicitly inspect picture containers first.
-     */
-
-    for(
-      const key of Object.keys(node)
-    ){
-
-      const lower =
-        key.toLowerCase();
-
-
-      if(
-        PICTURE_KEYS.includes(lower)
-      ){
-
-        const pictureValue =
-          node[key];
-
-
-        if(
-          Array.isArray(
-            pictureValue
-          )
-        ){
-
-          for(
-            const item of pictureValue
-          ){
-
-            addPicture(item);
-
-
-            if(
-              item &&
-              typeof item === "object"
-            ){
-
-              walk(
-                item,
-                true
-              );
-
-            }
-
-          }
-
-        }else{
-
-          addPicture(
-            pictureValue
-          );
-
-          walk(
-            pictureValue,
-            true
-          );
-
-        }
-
-      }
-
-    }
-
-
-    /*
-     * Search nested CannaLib wrappers:
-     * record / strain_tree_v1 / data / etc.
-     */
-
-    for(
-      const key of Object.keys(node)
-    ){
-
-      const child =
-        node[key];
-
-
-      if(
-        child &&
-        typeof child === "object"
-      ){
-
-        walk(
-          child,
-          inPictureContext
-        );
-
-      }
-
-    }
-
-  }
-
-
-  walk(record,false);
-
-
-  return pictures;
-
-}
-
-
-/* =========================================================
-   PHOTO LOADING
-   ========================================================= */
-
-function invalidateFlowerLoad(){
-
-  flowerLoadToken++;
-
-  currentPictureQueue = [];
-
-  currentPictureIndex = 0;
-
-
-  const image =
-    $("flowerImage");
-
-
-  image.onload = null;
-
-  image.onerror = null;
-
-  image.removeAttribute("src");
-
-  image.style.display =
-    "none";
-
-}
-
-
-function showNoLiveFlower(){
-
-  const image =
-    $("flowerImage");
-
-  const noPhoto =
-    $("noPhoto");
-
-  const credit =
-    $("photoCredit");
-
-
-  image.style.display =
-    "none";
-
-  noPhoto.style.display =
-    "block";
-
-  credit.style.display =
-    "none";
-
-}
-
-
-function loadNextLiveFlower(token){
-
-  if(
-    token !== flowerLoadToken
-  ){
-
-    return;
-
-  }
-
-
-  if(
-    currentPictureIndex >=
-    currentPictureQueue.length
-  ){
-
-    showNoLiveFlower();
-
-    return;
-
-  }
-
-
-  const picture =
-    currentPictureQueue[
-      currentPictureIndex++
-    ];
-
-
-  const image =
-    $("flowerImage");
-
-  const noPhoto =
-    $("noPhoto");
-
-  const credit =
-    $("photoCredit");
-
-
-  image.onload = () => {
-
-    if(
-      token !== flowerLoadToken
-    ){
-
-      return;
-
-    }
-
-
-    image.style.display =
-      "block";
-
-    noPhoto.style.display =
-      "none";
-
-
-    if(picture.credit){
-
-      credit.textContent =
-        "PHOTO: " +
-        picture.credit;
-
-      credit.style.display =
-        "block";
-
-    }else{
-
-      credit.style.display =
-        "none";
-
-    }
-
-  };
-
-
-  image.onerror = () => {
-
-    if(
-      token !== flowerLoadToken
-    ){
-
-      return;
-
-    }
-
-
-    image.removeAttribute("src");
-
-
-    /*
-     * The current CannaLib photograph failed.
-     *
-     * Try the next REAL photograph from the
-     * same CannaLib record.
-     *
-     * Never use a generic flower.
-     */
-
-    loadNextLiveFlower(token);
-
-  };
-
-
-  /*
-   * Use the actual strain name from the record
-   * for accessibility text.
-   *
-   * This does NOT alter the photograph URL.
-   */
-
-  const photographName =
-    currentRecord
-      ? first(
-          value(
-            currentRecord,
-            [
-              "name",
-              "strain_name",
-              "title"
-            ]
-          ),
-          "Super Flower specimen"
-        )
-      : "Super Flower specimen";
-
-
-  image.alt =
-    displayValue(
-      photographName
-    );
-
-
-  image.src =
-    picture.url;
-
-}
-
-
-function renderFlower(record){
-
-  invalidateFlowerLoad();
-
-
-  const token =
-    flowerLoadToken;
-
-
-  currentPictureQueue =
-    extractPictures(record);
-
-
-  currentPictureIndex = 0;
-
-
-  if(
-    !currentPictureQueue.length
-  ){
-
-    showNoLiveFlower();
-
-    return;
-
-  }
-
-
-  loadNextLiveFlower(token);
-
-}
-
-
-/* =========================================================
-   SAFE TEXT
-   ========================================================= */
-
-function setText(id,value){
-
-  const element =
-    $(id);
-
-
-  if(!element){
-
-    return;
-
-  }
-
-
-  element.textContent =
-    displayValue(value);
-
-}
-
-
-/* =========================================================
-   RESONANCE
-   ========================================================= */
-
-function resolveResonance(record){
-
-  /*
-   * IMPORTANT:
-   *
-   * Only actual resonance fields are accepted.
-   *
-   * Effects are NOT converted into:
-   * Relaxation / Focus / Creativity /
-   * Meditation / Recovery.
-   */
-
-  const direct = {
-
-    relaxation:
-      value(
-        record,
-        [
-          "relaxation",
-          "relaxation_score"
-        ]
-      ),
-
-    focus:
-      value(
-        record,
-        [
-          "focus",
-          "focus_score"
-        ]
-      ),
-
-    creativity:
-      value(
-        record,
-        [
-          "creativity",
-          "creativity_score"
-        ]
-      ),
-
-    meditation:
-      value(
-        record,
-        [
-          "meditation",
-          "meditation_score"
-        ]
-      ),
-
-    recovery:
-      value(
-        record,
-        [
-          "recovery",
-          "recovery_score"
-        ]
-      )
-
-  };
-
-
-  /*
-   * If the source provides a dedicated resonance
-   * profile, use its matching fields.
-   */
-
-  const resonance =
-    value(
-      record,
-      [
-        "resonance_profile",
-        "resonance"
-      ]
-    );
-
-
-  if(
-    resonance &&
-    typeof resonance === "object"
-  ){
-
-    for(
-      const key of Object.keys(direct)
-    ){
-
-      if(
-        direct[key] === "" &&
-        resonance[key] !== undefined &&
-        resonance[key] !== null &&
-        resonance[key] !== ""
-      ){
-
-        direct[key] =
-          resonance[key];
-
-      }
-
-    }
-
-  }
-
-
-  return direct;
-
-}
-
-
-/* =========================================================
-   PHOTO GALLERY
-   ========================================================= */
-
-function renderPhotos(record){
-
-  const gallery =
-    $("gallery");
-
-  const grid =
-    $("galleryGrid");
-
-
-  grid.innerHTML = "";
-
-
-  const pictures =
-    extractPictures(record);
-
-
-  if(
-    !pictures.length
-  ){
-
-    gallery.style.display =
-      "none";
-
-    return;
-
-  }
-
-
-  gallery.style.display =
-    "block";
-
-
-  pictures.forEach(
-    (picture,index) => {
-
-      const card =
-        document.createElement(
-          "div"
-        );
-
-      card.className =
-        "gallery-card";
-
-
-      const image =
-        document.createElement(
-          "img"
-        );
-
-
-      image.loading =
-        "lazy";
-
-
-      image.alt =
-        `${
-          currentRecord?.name ||
-          "Specimen"
-        } photograph ${
-          index + 1
-        }`;
-
-
-      image.src =
-        picture.url;
-
-
-      image.onerror = () => {
-
-        card.remove();
-
-
-        if(
-          !grid.children.length
-        ){
-
-          gallery.style.display =
-            "none";
-
-        }
-
-      };
-
-
-      card.appendChild(
-        image
-      );
-
-
-      grid.appendChild(
-        card
-      );
-
-    }
-  );
-
-}
-
-
-/* =========================================================
-   RECORD RENDER
-   ========================================================= */
-
-function renderRecord(
-  record,
-  slim = {}
-){
-
-  currentRecord =
-    record;
-
-
-  const name =
-    first(
-
-      value(
-        record,
-        [
-          "name",
-          "strain_name",
-          "title"
-        ]
-      ),
-
-      slim.name
-
-    );
-
-
-  const id =
-    first(
-
-      value(
-        record,
-        [
-          "id",
-          "strain_id",
-          "catalog_id",
-          "uuid"
-        ]
-      ),
-
-      slim.id
-
-    );
-
-
-  const genetics =
-    first(
-
-      value(
-        record,
-        [
-          "genetics",
-          "lineage",
-          "parentage",
-          "parents",
-          "genetic_lineage"
-        ]
-      )
-
-    );
-
-
-  const type =
-    first(
-
-      value(
-        record,
-        [
-          "type",
-          "strain_type",
-          "category",
-          "classification"
-        ]
-      )
-
-    );
-
-
-  const thc =
-    first(
-
-      value(
-        record,
-        [
-          "thc",
-          "thc_range",
-          "thc_content",
-          "thc_percentage"
-        ]
-      )
-
-    );
-
-
-  const cbd =
-    first(
-
-      value(
-        record,
-        [
-          "cbd",
-          "cbd_range",
-          "cbd_content",
-          "cbd_percentage"
-        ]
-      )
-
-    );
-
-
-  const aroma =
-    first(
-
-      value(
-        record,
-        [
-          "aroma",
-          "aromas",
-          "scent",
-          "smell",
-          "fragrance"
-        ]
-      )
-
-    );
-
-
-  const breeder =
-    first(
-
-      value(
-        record,
-        [
-          "breeder",
-          "breeder_name",
-          "breeders",
-          "brand"
-        ]
-      )
-
-    );
-
-
-  const flowering =
-    first(
-
-      value(
-        record,
-        [
-          "flowering_time",
-          "flowering",
-          "flower_time"
-        ]
-      )
-
-    );
-
-
-  const yieldValue =
-    first(
-
-      value(
-        record,
-        [
-          "yield",
-          "yield_range",
-          "expected_yield"
-        ]
-      )
-
-    );
-
-
-  const growMethod =
-    first(
-
-      value(
-        record,
-        [
-          "grow_method",
-          "cultivation",
-          "cultivation_method",
-          "method"
-        ]
-      )
-
-    );
-
-
-  const terpenes =
-    findList(
-      record,
-      [
-        "terpenes",
-        "terpene_profile",
-        "dominant_terpenes"
-      ]
-    );
-
-
-  const description =
-    first(
-
-      value(
-        record,
-        [
-          "description",
-          "notes",
-          "summary",
-          "overview"
-        ]
-      )
-
-    );
-
-
-  const alignment =
-    resolveCodexAlignment(
-      record,
-      slim,
-      name
-    );
-
-
-  const archetype =
-    resolveArchetype(
-      record
-    );
-
-
-  const resonance =
-    resolveResonance(
-      record
-    );
-
-
-  /* =======================================================
-     SPECIMEN
-     ======================================================= */
-
-  setText(
-    "fieldId",
-    id
-  );
-
-  setText(
-    "fieldName",
+    record,
+    slim,
     name
-  );
+){
 
-  setText(
-    "fieldGenetics",
-    genetics
-  );
-
-  setText(
-    "fieldType",
-    type
-  );
-
-  setText(
-    "fieldTHC",
-    thc
-  );
-
-  setText(
-    "fieldCBD",
-    cbd
-  );
-
-  setText(
-    "fieldAroma",
-    aroma
-  );
+    const identity =
+        getStableStrainIdentity(
+            record,
+            slim,
+            name
+        );
 
 
-  /*
-   * These are deliberately Codex-derived fields.
-   */
-
-  setText(
-    "fieldChakra",
-    alignment.chakra
-  );
-
-  setText(
-    "fieldPlanet",
-    alignment.planet
-  );
+    const override =
+        SUPER_FLOWER_CODEX_OVERRIDES[
+            identity
+        ];
 
 
-  /*
-   * Archetype is blank unless actually present
-   * in the source record.
-   */
+    if(
+        override
+    ){
 
-  setText(
-    "fieldArchetype",
-    archetype
-  );
+        return {
 
+            ...override,
 
-  setText(
-    "fieldFrequency",
-    alignment.frequency +
-    " Hz"
-  );
+            basis:
+                "SUPER FLOWER CODEX OVERRIDE"
 
-
-  /* =======================================================
-     RESONANCE
-     ======================================================= */
-
-  setText(
-    "resRelaxation",
-    resonance.relaxation
-  );
-
-  setText(
-    "resFocus",
-    resonance.focus
-  );
-
-  setText(
-    "resCreativity",
-    resonance.creativity
-  );
-
-  setText(
-    "resMeditation",
-    resonance.meditation
-  );
-
-  setText(
-    "resRecovery",
-    resonance.recovery
-  );
-
-
-  /* =======================================================
-     INFO
-     ======================================================= */
-
-  setText(
-    "infoBreeder",
-    breeder
-  );
-
-  setText(
-    "infoLineage",
-    genetics
-  );
-
-  setText(
-    "infoFlowering",
-    flowering
-  );
-
-  setText(
-    "infoYield",
-    yieldValue
-  );
-
-  setText(
-    "infoGrowMethod",
-    growMethod
-  );
-
-  setText(
-    "infoTerpenes",
-    terpenes.join(", ")
-  );
-
-
-  setText(
-    "infoSource",
-    id
-      ? `CannaLib strain record ${id}`
-      : "CannaLib strain record"
-  );
-
-
-  setText(
-    "infoAlignment",
-
-    `${alignment.frequency} Hz → ` +
-    `${alignment.chakra} → ` +
-    `${alignment.planet}`
-
-  );
-
-
-  setText(
-    "infoDescription",
-    description
-  );
-
-
-  /* =======================================================
-     PHOTOGRAPHS
-     ======================================================= */
-
-  renderFlower(record);
-
-  renderPhotos(record);
-
-
-  /* =======================================================
-     URL
-     ======================================================= */
-
-  if(id){
-
-    try{
-
-      history.replaceState(
-        null,
-        "",
-        "#strain=" +
-        encodeURIComponent(id)
-      );
-
-    }catch(error){
-
-      console.warn(
-        "Unable to update URL",
-        error
-      );
+        };
 
     }
 
-  }
+
+    const index =
+        stableHash(
+            identity
+        ) %
+        GLCTC1_CODEX_FREQUENCIES.length;
+
+
+    return {
+
+        ...GLCTC1_CODEX_FREQUENCIES[
+            index
+        ],
+
+        basis:
+            "SUPER FLOWER CODEX REFERENCE ALIGNMENT"
+
+    };
 
 }
 
 
 /* =========================================================
-   EMPTY INITIAL SPECIMEN
-   ========================================================= */
+   CODEX ARCHETYPE
+========================================================= */
 
-function clearSpecimen(){
+function resolveCodexArchetype(
+    record,
+    slim,
+    name
+){
 
-  currentRecord =
+    const identity =
+        getStableStrainIdentity(
+            record,
+            slim,
+            name
+        );
+
+
+    const override =
+        SUPER_FLOWER_CODEX_OVERRIDES[
+            identity
+        ];
+
+
+    return (
+        override?.archetype ||
+        "NOT ASSIGNED"
+    );
+
+}
+
+
+/* =========================================================
+   ELEMENTS
+========================================================= */
+
+const searchInput =
+    document.getElementById(
+        "searchInput"
+    );
+
+const searchButton =
+    document.getElementById(
+        "searchButton"
+    );
+
+const filterToggle =
+    document.getElementById(
+        "filterToggle"
+    );
+
+const filterMenu =
+    document.getElementById(
+        "filterMenu"
+    );
+
+const clearFiltersButton =
+    document.getElementById(
+        "clearFiltersButton"
+    );
+
+const searchStatus =
+    document.getElementById(
+        "searchStatus"
+    );
+
+const results =
+    document.getElementById(
+        "results"
+    );
+
+const typeFilter =
+    document.getElementById(
+        "typeFilter"
+    );
+
+const breederFilter =
+    document.getElementById(
+        "breederFilter"
+    );
+
+const thcFilter =
+    document.getElementById(
+        "thcFilter"
+    );
+
+const cbdFilter =
+    document.getElementById(
+        "cbdFilter"
+    );
+
+const terpeneFilter =
+    document.getElementById(
+        "terpeneFilter"
+    );
+
+const flowerImage =
+    document.getElementById(
+        "flowerImage"
+    );
+
+const flowerReferenceLabel =
+    document.getElementById(
+        "flowerReferenceLabel"
+    );
+
+const flowerCredit =
+    document.getElementById(
+        "flowerCredit"
+    );
+
+const specimenFields =
+    document.getElementById(
+        "specimenFields"
+    );
+
+const resonanceGrid =
+    document.getElementById(
+        "resonanceGrid"
+    );
+
+const infoContent =
+    document.getElementById(
+        "infoContent"
+    );
+
+
+/* =========================================================
+   STATE
+========================================================= */
+
+let searchTimer =
+    null;
+
+let searchController =
+    null;
+
+let currentResults =
+    [];
+
+let currentRecord =
     null;
 
 
-  invalidateFlowerLoad();
+/*
+    Photo loading has its own token so an old
+    failed image cannot overwrite a newly
+    selected strain.
+*/
+
+let flowerLoadToken =
+    0;
+
+let currentPictureQueue =
+    [];
+
+let currentPictureIndex =
+    0;
 
 
-  const fields = [
+/* =========================================================
+   HEADERS
+========================================================= */
 
-    "fieldId",
-    "fieldName",
-    "fieldGenetics",
-    "fieldType",
-    "fieldTHC",
-    "fieldCBD",
-    "fieldAroma",
-    "fieldChakra",
-    "fieldPlanet",
-    "fieldArchetype",
-    "fieldFrequency",
+function getHeaders(){
 
-    "resRelaxation",
-    "resFocus",
-    "resCreativity",
-    "resMeditation",
-    "resRecovery",
+    return {
 
-    "infoBreeder",
-    "infoLineage",
-    "infoFlowering",
-    "infoYield",
-    "infoGrowMethod",
-    "infoTerpenes",
-    "infoSource",
-    "infoAlignment",
-    "infoDescription"
+        "Accept":
+            "application/json"
 
-  ];
+    };
+
+}
 
 
-  fields.forEach(
-    id =>
-      setText(id,"")
-  );
+/* =========================================================
+   FILTER TOGGLE
+========================================================= */
+
+filterToggle.addEventListener(
+    "click",
+    () => {
+
+        const open =
+            filterToggle.getAttribute(
+                "aria-expanded"
+            ) === "true";
 
 
-  $("galleryGrid")
-    .innerHTML = "";
+        const next =
+            !open;
 
 
-  $("gallery").style.display =
-    "none";
+        filterToggle.setAttribute(
+            "aria-expanded",
+            String(next)
+        );
 
 
-  $("noPhoto").style.display =
-    "block";
+        filterMenu.hidden =
+            !next;
 
 
-  $("photoCredit").style.display =
-    "none";
+        filterToggle.textContent =
+            next
+                ? "FILTERS ▴"
+                : "FILTERS ▾";
+
+    }
+);
+
+
+/* =========================================================
+   SEARCH INPUT
+========================================================= */
+
+searchInput.addEventListener(
+    "input",
+    () => {
+
+        clearTimeout(
+            searchTimer
+        );
+
+
+        const query =
+            searchInput.value.trim();
+
+
+        /*
+            IMPORTANT:
+
+            When the search is cleared, abort the
+            old request. Otherwise an old live API
+            response can return afterwards and
+            repopulate the page.
+        */
+
+        if(!query){
+
+            if(
+                searchController
+            ){
+
+                searchController.abort();
+
+                searchController =
+                    null;
+
+            }
+
+
+            results.classList.remove(
+                "visible"
+            );
+
+            currentResults =
+                [];
+
+            currentRecord =
+                null;
+
+            resetFilters();
+
+            resetSpecimen();
+
+            setStatus(
+                "SEARCH THE LIVING RECORD."
+            );
+
+            return;
+
+        }
+
+
+        if(
+            query.length < 2
+        ){
+
+            setStatus(
+                "ENTER AT LEAST TWO CHARACTERS."
+            );
+
+            return;
+
+        }
+
+
+        searchTimer =
+            setTimeout(
+                () => {
+
+                    performSearch(
+                        query
+                    );
+
+                },
+                450
+            );
+
+    }
+);
+
+
+/* =========================================================
+   SEARCH BUTTON
+========================================================= */
+
+searchButton.addEventListener(
+    "click",
+    () => {
+
+        const query =
+            searchInput.value.trim();
+
+
+        if(!query){
+
+            setStatus(
+                "ENTER A STRAIN NAME TO SEARCH."
+            );
+
+            searchInput.focus();
+
+            return;
+
+        }
+
+
+        performSearch(
+            query
+        );
+
+    }
+);
+
+
+/* =========================================================
+   ENTER KEY
+========================================================= */
+
+searchInput.addEventListener(
+    "keydown",
+    event => {
+
+        if(
+            event.key === "Enter"
+        ){
+
+            event.preventDefault();
+
+            searchButton.click();
+
+        }
+
+    }
+);
+
+
+/* =========================================================
+   FILTER EVENTS
+========================================================= */
+
+[
+    typeFilter,
+    breederFilter,
+    thcFilter,
+    cbdFilter,
+    terpeneFilter
+]
+.forEach(
+    select => {
+
+        select.addEventListener(
+            "change",
+            applyFilters
+        );
+
+    }
+);
+
+
+/* =========================================================
+   CLEAR FILTERS
+========================================================= */
+
+clearFiltersButton.addEventListener(
+    "click",
+    () => {
+
+        [
+            typeFilter,
+            breederFilter,
+            thcFilter,
+            cbdFilter,
+            terpeneFilter
+        ]
+        .forEach(
+            select => {
+
+                select.value =
+                    "";
+
+            }
+        );
+
+
+        renderResults(
+            currentResults
+        );
+
+
+        setStatus(
+            currentResults.length
+                ? `${currentResults.length} LIVE MATCHES. FILTERS CLEARED.`
+                : "FILTERS CLEARED."
+        );
+
+    }
+);
+
+
+/* =========================================================
+   SEARCH
+========================================================= */
+
+async function performSearch(
+    query
+){
+
+    if(
+        searchController
+    ){
+
+        searchController.abort();
+
+    }
+
+
+    searchController =
+        new AbortController();
+
+
+    const controller =
+        searchController;
+
+
+    setStatus(
+        "SEARCHING THE LIVING SUPER FLOWER RECORD..."
+    );
+
+
+    results.classList.add(
+        "visible"
+    );
+
+
+    results.innerHTML = `
+
+        <div class="loading">
+
+            <span class="spinner"></span>
+
+            <br><br>
+
+            SEARCHING THE LIVING RECORD...
+
+        </div>
+
+    `;
+
+
+    resetFilters();
+
+
+    try{
+
+        /*
+            PUBLIC ACCESS:
+
+            Always one live search page.
+
+            No API key.
+            No keyed paging.
+            No fake claim of 30 results.
+        */
+
+        const pageResults =
+            await fetchSearchPage(
+                query,
+                1,
+                controller.signal
+            );
+
+
+        /*
+            If another search has started,
+            ignore this result.
+        */
+
+        if(
+            controller !== searchController
+        ){
+
+            return;
+
+        }
+
+
+        currentResults =
+            uniqueBy(
+                pageResults,
+                item =>
+                    item.id ||
+                    item.name_norm ||
+                    item.name
+            );
+
+
+        populateFilters(
+            currentResults
+        );
+
+
+        renderResults(
+            currentResults
+        );
+
+
+        setStatus(
+            currentResults.length
+                ? `${currentResults.length} LIVE MATCHES RETURNED`
+                : "NO MATCHING STRAIN RECORD FOUND."
+        );
+
+
+    }catch(error){
+
+        if(
+            error.name === "AbortError"
+        ){
+
+            return;
+
+        }
+
+
+        results.innerHTML = `
+
+            <div class="no-results">
+
+                LIVE SEARCH ERROR
+
+                <br><br>
+
+                ${escapeHTML(
+                    error.message
+                )}
+
+            </div>
+
+        `;
+
+
+        setStatus(
+            "LIVE SEARCH ERROR: " +
+            error.message,
+            true
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   SEARCH PAGE
+========================================================= */
+
+async function fetchSearchPage(
+    query,
+    page,
+    signal
+){
+
+    let url =
+        SEARCH_ENDPOINT +
+        "?q=" +
+        encodeURIComponent(
+            query
+        ) +
+        "&limit=" +
+        RESULTS_PER_PAGE;
+
+
+    /*
+        The function retains the page argument
+        for compatibility with the endpoint,
+        but public search only requests page 1.
+    */
+
+    if(
+        page > 1
+    ){
+
+        url +=
+            "&page=" +
+            page;
+
+    }
+
+
+    const response =
+        await fetch(
+            url,
+            {
+                method:"GET",
+                headers:getHeaders(),
+                signal
+            }
+        );
+
+
+    let data =
+        null;
+
+
+    try{
+
+        data =
+            await response.json();
+
+    }catch{
+
+        data =
+            null;
+
+    }
+
+
+    if(
+        !response.ok
+    ){
+
+        const message =
+            data?.error ||
+            data?.message ||
+            `HTTP ${response.status}`;
+
+
+        throw new Error(
+            message
+        );
+
+    }
+
+
+    return extractSearchResults(
+        data
+    );
 
 }
 
 
 /* =========================================================
    SEARCH RESULT EXTRACTION
-   ========================================================= */
+========================================================= */
 
-function extractSearchResults(payload){
+function extractSearchResults(
+    data
+){
 
-  if(Array.isArray(payload)){
+    if(
+        Array.isArray(
+            data
+        )
+    ){
 
-    return payload;
+        return data;
 
-  }
+    }
 
 
-  if(
-    !payload ||
-    typeof payload !== "object"
-  ){
+    if(
+        Array.isArray(
+            data?.items
+        )
+    ){
+
+        return data.items;
+
+    }
+
+
+    if(
+        Array.isArray(
+            data?.results
+        )
+    ){
+
+        return data.results;
+
+    }
+
+
+    if(
+        Array.isArray(
+            data?.strains
+        )
+    ){
+
+        return data.strains;
+
+    }
+
+
+    if(
+        Array.isArray(
+            data?.data
+        )
+    ){
+
+        return data.data;
+
+    }
+
 
     return [];
 
-  }
-
-
-  const directKeys = [
-
-    "items",
-    "results",
-    "strains",
-    "records",
-    "data"
-
-  ];
-
-
-  for(
-    const key of directKeys
-  ){
-
-    if(
-      Array.isArray(
-        payload[key]
-      )
-    ){
-
-      return payload[key];
-
-    }
-
-  }
-
-
-  /*
-   * Handle API wrappers recursively.
-   */
-
-  for(
-    const key of Object.keys(payload)
-  ){
-
-    const child =
-      payload[key];
-
-
-    if(
-      child &&
-      typeof child === "object"
-    ){
-
-      const nested =
-        extractSearchResults(
-          child
-        );
-
-
-      if(nested.length){
-
-        return nested;
-
-      }
-
-    }
-
-  }
-
-
-  return [];
-
 }
 
 
 /* =========================================================
-   NORMALIZE SEARCH RESULT
-   ========================================================= */
+   FILTER POPULATION
+========================================================= */
 
-function normalizeSearchResult(item){
-
-  const name =
-    first(
-
-      value(
-        item,
-        [
-          "name",
-          "strain_name",
-          "title"
-        ]
-      )
-
-    );
-
-
-  const id =
-    first(
-
-      value(
-        item,
-        [
-          "id",
-          "strain_id",
-          "catalog_id",
-          "uuid"
-        ]
-      )
-
-    );
-
-
-  const breeder =
-    first(
-
-      value(
-        item,
-        [
-          "breeder",
-          "breeder_name",
-          "brand"
-        ]
-      )
-
-    );
-
-
-  const type =
-    first(
-
-      value(
-        item,
-        [
-          "type",
-          "strain_type",
-          "category",
-          "classification"
-        ]
-      )
-
-    );
-
-
-  const genetics =
-    first(
-
-      value(
-        item,
-        [
-          "genetics",
-          "lineage",
-          "parentage",
-          "parents"
-        ]
-      )
-
-    );
-
-
-  const thc =
-    first(
-
-      value(
-        item,
-        [
-          "thc",
-          "thc_range",
-          "thc_content",
-          "thc_percentage"
-        ]
-      )
-
-    );
-
-
-  const cbd =
-    first(
-
-      value(
-        item,
-        [
-          "cbd",
-          "cbd_range",
-          "cbd_content",
-          "cbd_percentage"
-        ]
-      )
-
-    );
-
-
-  const terpenes =
-    findList(
-      item,
-      [
-        "terpenes",
-        "terpene_profile",
-        "dominant_terpenes"
-      ]
-    );
-
-
-  return {
-
-    raw:item,
-
-    name,
-
-    id,
-
-    breeder,
-
-    type,
-
-    genetics,
-
-    thc,
-
-    cbd,
-
-    terpenes
-
-  };
-
-}
-
-
-/* =========================================================
-   FILTER OPTIONS
-   ========================================================= */
-
-function populateFilterOptions(
-  results
+function populateFilters(
+    records
 ){
 
-  const types =
-    new Set();
-
-  const breeders =
-    new Set();
-
-  const terpenes =
-    new Set();
-
-
-  results.forEach(
-    raw => {
-
-      const item =
-        normalizeSearchResult(
-          raw
-        );
+    preserveSelectValue(
+        typeFilter,
+        uniqueValues(
+            records,
+            record =>
+                record.type
+        )
+    );
 
 
-      if(item.type){
-
-        types.add(
-          displayValue(
-            item.type
-          )
-        );
-
-      }
-
-
-      if(item.breeder){
-
-        breeders.add(
-          displayValue(
-            item.breeder
-          )
-        );
-
-      }
+    preserveSelectValue(
+        breederFilter,
+        uniqueValues(
+            records,
+            record =>
+                record.breeder
+        )
+    );
 
 
-      item.terpenes.forEach(
-        terpene => {
-
-          const text =
-            displayValue(
-              terpene
-            );
-
-
-          if(text){
-
-            terpenes.add(
-              text
-            );
-
-          }
-
-        }
-      );
-
-    }
-  );
-
-
-  fillSelect(
-    $("typeFilter"),
-    "ALL TYPES",
-    [...types].sort()
-  );
-
-
-  fillSelect(
-    $("breederFilter"),
-    "ALL BREEDERS",
-    [...breeders].sort()
-  );
-
-
-  fillSelect(
-    $("terpeneFilter"),
-    "ANY TERPENE",
-    [...terpenes].sort()
-  );
+    preserveSelectValue(
+        terpeneFilter,
+        uniqueTerpenes(
+            records
+        )
+    );
 
 }
 
 
 /* =========================================================
-   FILL SELECT
-   ========================================================= */
+   PRESERVE SELECT
+========================================================= */
 
-function fillSelect(
-  select,
-  defaultLabel,
-  values
+function preserveSelectValue(
+    select,
+    values
 ){
 
-  const current =
-    select.value;
+    const old =
+        select.value;
 
 
-  select.innerHTML = "";
+    const firstOption =
+        select.options[0];
 
 
-  const firstOption =
-    document.createElement(
-      "option"
+    select.innerHTML =
+        "";
+
+
+    select.appendChild(
+        firstOption
     );
 
 
-  firstOption.value =
-    "";
+    values
+        .sort(
+            (a,b) =>
+                a.localeCompare(
+                    b
+                )
+        )
+        .forEach(
+            value => {
+
+                const option =
+                    document.createElement(
+                        "option"
+                    );
 
 
-  firstOption.textContent =
-    defaultLabel;
+                option.value =
+                    value;
 
 
-  select.appendChild(
-    firstOption
-  );
+                option.textContent =
+                    value;
 
 
-  values.forEach(
-    value => {
+                select.appendChild(
+                    option
+                );
 
-      const option =
-        document.createElement(
-          "option"
+            }
         );
 
-
-      option.value =
-        value;
-
-
-      option.textContent =
-        value;
-
-
-      select.appendChild(
-        option
-      );
-
-    }
-  );
-
-
-  if(
-    [...select.options].some(
-      option =>
-        option.value === current
-    )
-  ){
 
     select.value =
-      current;
-
-  }
+        values.includes(
+            old
+        )
+            ? old
+            : "";
 
 }
 
 
 /* =========================================================
-   FILTER LOGIC
-   ========================================================= */
+   UNIQUE VALUES
+========================================================= */
 
-function passesFilters(item){
+function uniqueValues(
+    records,
+    getter
+){
 
-  const typeFilter =
-    normalizeToken(
-      $("typeFilter").value
-    );
+    return [
 
+        ...new Set(
 
-  const breederFilter =
-    normalizeToken(
-      $("breederFilter").value
-    );
+            records
 
+                .map(
+                    getter
+                )
 
-  const terpeneFilter =
-    normalizeToken(
-      $("terpeneFilter").value
-    );
+                .filter(
+                    value =>
+                        value !== undefined &&
+                        value !== null &&
+                        String(value).trim()
+                )
 
+                .map(
+                    value =>
+                        String(value).trim()
+                )
 
-  if(
-    typeFilter &&
-    normalizeToken(
-      item.type
-    ) !== typeFilter
-  ){
+        )
 
-    return false;
+    ];
 
-  }
-
-
-  if(
-    breederFilter &&
-    normalizeToken(
-      item.breeder
-    ) !== breederFilter
-  ){
-
-    return false;
-
-  }
+}
 
 
-  if(terpeneFilter){
+/* =========================================================
+   TERPENES
+========================================================= */
 
-    const hasTerpene =
-      item.terpenes.some(
-        terpene =>
-          normalizeToken(
-            displayValue(
-              terpene
+function uniqueTerpenes(
+    records
+){
+
+    const values =
+        [];
+
+
+    records.forEach(
+        record => {
+
+            normalizeList(
+                record.top_terpenes
             )
-          ) === terpeneFilter
-      );
+            .forEach(
+                value =>
+                    values.push(
+                        value
+                    )
+            );
 
-
-    if(!hasTerpene){
-
-      return false;
-
-    }
-
-  }
-
-
-  const thcMinimum =
-    Number(
-      $("thcFilter").value
+        }
     );
 
 
-  if(thcMinimum){
+    return [
+        ...new Set(
+            values
+        )
+    ];
 
-    const thcNumbers =
-      extractNumbers(
-        item.thc
-      );
-
-
-    if(
-      !thcNumbers.length ||
-      Math.max(
-        ...thcNumbers
-      ) < thcMinimum
-    ){
-
-      return false;
-
-    }
-
-  }
+}
 
 
-  const cbdMinimum =
-    Number(
-      $("cbdFilter").value
+/* =========================================================
+   APPLY FILTERS
+========================================================= */
+
+function applyFilters(){
+
+    const filtered =
+        currentResults.filter(
+            record => {
+
+
+                if(
+                    typeFilter.value &&
+                    String(
+                        record.type || ""
+                    ) !==
+                    typeFilter.value
+                ){
+
+                    return false;
+
+                }
+
+
+                if(
+                    breederFilter.value &&
+                    String(
+                        record.breeder || ""
+                    ) !==
+                    breederFilter.value
+                ){
+
+                    return false;
+
+                }
+
+
+                if(
+                    thcFilter.value &&
+                    !matchesTHC(
+                        record.thc_range,
+                        thcFilter.value
+                    )
+                ){
+
+                    return false;
+
+                }
+
+
+                if(
+                    cbdFilter.value &&
+                    !matchesCBD(
+                        record.cbd_range,
+                        cbdFilter.value
+                    )
+                ){
+
+                    return false;
+
+                }
+
+
+                if(
+                    terpeneFilter.value &&
+                    !normalizeList(
+                        record.top_terpenes
+                    )
+                    .some(
+                        value =>
+                            value
+                                .toLowerCase()
+                                .includes(
+                                    terpeneFilter.value
+                                        .toLowerCase()
+                                )
+                    )
+                ){
+
+                    return false;
+
+                }
+
+
+                return true;
+
+            }
+        );
+
+
+    renderResults(
+        filtered
     );
 
 
-  if(cbdMinimum){
+    setStatus(
+        `${filtered.length} MATCHES AFTER FILTERS.`
+    );
 
-    const cbdNumbers =
-      extractNumbers(
-        item.cbd
-      );
+}
+
+
+/* =========================================================
+   THC FILTER
+========================================================= */
+
+function matchesTHC(
+    value,
+    mode
+){
+
+    const numbers =
+        extractNumbers(
+            value
+        );
 
 
     if(
-      !cbdNumbers.length ||
-      Math.max(
-        ...cbdNumbers
-      ) < cbdMinimum
+        mode === "reported"
     ){
 
-      return false;
+        return numbers.length > 0;
 
     }
 
-  }
+
+    if(
+        !numbers.length
+    ){
+
+        return false;
+
+    }
 
 
-  return true;
+    const highest =
+        Math.max(
+            ...numbers
+        );
+
+
+    if(
+        mode === "high"
+    ){
+
+        return highest >= 20;
+
+    }
+
+
+    if(
+        mode === "medium"
+    ){
+
+        return (
+            highest >= 10 &&
+            highest < 20
+        );
+
+    }
+
+
+    if(
+        mode === "low"
+    ){
+
+        return highest < 10;
+
+    }
+
+
+    return true;
+
+}
+
+
+/* =========================================================
+   CBD FILTER
+========================================================= */
+
+function matchesCBD(
+    value,
+    mode
+){
+
+    const numbers =
+        extractNumbers(
+            value
+        );
+
+
+    if(
+        mode === "reported"
+    ){
+
+        return numbers.length > 0;
+
+    }
+
+
+    if(
+        !numbers.length
+    ){
+
+        return false;
+
+    }
+
+
+    const highest =
+        Math.max(
+            ...numbers
+        );
+
+
+    if(
+        mode === "high"
+    ){
+
+        return highest >= 5;
+
+    }
+
+
+    if(
+        mode === "low"
+    ){
+
+        return highest < 5;
+
+    }
+
+
+    return true;
+
+}
+
+
+/* =========================================================
+   NUMBER EXTRACTION
+========================================================= */
+
+function extractNumbers(
+    value
+){
+
+    if(
+        value === undefined ||
+        value === null
+    ){
+
+        return [];
+
+    }
+
+
+    const matches =
+        String(value)
+            .match(
+                /\d+(?:\.\d+)?/g
+            );
+
+
+    return matches
+        ? matches.map(
+            Number
+        )
+        : [];
 
 }
 
 
 /* =========================================================
    RENDER RESULTS
-   ========================================================= */
+========================================================= */
 
-function renderResults(results){
-
-  const resultsPanel =
-    $("results");
-
-  const resultList =
-    $("resultList");
-
-
-  resultList.innerHTML =
-    "";
-
-
-  if(!results.length){
-
-    resultsPanel.style.display =
-      "block";
-
-
-    resultList.innerHTML =
-      `
-        <div class="empty-message">
-          NO MATCHING LIVE RECORDS
-        </div>
-      `;
-
-
-    return;
-
-  }
-
-
-  resultsPanel.style.display =
-    "block";
-
-
-  results.forEach(
-    (raw,index) => {
-
-      const item =
-        normalizeSearchResult(
-          raw
-        );
-
-
-      const button =
-        document.createElement(
-          "button"
-        );
-
-
-      button.type =
-        "button";
-
-
-      button.className =
-        "result";
-
-
-      button.innerHTML = `
-
-        <div class="result-id">
-          ${escapeHTML(
-            item.id ||
-            String(index + 1)
-          )}
-        </div>
-
-        <div>
-
-          <div class="result-name">
-            ${escapeHTML(
-              item.name ||
-              "UNNAMED SPECIMEN"
-            )}
-          </div>
-
-          <div class="result-meta">
-            ${escapeHTML(
-              [
-                displayValue(
-                  item.type
-                ),
-                displayValue(
-                  item.breeder
-                ),
-                displayValue(
-                  item.genetics
-                )
-              ]
-              .filter(Boolean)
-              .join(" · ")
-            )}
-          </div>
-
-        </div>
-
-        <div class="result-arrow">
-          →
-        </div>
-
-      `;
-
-
-      button.addEventListener(
-        "click",
-        () =>
-          loadRecord(item)
-      );
-
-
-      resultList.appendChild(
-        button
-      );
-
-    }
-  );
-
-}
-
-
-/* =========================================================
-   FETCH SEARCH
-   ========================================================= */
-
-async function fetchSearchPage(
-  query,
-  requestToken
+function renderResults(
+    records
 ){
 
-  const url =
-    new URL(
-      SEARCH_ENDPOINT
-    );
+    results.innerHTML =
+        "";
 
-
-  /*
-   * Public CannaLib search.
-   *
-   * Explicitly capped at 10 records.
-   */
-
-  url.searchParams.set(
-    "limit",
-    String(
-      PUBLIC_RESULT_LIMIT
-    )
-  );
-
-
-  if(query){
-
-    url.searchParams.set(
-      "q",
-      query
-    );
-
-  }
-
-
-  const response =
-    await fetch(
-      url.toString(),
-      {
-        method:"GET",
-        headers:getHeaders()
-      }
-    );
-
-
-  if(
-    requestToken !==
-    searchRequestToken
-  ){
-
-    return null;
-
-  }
-
-
-  if(!response.ok){
-
-    throw new Error(
-      `CannaLib search failed (${response.status})`
-    );
-
-  }
-
-
-  return response.json();
-
-}
-
-
-/* =========================================================
-   PERFORM SEARCH
-   ========================================================= */
-
-async function performSearch(){
-
-  const query =
-    $("searchInput")
-      .value
-      .trim();
-
-
-  const requestToken =
-    ++searchRequestToken;
-
-
-  $("status").textContent =
-    query
-      ? "SEARCHING THE LIVING RECORD…"
-      : "LOADING LIVE RECORDS…";
-
-
-  try{
-
-    const payload =
-      await fetchSearchPage(
-        query,
-        requestToken
-      );
-
-
-    /*
-     * An older request was superseded.
-     */
-
-    if(payload === null){
-
-      return;
-
-    }
-
-
-    currentResults =
-      extractSearchResults(
-        payload
-      );
-
-
-    /*
-     * CannaLib public results are capped at
-     * the public response limit.
-     */
-
-    currentResults =
-      currentResults.slice(
-        0,
-        PUBLIC_RESULT_LIMIT
-      );
-
-
-    populateFilterOptions(
-      currentResults
-    );
-
-
-    const filtered =
-      currentResults.filter(
-        raw =>
-          passesFilters(
-            normalizeSearchResult(
-              raw
-            )
-          )
-      );
-
-
-    renderResults(
-      filtered
-    );
-
-
-    $("status").textContent =
-      `${filtered.length} LIVE RECORD${
-        filtered.length === 1
-          ? ""
-          : "S"
-      } FOUND`;
-
-  }catch(error){
-
-    console.error(
-      error
-    );
-
-
-    currentResults =
-      [];
-
-
-    $("results").style.display =
-      "block";
-
-
-    $("resultList").innerHTML =
-      `
-        <div class="empty-message">
-          CANNALIB RECORD UNAVAILABLE
-        </div>
-      `;
-
-
-    $("status").textContent =
-      "SEARCH ERROR — SEE CONSOLE FOR DETAILS";
-
-  }
-
-}
-
-
-/* =========================================================
-   LIVE SEARCH
-   ========================================================= */
-
-function scheduleLiveSearch(){
-
-  clearTimeout(
-    searchTimer
-  );
-
-
-  const query =
-    $("searchInput")
-      .value
-      .trim();
-
-
-  /*
-   * Empty search resets the page to its clean
-   * empty Codex state rather than loading random data.
-   */
-
-  if(!query){
-
-    currentResults =
-      [];
-
-    $("results").style.display =
-      "none";
-
-    clearSpecimen();
-
-    $("status").textContent =
-      "READY — SEARCH THE LIVING RECORD";
-
-    return;
-
-  }
-
-
-  $("status").textContent =
-    "READY — SEARCHING…";
-
-
-  searchTimer =
-    setTimeout(
-      performSearch,
-      450
-    );
-
-}
-
-
-/* =========================================================
-   LOAD FULL RECORD
-   ========================================================= */
-
-async function loadRecord(
-  result
-){
-
-  const slim =
-    normalizeSearchResult(
-      result
-    );
-
-
-  const id =
-    slim.id;
-
-
-  if(!id){
-
-    /*
-     * Only use the real search result.
-     * Nothing is invented.
-     */
-
-    renderRecord(
-      slim.raw,
-      slim
-    );
-
-
-    return;
-
-  }
-
-
-  $("status").textContent =
-    "OPENING ARCHIVAL RECORD…";
-
-
-  try{
-
-    const response =
-      await fetch(
-        RECORD_ENDPOINT +
-        encodeURIComponent(
-          id
-        ),
-        {
-          method:"GET",
-          headers:getHeaders()
-        }
-      );
-
-
-    if(!response.ok){
-
-      throw new Error(
-        `CannaLib record failed (${response.status})`
-      );
-
-    }
-
-
-    const payload =
-      await response.json();
-
-
-    const record =
-      unwrapRecord(
-        payload
-      );
-
-
-    renderRecord(
-      record,
-      slim
-    );
-
-
-    $("status").textContent =
-      "ARCHIVAL RECORD OPEN";
-
-  }catch(error){
-
-    console.error(
-      error
-    );
-
-
-    /*
-     * Fall back only to the REAL search result,
-     * never to fake strain data.
-     */
-
-    renderRecord(
-      slim.raw,
-      slim
-    );
-
-
-    $("status").textContent =
-      "PARTIAL RECORD — FULL RECORD UNAVAILABLE";
-
-  }
-
-}
-
-
-/* =========================================================
-   RECORD UNWRAPPING
-   ========================================================= */
-
-function unwrapRecord(payload){
-
-  let record = payload;
-
-  /*
-   * Defensively unwrap recognised record containers.
-   *
-   * This does NOT assume an undocumented CannaLib
-   * structure. It simply keeps opening recognised
-   * wrapper names until the record is reached.
-   */
-
-  const wrapperKeys = [
-    "record",
-    "strain",
-    "data"
-  ];
-
-
-  for(let depth = 0; depth < 10; depth++){
 
     if(
-      !record ||
-      typeof record !== "object" ||
-      Array.isArray(record)
+        !records.length
     ){
 
-      break;
+        results.innerHTML = `
 
-    }
+            <div class="no-results">
 
+                NO STRAINS MATCH
+                THE CURRENT SEARCH
+                AND FILTERS.
 
-    let next = null;
+            </div>
 
+        `;
 
-    for(const key of wrapperKeys){
 
-      const candidate =
-        record[key];
-
-
-      if(
-        candidate &&
-        typeof candidate === "object" &&
-        !Array.isArray(candidate)
-      ){
-
-        next = candidate;
-
-        break;
-
-      }
-
-    }
-
-
-    if(!next){
-
-      break;
-
-    }
-
-
-    record = next;
-
-  }
-
-
-  return record;
-
-}
-
-
-/* =========================================================
-   FILTER REFRESH
-   ========================================================= */
-
-function applyCurrentFilters(){
-
-  if(!currentResults.length){
-
-    return;
-
-  }
-
-
-  const filtered =
-    currentResults.filter(
-      raw =>
-        passesFilters(
-          normalizeSearchResult(
-            raw
-          )
-        )
-    );
-
-
-  renderResults(
-    filtered
-  );
-
-
-  $("status").textContent =
-    `${filtered.length} LIVE RECORD${
-      filtered.length === 1
-        ? ""
-        : "S"
-    } FOUND`;
-
-}
-
-
-/* =========================================================
-   HASH LOADING
-   ========================================================= */
-
-async function loadHashRecord(){
-
-  const hash =
-    window.location.hash;
-
-
-  if(
-    !hash.startsWith(
-      "#strain="
-    )
-  ){
-
-    return;
-
-  }
-
-
-  const id =
-    decodeURIComponent(
-      hash.substring(
-        "#strain=".length
-      )
-    );
-
-
-  if(!id){
-
-    return;
-
-  }
-
-
-  $("status").textContent =
-    "OPENING ARCHIVAL RECORD…";
-
-
-  try{
-
-    const response =
-      await fetch(
-        RECORD_ENDPOINT +
-        encodeURIComponent(
-          id
-        ),
-        {
-          method:"GET",
-          headers:getHeaders()
-        }
-      );
-
-
-    if(!response.ok){
-
-      $("status").textContent =
-        "ARCHIVAL RECORD UNAVAILABLE";
-
-      return;
-
-    }
-
-
-    const payload =
-      await response.json();
-
-
-    const record =
-      unwrapRecord(
-        payload
-      );
-
-
-    renderRecord(
-      record,
-      {
-        id
-      }
-    );
-
-
-    $("status").textContent =
-      "ARCHIVAL RECORD OPEN";
-
-  }catch(error){
-
-    console.warn(
-      "Unable to load hash record",
-      error
-    );
-
-
-    $("status").textContent =
-      "ARCHIVAL RECORD UNAVAILABLE";
-
-  }
-
-}
-
-
-/* =========================================================
-   EVENT HANDLERS
-   ========================================================= */
-
-$("searchButton")
-  .addEventListener(
-    "click",
-    () => {
-
-      const query =
-        $("searchInput")
-          .value
-          .trim();
-
-
-      /*
-       * Empty search keeps the page empty.
-       * It does not load the catalogue.
-       */
-
-      if(!query){
-
-        clearTimeout(
-          searchTimer
+        results.classList.add(
+            "visible"
         );
 
-        ++searchRequestToken;
-
-        currentResults =
-          [];
-
-        $("results").style.display =
-          "none";
-
-        clearSpecimen();
-
-        $("status").textContent =
-          "READY — SEARCH THE LIVING RECORD";
 
         return;
 
-      }
-
-
-      clearTimeout(
-        searchTimer
-      );
-
-
-      performSearch();
-
     }
-  );
 
 
-$("searchInput")
-  .addEventListener(
-    "input",
-    scheduleLiveSearch
-  );
+    records.forEach(
+        record => {
+
+            const button =
+                document.createElement(
+                    "button"
+                );
 
 
-$("searchInput")
-  .addEventListener(
-    "keydown",
-    event => {
-
-      if(
-        event.key === "Enter"
-      ){
-
-        event.preventDefault();
-
-        clearTimeout(
-          searchTimer
-        );
+            button.type =
+                "button";
 
 
-        const query =
-          $("searchInput")
-            .value
-            .trim();
+            button.className =
+                "result";
 
 
-        if(!query){
+            const name =
+                record.name ||
+                record.id ||
+                "UNKNOWN STRAIN";
 
-          ++searchRequestToken;
 
-          currentResults =
-            [];
+            const meta =
+                [
 
-          $("results").style.display =
-            "none";
+                    record.type,
 
-          clearSpecimen();
+                    record.breeder,
 
-          $("status").textContent =
-            "READY — SEARCH THE LIVING RECORD";
+                    record.thc_range
+                        ? `THC ${record.thc_range}`
+                        : null,
 
-          return;
+                    record.cbd_range
+                        ? `CBD ${record.cbd_range}`
+                        : null
+
+                ]
+                .filter(Boolean)
+                .join(
+                    " · "
+                );
+
+
+            const terpene =
+                normalizeList(
+                    record.top_terpenes
+                )
+                .join(
+                    " · "
+                );
+
+
+            const chemistry =
+                record.has_chemistry
+                    ? "CHEMISTRY"
+                    : "CATALOGUE";
+
+
+            button.innerHTML = `
+
+                <div>
+
+                    <div class="result-name">
+
+                        ${escapeHTML(
+                            name
+                        )}
+
+                    </div>
+
+
+                    <div class="result-meta">
+
+                        ${escapeHTML(
+                            meta ||
+                            "SOURCE DATA AVAILABLE"
+                        )}
+
+                        ${
+                            terpene
+                                ? `
+                                    <br>
+                                    TERPENES:
+                                    ${escapeHTML(
+                                        terpene
+                                    )}
+                                  `
+                                : ""
+                        }
+
+                        <div
+                            class="result-badge"
+                        >
+                            ${escapeHTML(
+                                chemistry
+                            )}
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                <div class="result-right">
+
+                    OPEN
+
+                    <br>
+
+                    ›
+
+                </div>
+
+            `;
+
+
+            button.addEventListener(
+                "click",
+                () =>
+                    loadRecord(
+                        record
+                    )
+            );
+
+
+            results.appendChild(
+                button
+            );
+
+        }
+    );
+
+
+    results.classList.add(
+        "visible"
+    );
+
+}
+
+
+/* =========================================================
+   UNWRAP COMPLETE RECORD
+========================================================= */
+
+function unwrapRecord(
+    payload
+){
+
+    let record =
+        payload;
+
+
+    /*
+        CannaLib records can be returned
+        inside wrapper objects.
+
+        Keep unwrapping known record/data
+        containers until the actual object
+        is reached.
+    */
+
+    const wrapperKeys = [
+        "record",
+        "strain",
+        "data"
+    ];
+
+
+    for(
+        let depth = 0;
+        depth < 10;
+        depth++
+    ){
+
+        if(
+            !record ||
+            typeof record !== "object" ||
+            Array.isArray(record)
+        ){
+
+            break;
 
         }
 
 
-        performSearch();
+        let next =
+            null;
 
-      }
+
+        for(
+            const key of wrapperKeys
+        ){
+
+            const candidate =
+                record[key];
+
+
+            if(
+                candidate &&
+                typeof candidate === "object" &&
+                !Array.isArray(candidate)
+            ){
+
+                next =
+                    candidate;
+
+                break;
+
+            }
+
+        }
+
+
+        if(!next){
+
+            break;
+
+        }
+
+
+        record =
+            next;
 
     }
-  );
 
 
-$("filterButton")
-  .addEventListener(
-    "click",
-    () => {
+    return record;
 
-      $("filters")
-        .classList
-        .toggle(
-          "open"
+}
+
+
+/* =========================================================
+   LOAD RECORD
+========================================================= */
+
+async function loadRecord(
+    slim
+){
+
+    const id =
+        slim.id ||
+        slim.name_norm ||
+        slim.name;
+
+
+    if(!id){
+
+        setStatus(
+            "THIS RESULT HAS NO USABLE RECORD ID.",
+            true
+        );
+
+        return;
+
+    }
+
+
+    setStatus(
+        "OPENING COMPLETE LIVE SPECIMEN RECORD..."
+    );
+
+
+    renderLoadingRecord();
+
+
+    try{
+
+        const response =
+            await fetch(
+                RECORD_ENDPOINT(
+                    id
+                ),
+                {
+                    method:"GET",
+                    headers:getHeaders()
+                }
+            );
+
+
+        let record =
+            null;
+
+
+        try{
+
+            record =
+                await response.json();
+
+        }catch{
+
+            record =
+                null;
+
+        }
+
+
+        if(
+            !response.ok
+        ){
+
+            throw new Error(
+                record?.error ||
+                record?.message ||
+                `HTTP ${response.status}`
+            );
+
+        }
+
+
+        record =
+            unwrapRecord(
+                record
+            );
+
+
+        if(
+            !record ||
+            typeof record !== "object"
+        ){
+
+            throw new Error(
+                "CANNALIB RETURNED AN INVALID SPECIMEN RECORD."
+            );
+
+        }
+
+
+        currentRecord =
+            record;
+
+
+        renderRecord(
+            record,
+            slim
+        );
+
+
+        history.replaceState(
+            null,
+            "",
+            "#strain=" +
+            encodeURIComponent(
+                id
+            )
+        );
+
+
+        setStatus(
+            "LIVE SPECIMEN LOADED.",
+            false,
+            true
+        );
+
+
+        document
+            .getElementById(
+                "specimen"
+            )
+            .scrollIntoView({
+                behavior:"smooth",
+                block:"start"
+            });
+
+
+    }catch(error){
+
+        setStatus(
+            "RECORD ERROR: " +
+            error.message,
+            true
+        );
+
+
+        resetSpecimen();
+
+    }
+
+}
+
+
+/* =========================================================
+   LOADING RECORD
+========================================================= */
+
+function renderLoadingRecord(){
+
+    specimenFields.innerHTML = `
+
+        <div class="loading">
+
+            <span class="spinner"></span>
+
+            <br><br>
+
+            LOADING SPECIMEN...
+
+        </div>
+
+    `;
+
+
+    infoContent.innerHTML = `
+
+        <div class="loading">
+
+            <span class="spinner"></span>
+
+            <br><br>
+
+            READING LIVE SOURCE DATA...
+
+        </div>
+
+    `;
+
+}
+
+
+/* =========================================================
+   RENDER RECORD
+========================================================= */
+
+function renderRecord(
+    record,
+    slim
+){
+
+    record =
+        unwrapRecord(
+            record
+        );
+
+
+    currentRecord =
+        record;
+
+
+    const name =
+        first(
+            record,
+            [
+                "name",
+                "identity",
+                "title"
+            ]
+        ) ||
+        slim?.name ||
+        "UNKNOWN STRAIN";
+
+
+    const id =
+        first(
+            record,
+            [
+                "id",
+                "name_norm",
+                "slug"
+            ]
+        ) ||
+        slim?.id ||
+        "NOT REPORTED";
+
+
+    const genetics =
+        first(
+            record,
+            [
+                "genetics",
+                "genetic_lineage",
+                "lineage"
+            ]
+        ) ||
+        lineageSummary(
+            record
+        ) ||
+        "NOT REPORTED";
+
+
+    const type =
+        first(
+            record,
+            [
+                "type",
+                "classification",
+                "category"
+            ]
+        ) ||
+        slim?.type ||
+        "NOT REPORTED";
+
+
+    const thc =
+        first(
+            record,
+            [
+                "thc_range",
+                "thc"
+            ]
+        ) ||
+        slim?.thc_range ||
+        "NOT REPORTED";
+
+
+    const cbd =
+        first(
+            record,
+            [
+                "cbd_range",
+                "cbd"
+            ]
+        ) ||
+        slim?.cbd_range ||
+        "NOT REPORTED";
+
+
+    const breeder =
+        first(
+            record,
+            [
+                "breeder",
+                "breeder_name"
+            ]
+        ) ||
+        slim?.breeder ||
+        "NOT REPORTED";
+
+
+    const aroma =
+        first(
+            record,
+            [
+                "aroma",
+                "aromas",
+                "flavor",
+                "flavour",
+                "flavors",
+                "flavours"
+            ]
+        ) ||
+        "NOT REPORTED";
+
+
+    /*
+        SUPER FLOWER CODEX LAYER
+
+        This is deliberately separate from
+        CannaLib source fields.
+
+        Every strain receives a deterministic
+        Codex reference alignment based on its
+        stable identity.
+
+        Therefore the same strain receives the
+        same alignment every time it is loaded.
+    */
+
+    const codex =
+        resolveCodexAlignment(
+            record,
+            slim,
+            name
+        );
+
+
+    const archetype =
+        resolveCodexArchetype(
+            record,
+            slim,
+            name
+        );
+
+
+    /*
+        Extract the REAL CannaLib pictures
+        from the COMPLETE record.
+    */
+
+    const pictures =
+        extractPictures(
+            record
+        );
+
+
+    renderFlower(
+        record
+    );
+
+
+    specimenFields.innerHTML =
+
+        field(
+            "SPECIMEN ID",
+            id
+        ) +
+
+        field(
+            "SPECIMEN IDENTITY",
+            name
+        ) +
+
+        field(
+            "GENETICS",
+            genetics
+        ) +
+
+        field(
+            "TYPE",
+            type
+        ) +
+
+        field(
+            "THC RANGE",
+            thc
+        ) +
+
+        field(
+            "CBD RANGE",
+            cbd
+        ) +
+
+        field(
+            "AROMA",
+            aroma
+        ) +
+
+        field(
+            "RAW CHAKRA",
+            codex.chakra
+        ) +
+
+        field(
+            "RAW PLANET",
+            codex.planet
+        ) +
+
+        field(
+            "CODEX FREQUENCY",
+            `${codex.frequency} Hz`
+        ) +
+
+        field(
+            "PRIMARY ARCHETYPE",
+            archetype
+        );
+
+
+    renderResonance(
+        record
+    );
+
+
+    renderInfo(
+        record,
+        {
+            name,
+            breeder,
+            pictures,
+            thc,
+            cbd,
+            codex,
+            archetype
+        }
+    );
+
+}
+
+
+/* =========================================================
+   FLOWER LOAD INVALIDATION
+========================================================= */
+
+function invalidateFlowerLoad(){
+
+    flowerLoadToken++;
+
+
+    currentPictureQueue =
+        [];
+
+
+    currentPictureIndex =
+        0;
+
+
+    flowerImage.onload =
+        null;
+
+
+    flowerImage.onerror =
+        null;
+
+
+    flowerImage.removeAttribute(
+        "src"
+    );
+
+
+    flowerImage.style.display =
+        "none";
+
+}
+
+
+/* =========================================================
+   NO LIVE PHOTOGRAPH
+========================================================= */
+
+function showNoLiveFlower(){
+
+    flowerImage.onload =
+        null;
+
+
+    flowerImage.onerror =
+        null;
+
+
+    flowerImage.removeAttribute(
+        "src"
+    );
+
+
+    flowerImage.style.display =
+        "none";
+
+
+    flowerReferenceLabel.textContent =
+        "NO LIVE PHOTOGRAPH ON RECORD";
+
+
+    flowerCredit.textContent =
+        "";
+
+
+    flowerCredit.style.display =
+        "none";
+
+}
+
+
+/* =========================================================
+   LOAD NEXT REAL CANNALIB PHOTO
+========================================================= */
+
+function loadNextLiveFlower(
+    token
+){
+
+    if(
+        token !== flowerLoadToken
+    ){
+
+        return;
+
+    }
+
+
+    if(
+        currentPictureIndex >=
+        currentPictureQueue.length
+    ){
+
+        showNoLiveFlower();
+
+        return;
+
+    }
+
+
+    const picture =
+        currentPictureQueue[
+            currentPictureIndex
+        ];
+
+
+    currentPictureIndex++;
+
+
+    flowerImage.onload =
+        () => {
+
+            if(
+                token !== flowerLoadToken
+            ){
+
+                return;
+
+            }
+
+
+            flowerImage.style.display =
+                "block";
+
+
+            flowerReferenceLabel.textContent =
+                "LIVE SOURCE FLOWER";
+
+
+            flowerCredit.textContent =
+                picture.credit ||
+                picture.source ||
+                picture.attribution ||
+                "CANNALIB SOURCE PHOTOGRAPH";
+
+
+            flowerCredit.style.display =
+                "block";
+
+        };
+
+
+    flowerImage.onerror =
+        () => {
+
+            if(
+                token !== flowerLoadToken
+            ){
+
+                return;
+
+            }
+
+
+            flowerImage.removeAttribute(
+                "src"
+            );
+
+
+            loadNextLiveFlower(
+                token
+            );
+
+        };
+
+
+    flowerImage.alt =
+        currentRecord
+            ? (
+                first(
+                    currentRecord,
+                    [
+                        "name",
+                        "strain_name",
+                        "title"
+                    ]
+                ) ||
+                "Super Flower specimen"
+            )
+            : "Super Flower specimen";
+
+
+    flowerImage.src =
+        picture.url;
+
+}
+
+
+/* =========================================================
+   FLOWER
+========================================================= */
+
+function renderFlower(
+    record
+){
+
+    invalidateFlowerLoad();
+
+
+    const token =
+        flowerLoadToken;
+
+
+    currentPictureQueue =
+        extractPictures(
+            record
+        );
+
+
+    currentPictureIndex =
+        0;
+
+
+    if(
+        !currentPictureQueue.length
+    ){
+
+        showNoLiveFlower();
+
+        return;
+
+    }
+
+
+    loadNextLiveFlower(
+        token
+    );
+
+}
+
+
+/* =========================================================
+   FIELD
+========================================================= */
+
+function field(
+    label,
+    value
+){
+
+    const empty =
+        !value ||
+        value === "NOT REPORTED" ||
+        value === "NOT ASSIGNED";
+
+
+    return `
+
+        <div class="specimen-field">
+
+            <div class="field-label">
+
+                ${escapeHTML(
+                    label
+                )}
+
+            </div>
+
+
+            <div
+                class="field-value ${
+                    empty
+                        ? "empty"
+                        : ""
+                }"
+            >
+
+                ${
+                    empty
+                        ? "—"
+                        : escapeHTML(
+                            formatValue(
+                                value
+                            )
+                        )
+                }
+
+            </div>
+
+        </div>
+
+    `;
+
+}
+
+
+/* =========================================================
+   RESONANCE
+========================================================= */
+
+function renderResonance(
+    record
+){
+
+    const values = [
+
+        [
+            "RELAXATION",
+            findDeep(
+                record,
+                "relaxation"
+            )
+        ],
+
+        [
+            "FOCUS",
+            findDeep(
+                record,
+                "focus"
+            )
+        ],
+
+        [
+            "CREATIVITY",
+            findDeep(
+                record,
+                "creativity"
+            )
+        ],
+
+        [
+            "MEDITATION",
+            findDeep(
+                record,
+                "meditation"
+            )
+        ],
+
+        [
+            "RECOVERY",
+            findDeep(
+                record,
+                "recovery"
+            )
+        ]
+
+    ];
+
+
+    resonanceGrid.innerHTML =
+        values
+            .map(
+                item =>
+                    resonanceBox(
+                        item[0],
+                        item[1]
+                    )
+            )
+            .join("");
+
+}
+
+
+/* =========================================================
+   RESONANCE BOX
+========================================================= */
+
+function resonanceBox(
+    name,
+    value
+){
+
+    const number =
+        Number(
+            value
+        );
+
+
+    const valid =
+        Number.isFinite(
+            number
+        );
+
+
+    const display =
+        valid
+            ? Math.round(
+                Math.max(
+                    0,
+                    Math.min(
+                        100,
+                        number
+                    )
+                )
+              )
+            : "—";
+
+
+    let graph =
+        "";
+
+
+    for(
+        let i = 0;
+        i < 24;
+        i++
+    ){
+
+        const height =
+            valid
+                ? Math.max(
+                    3,
+                    Math.round(
+                        (
+                            display /
+                            100
+                        ) *
+                        (
+                            8 +
+                            (
+                                i * 13
+                            ) % 15
+                        )
+                    )
+                  )
+                : 3;
+
+
+        graph += `
+
+            <i
+                style="height:${height}px"
+            ></i>
+
+        `;
+
+    }
+
+
+    return `
+
+        <div class="resonance-box">
+
+            <div class="resonance-name">
+
+                ${escapeHTML(
+                    name
+                )}
+
+            </div>
+
+
+            <div class="resonance-number">
+
+                ${display}
+
+            </div>
+
+
+            <div class="resonance-graph">
+
+                ${graph}
+
+            </div>
+
+        </div>
+
+    `;
+
+}
+
+
+/* =========================================================
+   INFO
+========================================================= */
+
+function renderInfo(
+    record,
+    summary
+){
+
+    const terpenes =
+        normalizeList(
+            first(
+                record,
+                [
+                    "terpenes",
+                    "top_terpenes",
+                    "terpene_profile"
+                ]
+            )
+        );
+
+
+    const effects =
+        findList(
+            record,
+            [
+                "effects",
+                "reported_effects",
+                "effect"
+            ]
+        );
+
+
+    const flavours =
+        findList(
+            record,
+            [
+                "flavors",
+                "flavour",
+                "flavours",
+                "aroma",
+                "aromas"
+            ]
+        );
+
+
+    const parents =
+        findList(
+            record,
+            [
+                "parents",
+                "parent_strains",
+                "parent"
+            ]
+        );
+
+
+    const children =
+        findList(
+            record,
+            [
+                "children",
+                "offspring",
+                "descendants"
+            ]
+        );
+
+
+    const flowering =
+        first(
+            record,
+            [
+                "flowering_days",
+                "flowering_time"
+            ]
+        );
+
+
+    const height =
+        first(
+            record,
+            [
+                "height_cm",
+                "height",
+                "height_band"
+            ]
+        );
+
+
+    const photoperiod =
+        findDeep(
+            record,
+            "photoperiod"
+        );
+
+
+    const autoflower =
+        findDeep(
+            record,
+            "autoflower"
+        );
+
+
+    const yieldValue =
+        findDeep(
+            record,
+            "yield"
+        );
+
+
+    const origin =
+        findDeep(
+            record,
+            "origin"
+        );
+
+
+    const aliases =
+        normalizeList(
+            first(
+                record,
+                [
+                    "aliases"
+                ]
+            )
+        );
+
+
+    infoContent.innerHTML = `
+
+        <div class="info-grid">
+
+
+            <!-- =============================================
+                 IDENTITY
+            ============================================== -->
+
+            <section class="info-panel">
+
+                <div class="info-panel-title">
+                    SPECIMEN IDENTITY
+                </div>
+
+
+                <div class="info-data-grid">
+
+                    ${dataItem(
+                        "STRAIN",
+                        summary.name
+                    )}
+
+                    ${dataItem(
+                        "BREEDER",
+                        summary.breeder ||
+                        "NOT REPORTED"
+                    )}
+
+                    ${dataItem(
+                        "TYPE",
+                        first(
+                            record,
+                            [
+                                "type",
+                                "classification",
+                                "category"
+                            ]
+                        ) ||
+                        "NOT REPORTED"
+                    )}
+
+                    ${dataItem(
+                        "ORIGIN",
+                        origin ||
+                        "NOT REPORTED"
+                    )}
+
+                </div>
+
+
+                ${
+                    aliases.length
+                        ? `
+                            <div
+                                class="info-panel-note"
+                            >
+                                ALIASES:
+                                ${escapeHTML(
+                                    aliases.join(
+                                        " · "
+                                    )
+                                )}
+                            </div>
+                          `
+                        : ""
+                }
+
+            </section>
+
+
+            <!-- =============================================
+                 CANNABINOIDS
+            ============================================== -->
+
+            <section class="info-panel">
+
+                <div class="info-panel-title">
+                    CANNABINOID PROFILE
+                </div>
+
+
+                <div class="info-data-grid">
+
+                    ${dataItem(
+                        "THC",
+                        summary.thc
+                    )}
+
+                    ${dataItem(
+                        "CBD",
+                        summary.cbd
+                    )}
+
+                    ${dataItem(
+                        "CBG",
+                        findDeep(
+                            record,
+                            "cbg"
+                        ) ||
+                        "NOT REPORTED"
+                    )}
+
+                    ${dataItem(
+                        "CBN",
+                        findDeep(
+                            record,
+                            "cbn"
+                        ) ||
+                        "NOT REPORTED"
+                    )}
+
+                    ${dataItem(
+                        "CBC",
+                        findDeep(
+                            record,
+                            "cbc"
+                        ) ||
+                        "NOT REPORTED"
+                    )}
+
+                    ${dataItem(
+                        "THCV",
+                        findDeep(
+                            record,
+                            "thcv"
+                        ) ||
+                        "NOT REPORTED"
+                    )}
+
+                </div>
+
+            </section>
+
+
+            <!-- =============================================
+                 TERPENES
+            ============================================== -->
+
+            <section class="info-panel">
+
+                <div class="info-panel-title">
+                    TERPENE PROFILE
+                </div>
+
+
+                ${renderChips(
+                    terpenes
+                )}
+
+            </section>
+
+
+            <!-- =============================================
+                 EFFECTS
+            ============================================== -->
+
+            <section class="info-panel">
+
+                <div class="info-panel-title">
+                    EFFECTS / REPORTED CHARACTER
+                </div>
+
+
+                ${renderChips(
+                    effects
+                )}
+
+            </section>
+
+
+            <!-- =============================================
+                 FLAVOUR
+            ============================================== -->
+
+            <section class="info-panel">
+
+                <div class="info-panel-title">
+                    FLAVOUR / AROMA
+                </div>
+
+
+                ${renderChips(
+                    flavours
+                )}
+
+            </section>
+
+
+            <!-- =============================================
+                 LINEAGE
+            ============================================== -->
+
+            <section class="info-panel">
+
+                <div class="info-panel-title">
+                    GENETIC LINEAGE
+                </div>
+
+
+                <div class="lineage">
+
+                    ${
+                        parents.length
+                            ? `
+                                <strong>
+                                    RECORDED PARENTS
+                                </strong>
+
+                                <br>
+
+                                ${escapeHTML(
+                                    parents.join(
+                                        " × "
+                                    )
+                                )}
+
+                                <br><br>
+                              `
+                            : ""
+                    }
+
+
+                    ${
+                        children.length
+                            ? `
+                                <strong>
+                                    RECORDED DESCENDANTS
+                                </strong>
+
+                                <br>
+
+                                ${escapeHTML(
+                                    children.join(
+                                        " · "
+                                    )
+                                )}
+                              `
+                            : ""
+                    }
+
+
+                    ${
+                        !parents.length &&
+                        !children.length
+                            ? `
+                                NO LINEAGE DATA
+                                REPORTED.
+                              `
+                            : ""
+                    }
+
+                </div>
+
+            </section>
+
+
+            <!-- =============================================
+                 GROW
+            ============================================== -->
+
+            <section class="info-panel">
+
+                <div class="info-panel-title">
+                    CULTIVATION / GROW DATA
+                </div>
+
+
+                <div class="info-data-grid">
+
+                    ${dataItem(
+                        "FLOWERING",
+                        flowering ||
+                        "NOT REPORTED"
+                    )}
+
+                    ${dataItem(
+                        "HEIGHT",
+                        height ||
+                        "NOT REPORTED"
+                    )}
+
+                    ${dataItem(
+                        "PHOTOPERIOD",
+                        photoperiod ||
+                        "NOT REPORTED"
+                    )}
+
+                    ${dataItem(
+                        "AUTOFLOWER",
+                        autoflower ||
+                        "NOT REPORTED"
+                    )}
+
+                    ${dataItem(
+                        "YIELD",
+                        yieldValue ||
+                        "NOT REPORTED"
+                    )}
+
+                    ${dataItem(
+                        "ORIGIN",
+                        origin ||
+                        "NOT REPORTED"
+                    )}
+
+                </div>
+
+            </section>
+
+
+            <!-- =============================================
+                 CODEX LAYER
+            ============================================== -->
+
+            <section class="info-panel full">
+
+                <div class="info-panel-title">
+                    SUPER FLOWER CODEX CLASSIFICATION
+                </div>
+
+
+                <div class="info-data-grid">
+
+                    ${dataItem(
+                        "RAW CHAKRA",
+                        summary.codex?.chakra ||
+                        "NOT ASSIGNED"
+                    )}
+
+                    ${dataItem(
+                        "RAW PLANET",
+                        summary.codex?.planet ||
+                        "NOT ASSIGNED"
+                    )}
+
+                    ${dataItem(
+                        "CODEX FREQUENCY",
+                        summary.codex?.frequency
+                            ? `${summary.codex.frequency} Hz`
+                            : "NOT ASSIGNED"
+                    )}
+
+                    ${dataItem(
+                        "PRIMARY ARCHETYPE",
+                        summary.archetype ||
+                        "NOT ASSIGNED"
+                    )}
+
+                    ${dataItem(
+                        "RESONANCE",
+                        hasResonanceData(
+                            record
+                        )
+                            ? "SOURCE VALUE PRESENT"
+                            : "NOT ASSIGNED"
+                    )}
+
+                </div>
+
+
+                <div class="info-panel-note">
+
+                    CHAKRA / PLANET / FREQUENCY ARE
+                    SUPER FLOWER CODEX REFERENCE
+                    ALIGNMENTS, NOT CANNALIB SOURCE FIELDS.
+
+                    <br><br>
+
+                    ${escapeHTML(
+                        summary.codex?.basis ||
+                        "SUPER FLOWER CODEX REFERENCE ALIGNMENT"
+                    )}
+
+                </div>
+
+            </section>
+
+
+            <!-- =============================================
+                 PHOTOS
+            ============================================== -->
+
+            <section class="info-panel full">
+
+                <div class="info-panel-title">
+
+                    SPECIMEN PHOTOGRAPHS /
+                    SOURCE CREDIT
+
+                </div>
+
+
+                ${renderPhotos(
+                    summary.pictures,
+                    summary.name
+                )}
+
+            </section>
+
+
+            <!-- =============================================
+                 SOURCES
+            ============================================== -->
+
+            <section class="info-panel full">
+
+                <div class="info-panel-title">
+                    RECEIPTS / SOURCES
+                </div>
+
+
+                ${renderSources(
+                    record
+                )}
+
+            </section>
+
+
+            <!-- =============================================
+                 RAW
+            ============================================== -->
+
+            <section class="info-panel full">
+
+                <div class="info-panel-title">
+                    COMPLETE LIVE SOURCE RECORD
+                </div>
+
+
+                <details class="raw-data">
+
+                    <summary>
+                        OPEN FULL SOURCE JSON
+                    </summary>
+
+
+                    <pre>${escapeHTML(
+                        JSON.stringify(
+                            record,
+                            null,
+                            2
+                        )
+                    )}</pre>
+
+                </details>
+
+            </section>
+
+
+        </div>
+
+    `;
+
+
+    /*
+        Gallery images are also real CannaLib
+        photographs only.
+
+        If an individual gallery image fails,
+        remove that failed card instead of
+        replacing it with a fake flower.
+    */
+
+    const galleryImages =
+        infoContent.querySelectorAll(
+            ".photo-card img"
+        );
+
+
+    galleryImages.forEach(
+        image => {
+
+            image.addEventListener(
+                "error",
+                () => {
+
+                    const card =
+                        image.closest(
+                            ".photo-card"
+                        );
+
+
+                    if(card){
+
+                        card.remove();
+
+                    }
+
+                },
+                {
+                    once:true
+                }
+            );
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   RESONANCE DETECTOR
+========================================================= */
+
+function hasResonanceData(
+    record
+){
+
+    return [
+
+        "relaxation",
+        "focus",
+        "creativity",
+        "meditation",
+        "recovery"
+
+    ]
+    .some(
+        key =>
+            findDeep(
+                record,
+                key
+            ) !== undefined
+    );
+
+}
+
+
+/* =========================================================
+   DATA ITEM
+========================================================= */
+
+function dataItem(
+    key,
+    value
+){
+
+    return `
+
+        <div class="data-item">
+
+            <div class="data-key">
+
+                ${escapeHTML(
+                    key
+                )}
+
+            </div>
+
+
+            <div class="data-value">
+
+                ${escapeHTML(
+                    formatValue(
+                        value
+                    )
+                )}
+
+            </div>
+
+        </div>
+
+    `;
+
+}
+
+
+/* =========================================================
+   CHIPS
+========================================================= */
+
+function renderChips(
+    values
+){
+
+    if(
+        !values ||
+        !values.length
+    ){
+
+        return `
+
+            <div class="data-value">
+                NOT REPORTED
+            </div>
+
+        `;
+
+    }
+
+
+    return `
+
+        <div class="chips">
+
+            ${
+                values
+                    .map(
+                        value =>
+                            `
+
+                            <span class="chip">
+
+                                ${escapeHTML(
+                                    formatValue(
+                                        value
+                                    )
+                                )}
+
+                            </span>
+
+                            `
+                    )
+                    .join("")
+            }
+
+        </div>
+
+    `;
+
+}
+
+
+/* =========================================================
+   PHOTOS
+========================================================= */
+
+function renderPhotos(
+    pictures,
+    name
+){
+
+    if(
+        !pictures.length
+    ){
+
+        return `
+
+            <div class="data-value">
+
+                NO CANNALIB CULTIVAR
+                PHOTOGRAPHS REPORTED.
+
+            </div>
+
+        `;
+
+    }
+
+
+    return `
+
+        <div class="photo-grid">
+
+            ${
+                pictures
+                    .map(
+                        (
+                            picture,
+                            index
+                        ) => {
+
+                            const credit =
+                                picture.credit ||
+                                picture.source ||
+                                picture.attribution ||
+                                "SOURCE CREDIT NOT STATED";
+
+
+                            return `
+
+                                <div
+                                    class="photo-card"
+                                >
+
+                                    <img
+                                        src="${escapeAttribute(
+                                            picture.url
+                                        )}"
+                                        alt="${escapeAttribute(
+                                            name +
+                                            " specimen " +
+                                            (
+                                                index +
+                                                1
+                                            )
+                                        )}"
+                                        loading="lazy"
+                                        decoding="async"
+                                    >
+
+
+                                    <div
+                                        class="photo-credit"
+                                    >
+
+                                        ${escapeHTML(
+                                            credit
+                                        )}
+
+                                    </div>
+
+                                </div>
+
+                            `;
+
+                        }
+                    )
+                    .join("")
+            }
+
+        </div>
+
+    `;
+
+}
+
+
+/* =========================================================
+   SOURCES
+========================================================= */
+
+function renderSources(
+    record
+){
+
+    const urls =
+        [];
+
+
+    walkObject(
+        record,
+        (
+            key,
+            value
+        ) => {
+
+            if(
+                typeof value === "string" &&
+                /^https?:\/\//i.test(
+                    value
+                )
+            ){
+
+                urls.push({
+                    key,
+                    value
+                });
+
+            }
+
+        }
+    );
+
+
+    const unique =
+        uniqueBy(
+            urls,
+            item =>
+                item.value
+        );
+
+
+    if(
+        !unique.length
+    ){
+
+        return `
+
+            <div class="data-value">
+
+                SOURCE URLS ARE NOT EXPOSED
+                IN THIS RECORD.
+
+            </div>
+
+        `;
+
+    }
+
+
+    return `
+
+        <ul class="source-list">
+
+            ${
+                unique
+                    .slice(
+                        0,
+                        50
+                    )
+                    .map(
+                        source =>
+                            `
+
+                            <li>
+
+                                <strong>
+
+                                    ${escapeHTML(
+                                        source.key
+                                    )}:
+
+                                </strong>
+
+
+                                <a
+                                    href="${escapeAttribute(
+                                        source.value
+                                    )}"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                >
+
+                                    ${escapeHTML(
+                                        source.value
+                                    )}
+
+                                </a>
+
+                            </li>
+
+                            `
+                    )
+                    .join("")
+            }
+
+        </ul>
+
+    `;
+
+}
+
+
+/* =========================================================
+   PICTURE CONSTANTS
+========================================================= */
+
+const PICTURE_KEYS = [
+
+    "pictures",
+    "picture",
+
+    "images",
+    "image",
+
+    "photos",
+    "photo",
+
+    "photographs",
+    "photograph",
+
+    "media"
+
+];
+
+
+const IMAGE_URL_KEYS = [
+
+    "image_url",
+    "image",
+
+    "src",
+
+    "media_url",
+
+    "path",
+
+    "file",
+
+    "original_url",
+
+    "full_url",
+
+    "url",
+
+    "href"
+
+];
+
+
+/* =========================================================
+   NORMALIZE PICTURE URL
+========================================================= */
+
+function normalizePictureURL(
+    raw
+){
+
+    const value =
+        String(
+            raw ??
+            ""
+        )
+        .trim();
+
+
+    if(!value){
+
+        return "";
+
+    }
+
+
+    /*
+        Already absolute.
+    */
+
+    if(
+        /^https?:\/\//i.test(
+            value
+        )
+    ){
+
+        return value;
+
+    }
+
+
+    /*
+        Protocol-relative.
+    */
+
+    if(
+        value.startsWith(
+            "//"
+        )
+    ){
+
+        return "https:" +
+            value;
+
+    }
+
+
+    /*
+        CannaLib media paths.
+    */
+
+    if(
+        value.startsWith(
+            "/media/"
+        )
+    ){
+
+        return API_BASE +
+            value;
+
+    }
+
+
+    if(
+        value.startsWith(
+            "media/"
+        )
+    ){
+
+        return API_BASE +
+            "/" +
+            value;
+
+    }
+
+
+    /*
+        Other likely image paths.
+    */
+
+    if(
+        value.startsWith(
+            "/images/"
+        ) ||
+        value.startsWith(
+            "/photos/"
+        ) ||
+        value.startsWith(
+            "/pictures/"
+        )
+    ){
+
+        return API_BASE +
+            value;
+
+    }
+
+
+    if(
+        value.startsWith(
+            "images/"
+        ) ||
+        value.startsWith(
+            "photos/"
+        ) ||
+        value.startsWith(
+            "pictures/"
+        )
+    ){
+
+        return API_BASE +
+            "/" +
+            value;
+
+    }
+
+
+    return "";
+
+}
+
+
+/* =========================================================
+   IMAGE URL TEST
+========================================================= */
+
+function looksLikeImageURL(
+    url
+){
+
+    return /(?:\/media\/|\/images?\/|\/photos?\/|\/pictures?\/|\.jpe?g(?:$|[?#])|\.png(?:$|[?#])|\.webp(?:$|[?#])|\.gif(?:$|[?#])|\.avif(?:$|[?#]))/i
+        .test(
+            url
+        );
+
+}
+
+
+/* =========================================================
+   EXTRACT URL FROM PICTURE OBJECT
+========================================================= */
+
+function extractURLFromPictureObject(
+    object
+){
+
+    if(
+        object === null ||
+        object === undefined
+    ){
+
+        return "";
+
+    }
+
+
+    if(
+        typeof object === "string"
+    ){
+
+        return normalizePictureURL(
+            object
         );
 
     }
-  );
 
 
-[
-  "typeFilter",
-  "breederFilter",
-  "thcFilter",
-  "cbdFilter",
-  "terpeneFilter"
+    if(
+        typeof object !== "object"
+    ){
 
-].forEach(
-  id => {
+        return "";
 
-    $(id).addEventListener(
-      "change",
-      applyCurrentFilters
+    }
+
+
+    for(
+        const key of IMAGE_URL_KEYS
+    ){
+
+        const raw =
+            object[key];
+
+
+        if(
+            raw === undefined ||
+            raw === null
+        ){
+
+            continue;
+
+        }
+
+
+        if(
+            typeof raw === "object"
+        ){
+
+            const nested =
+                extractURLFromPictureObject(
+                    raw
+                );
+
+
+            if(nested){
+
+                return nested;
+
+            }
+
+
+            continue;
+
+        }
+
+
+        const candidate =
+            normalizePictureURL(
+                raw
+            );
+
+
+        if(!candidate){
+
+            continue;
+
+        }
+
+
+        /*
+            href is allowed only when it actually
+            looks like an image/media path.
+
+            This stops unrelated links from being
+            mistaken for photographs.
+        */
+
+        if(
+            key === "href" &&
+            !looksLikeImageURL(
+                candidate
+            )
+        ){
+
+            continue;
+
+        }
+
+
+        return candidate;
+
+    }
+
+
+    return "";
+
+}
+
+
+/* =========================================================
+   EXTRACT REAL CANNALIB PICTURES
+========================================================= */
+
+function extractPictures(
+    record
+){
+
+    const found =
+        [];
+
+
+    const seenObjects =
+        new WeakSet();
+
+
+    const seenURLs =
+        new Set();
+
+
+    function addPicture(
+        item
+    ){
+
+        const url =
+            extractURLFromPictureObject(
+                item
+            );
+
+
+        if(
+            !url ||
+            seenURLs.has(
+                url
+            )
+        ){
+
+            return;
+
+        }
+
+
+        seenURLs.add(
+            url
+        );
+
+
+        const source =
+            item &&
+            typeof item === "object"
+                ? item
+                : {};
+
+
+        found.push({
+
+            ...source,
+
+            url,
+
+            credit:
+                source.credit ||
+                source.credit_line ||
+                source.attribution ||
+                source.author ||
+                source.source ||
+                ""
+
+        });
+
+    }
+
+
+    function walk(
+        value,
+        inPictureContext = false
+    ){
+
+        if(
+            value === null ||
+            value === undefined
+        ){
+
+            return;
+
+        }
+
+
+        if(
+            typeof value === "string"
+        ){
+
+            if(
+                inPictureContext
+            ){
+
+                addPicture(
+                    value
+                );
+
+            }
+
+
+            return;
+
+        }
+
+
+        if(
+            typeof value !== "object"
+        ){
+
+            return;
+
+        }
+
+
+        if(
+            seenObjects.has(
+                value
+            )
+        ){
+
+            return;
+
+        }
+
+
+        seenObjects.add(
+            value
+        );
+
+
+        if(
+            Array.isArray(
+                value
+            )
+        ){
+
+            value.forEach(
+                item => {
+
+                    if(
+                        inPictureContext
+                    ){
+
+                        addPicture(
+                            item
+                        );
+
+                    }
+
+
+                    walk(
+                        item,
+                        inPictureContext
+                    );
+
+                }
+            );
+
+
+            return;
+
+        }
+
+
+        for(
+            const key of Object.keys(
+                value
+            )
+        ){
+
+            const lower =
+                key.toLowerCase();
+
+
+            const child =
+                value[key];
+
+
+            const isPictureKey =
+                PICTURE_KEYS.includes(
+                    lower
+                );
+
+
+            if(
+                isPictureKey
+            ){
+
+                if(
+                    Array.isArray(
+                        child
+                    )
+                ){
+
+                    child.forEach(
+                        item => {
+
+                            addPicture(
+                                item
+                            );
+
+
+                            walk(
+                                item,
+                                true
+                            );
+
+                        }
+                    );
+
+                }else if(
+                    child &&
+                    typeof child === "object"
+                ){
+
+                    addPicture(
+                        child
+                    );
+
+
+                    walk(
+                        child,
+                        true
+                    );
+
+                }else if(
+                    typeof child === "string"
+                ){
+
+                    addPicture(
+                        child
+                    );
+
+                }
+
+
+                continue;
+
+            }
+
+
+            if(
+                child &&
+                typeof child === "object"
+            ){
+
+                walk(
+                    child,
+                    inPictureContext
+                );
+
+            }
+
+        }
+
+    }
+
+
+    walk(
+        record,
+        false
     );
 
-  }
-);
 
+    return found;
+
+}
+
+
+/* =========================================================
+   LINEAGE
+========================================================= */
+
+function lineageSummary(
+    record
+){
+
+    const parents =
+        findList(
+            record,
+            [
+                "parents",
+                "parent_strains",
+                "parent"
+            ]
+        );
+
+
+    return parents.length
+        ? parents.join(
+            " × "
+        )
+        : "";
+
+}
+
+
+/* =========================================================
+   LIST FINDER
+========================================================= */
+
+function findList(
+    object,
+    keys
+){
+
+    for(
+        const key of keys
+    ){
+
+        const value =
+            findDeep(
+                object,
+                key
+            );
+
+
+        if(
+            Array.isArray(
+                value
+            )
+        ){
+
+            return value
+                .flatMap(
+                    item => {
+
+                        if(
+                            typeof item === "object" &&
+                            item !== null
+                        ){
+
+                            return [
+
+                                item.name ||
+                                item.label ||
+                                item.slug ||
+                                item.value ||
+                                JSON.stringify(
+                                    item
+                                )
+
+                            ];
+
+                        }
+
+
+                        return [
+                            item
+                        ];
+
+                    }
+                )
+                .filter(
+                    Boolean
+                );
+
+        }
+
+
+        if(
+            typeof value === "string" &&
+            value.trim()
+        ){
+
+            return value
+                .split(
+                    /[,|•]/
+                )
+                .map(
+                    item =>
+                        item.trim()
+                )
+                .filter(
+                    Boolean
+                );
+
+        }
+
+    }
+
+
+    return [];
+
+}
+
+
+/* =========================================================
+   NORMALIZE LIST
+========================================================= */
+
+function normalizeList(
+    value
+){
+
+    if(
+        value === undefined ||
+        value === null
+    ){
+
+        return [];
+
+    }
+
+
+    if(
+        Array.isArray(
+            value
+        )
+    ){
+
+        return value
+            .flatMap(
+                item => {
+
+                    if(
+                        typeof item === "object" &&
+                        item !== null
+                    ){
+
+                        return [
+
+                            item.name ||
+                            item.label ||
+                            item.slug ||
+                            item.value ||
+                            JSON.stringify(
+                                item
+                            )
+
+                        ];
+
+                    }
+
+
+                    return [
+                        String(
+                            item
+                        )
+                    ];
+
+                }
+            )
+            .filter(
+                Boolean
+            );
+
+    }
+
+
+    return String(
+        value
+    )
+    .split(
+        /[,|•]/
+    )
+    .map(
+        item =>
+            item.trim()
+    )
+    .filter(
+        Boolean
+    );
+
+}
+
+
+/* =========================================================
+   FIRST VALUE
+========================================================= */
+
+function first(
+    object,
+    keys
+){
+
+    for(
+        const key of keys
+    ){
+
+        const value =
+            findDeep(
+                object,
+                key
+            );
+
+
+        if(
+            value !== undefined &&
+            value !== null &&
+            value !== ""
+        ){
+
+            return value;
+
+        }
+
+    }
+
+
+    return null;
+
+}
+
+
+/* =========================================================
+   DEEP FIND
+========================================================= */
+
+function findDeep(
+    object,
+    wantedKey
+){
+
+    let found =
+        undefined;
+
+
+    const target =
+        String(
+            wantedKey
+        )
+        .toLowerCase();
+
+
+    walkObject(
+        object,
+        (
+            key,
+            value
+        ) => {
+
+            if(
+                found !== undefined
+            ){
+
+                return;
+
+            }
+
+
+            if(
+                String(
+                    key
+                )
+                .toLowerCase() ===
+                target
+            ){
+
+                if(
+                    value !== undefined &&
+                    value !== null &&
+                    value !== ""
+                ){
+
+                    found =
+                        value;
+
+                }
+
+            }
+
+        }
+    );
+
+
+    return found;
+
+}
+
+
+/* =========================================================
+   WALK OBJECT
+========================================================= */
+
+function walkObject(
+    object,
+    callback,
+    seen = new WeakSet()
+){
+
+    if(
+        object === null ||
+        object === undefined ||
+        typeof object !== "object" ||
+        seen.has(
+            object
+        )
+    ){
+
+        return;
+
+    }
+
+
+    seen.add(
+        object
+    );
+
+
+    if(
+        Array.isArray(
+            object
+        )
+    ){
+
+        object.forEach(
+            value =>
+                walkObject(
+                    value,
+                    callback,
+                    seen
+                )
+        );
+
+        return;
+
+    }
+
+
+    Object.entries(
+        object
+    )
+    .forEach(
+        (
+            [
+                key,
+                value
+            ]
+        ) => {
+
+            callback(
+                key,
+                value
+            );
+
+
+            if(
+                value &&
+                typeof value === "object"
+            ){
+
+                walkObject(
+                    value,
+                    callback,
+                    seen
+                );
+
+            }
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   UNIQUE
+========================================================= */
+
+function uniqueBy(
+    array,
+    getter
+){
+
+    const seen =
+        new Set();
+
+
+    return array.filter(
+        item => {
+
+            const value =
+                getter(
+                    item
+                );
+
+
+            if(
+                seen.has(
+                    value
+                )
+            ){
+
+                return false;
+
+            }
+
+
+            seen.add(
+                value
+            );
+
+
+            return true;
+
+        }
+    );
+
+}
+
+
+/* =========================================================
+   FORMAT
+========================================================= */
+
+function formatValue(
+    value
+){
+
+    if(
+        Array.isArray(
+            value
+        )
+    ){
+
+        return value
+            .map(
+                item =>
+                    typeof item === "object"
+                        ? JSON.stringify(
+                            item
+                        )
+                        : item
+            )
+            .join(
+                " · "
+            );
+
+    }
+
+
+    if(
+        typeof value === "object" &&
+        value !== null
+    ){
+
+        return JSON.stringify(
+            value
+        );
+
+    }
+
+
+    return String(
+        value ??
+        "NOT REPORTED"
+    );
+
+}
+
+
+/* =========================================================
+   RESET SPECIMEN
+========================================================= */
+
+function resetSpecimen(){
+
+    invalidateFlowerLoad();
+
+
+    showNoLiveFlower();
+
+
+    specimenFields.innerHTML =
+
+        field(
+            "SPECIMEN ID",
+            ""
+        ) +
+
+        field(
+            "SPECIMEN IDENTITY",
+            ""
+        ) +
+
+        field(
+            "GENETICS",
+            ""
+        ) +
+
+        field(
+            "TYPE",
+            ""
+        ) +
+
+        field(
+            "THC RANGE",
+            ""
+        ) +
+
+        field(
+            "CBD RANGE",
+            ""
+        ) +
+
+        field(
+            "AROMA",
+            ""
+        ) +
+
+        field(
+            "RAW CHAKRA",
+            ""
+        ) +
+
+        field(
+            "RAW PLANET",
+            ""
+        ) +
+
+        field(
+            "CODEX FREQUENCY",
+            ""
+        ) +
+
+        field(
+            "PRIMARY ARCHETYPE",
+            ""
+        );
+
+
+    resonanceGrid.innerHTML =
+
+        [
+            "RELAXATION",
+            "FOCUS",
+            "CREATIVITY",
+            "MEDITATION",
+            "RECOVERY"
+        ]
+        .map(
+            name =>
+                resonanceBox(
+                    name,
+                    null
+                )
+        )
+        .join("");
+
+
+    infoContent.innerHTML = `
+
+        <div class="info-empty">
+
+            SPECIMEN INFORMATION WILL APPEAR HERE
+            AFTER A STRAIN IS SELECTED.
+
+        </div>
+
+    `;
+
+}
+
+
+/* =========================================================
+   RESET FILTERS
+========================================================= */
+
+function resetFilters(){
+
+    [
+        typeFilter,
+        breederFilter,
+        thcFilter,
+        cbdFilter,
+        terpeneFilter
+    ]
+    .forEach(
+        select => {
+
+            select.value =
+                "";
+
+        }
+    );
+
+
+    populateFilters(
+        []
+    );
+
+}
+
+
+/* =========================================================
+   STATUS
+========================================================= */
+
+function setStatus(
+    message,
+    error = false,
+    success = false
+){
+
+    searchStatus.textContent =
+        message;
+
+
+    searchStatus.className =
+        "search-status" +
+        (
+            error
+                ? " error"
+                : ""
+        ) +
+        (
+            success
+                ? " success"
+                : ""
+        );
+
+}
+
+
+/* =========================================================
+   ESCAPE HTML
+========================================================= */
+
+function escapeHTML(
+    value
+){
+
+    return String(
+        value ?? ""
+    )
+    .replace(
+        /[&<>"']/g,
+        character =>
+            ({
+                "&":"&amp;",
+                "<":"&lt;",
+                ">":"&gt;",
+                '"':"&quot;",
+                "'":"&#039;"
+            })[
+                character
+            ]
+    );
+
+}
+
+
+/* =========================================================
+   ESCAPE ATTRIBUTE
+========================================================= */
+
+function escapeAttribute(
+    value
+){
+
+    return escapeHTML(
+        value
+    );
+
+}
+
+
+/* =========================================================
+   HASH LOAD
+========================================================= */
+
+async function loadFromHash(){
+
+    const hash =
+        location.hash.replace(
+            /^#/,
+            ""
+        );
+
+
+    if(!hash){
+
+        return;
+
+    }
+
+
+    const params =
+        new URLSearchParams(
+            hash
+        );
+
+
+    const strain =
+        params.get(
+            "strain"
+        );
+
+
+    if(!strain){
+
+        return;
+
+    }
+
+
+    searchInput.value =
+        strain;
+
+
+    await performSearch(
+        strain
+    );
+
+}
+
+
+/* =========================================================
+   HASH CHANGE
+========================================================= */
 
 window.addEventListener(
-  "hashchange",
-  loadHashRecord
+    "hashchange",
+    () => {
+
+        loadFromHash();
+
+    }
 );
 
 
 /* =========================================================
    INITIAL STATE
-   ========================================================= */
+========================================================= */
 
-clearSpecimen();
+resetSpecimen();
 
-loadHashRecord();
+
+/* =========================================================
+   START HASH SEARCH
+========================================================= */
+
+loadFromHash();
+
+
+})();
 
 </script>
 
 </body>
+
 </html>
