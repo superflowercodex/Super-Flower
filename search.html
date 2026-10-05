@@ -3633,7 +3633,7 @@ function renderLoadingRecord(){
 
 
 /* =========================================================
-   RENDER RECORD
+   RENDER RECORD — W2 MULTI-SOURCE FIELD RESOLUTION
 ========================================================= */
 
 function renderRecord(
@@ -3687,10 +3687,10 @@ function renderRecord(
 
 
     /* =====================================================
-       GENETICS / LINEAGE
+       GENETICS — MULTI-SOURCE
     ===================================================== */
 
-    const genetics =
+    let genetics =
         resolvedFieldValue(
             record,
             [
@@ -3702,15 +3702,76 @@ function renderRecord(
                 "parentage",
                 "parents",
                 "parent_strains",
+
                 "genetics.lineage",
                 "genetics.parentage",
                 "genetics.parents",
+
                 "lineage.parents",
-                "lineage.parentage"
+                "lineage.parentage",
+
+                "evidence.lineage",
+                "evidence.genetics",
+                "reported.lineage",
+                "reported.genetics"
             ],
-            slim?.genetics ||
-            "NOT REPORTED"
+            ""
         );
+
+
+    /*
+        If the source stores the parents separately,
+        build the lineage from those actual source values.
+    */
+
+    if(
+        !genetics ||
+        genetics === "NOT REPORTED"
+    ){
+
+        const parents =
+            findList(
+                record,
+                [
+                    "parents",
+                    "parent_strains",
+                    "parent",
+                    "parentage",
+                    "lineage.parents",
+                    "genetics.parents",
+                    "evidence.lineage.parents"
+                ]
+            );
+
+
+        if(
+            parents.length
+        ){
+
+            genetics =
+                parents.join(
+                    " × "
+                );
+
+        }
+
+    }
+
+
+    if(
+        !genetics
+    ){
+
+        genetics =
+            slim?.genetics ||
+            "";
+
+    }
+
+
+    genetics =
+        genetics ||
+        "NOT REPORTED";
 
 
     /* =====================================================
@@ -3724,7 +3785,9 @@ function renderRecord(
                 "type",
                 "strain_type",
                 "classification",
-                "category"
+                "category",
+                "evidence.type",
+                "reported.type"
             ],
             slim?.type ||
             "NOT REPORTED"
@@ -3732,7 +3795,7 @@ function renderRecord(
 
 
     /* =====================================================
-       THC
+       THC — MULTI-SOURCE
     ===================================================== */
 
     const thc =
@@ -3745,9 +3808,19 @@ function renderRecord(
                 "thc_percentage",
                 "total_thc",
                 "totalTHC",
+
+                "chemistry.thc_range",
                 "chemistry.thc",
+                "chemistry.total_thc",
+
                 "cannabinoids.thc",
-                "cannabinoid_profile.thc"
+                "cannabinoid_profile.thc",
+
+                "evidence.chemistry.thc_range",
+                "evidence.chemistry.thc",
+                "evidence.chemistry.total_thc",
+
+                "reported.chemistry.thc"
             ],
             slim?.thc_range ||
             "NOT REPORTED"
@@ -3755,7 +3828,7 @@ function renderRecord(
 
 
     /* =====================================================
-       CBD
+       CBD — MULTI-SOURCE
     ===================================================== */
 
     const cbd =
@@ -3768,9 +3841,24 @@ function renderRecord(
                 "cbd_percentage",
                 "total_cbd",
                 "totalCBD",
+
+                "chemistry.cbd_range",
                 "chemistry.cbd",
+                "chemistry.total_cbd",
+
                 "cannabinoids.cbd",
-                "cannabinoid_profile.cbd"
+                "cannabinoid_profile.cbd",
+
+                "evidence.chemistry.cbd_range",
+                "evidence.chemistry.cbd",
+                "evidence.chemistry.total_cbd",
+
+                "reported.chemistry.cbd",
+
+                "lab_results.cbd",
+                "lab.cbd",
+                "analysis.cbd",
+                "cannabinoid_results.cbd"
             ],
             slim?.cbd_range ||
             "NOT REPORTED"
@@ -3788,7 +3876,12 @@ function renderRecord(
                 "breeder",
                 "breeder_name",
                 "breederName",
-                "breeder.name"
+                "breeder.name",
+                "breeder.display_name",
+                "breeder.label",
+
+                "evidence.breeder",
+                "reported.breeder"
             ],
             slim?.breeder ||
             "NOT REPORTED"
@@ -3796,10 +3889,10 @@ function renderRecord(
 
 
     /* =====================================================
-       AROMA / FLAVOUR
+       AROMA / FLAVOUR — MULTI-SOURCE
     ===================================================== */
 
-    const aroma =
+    let aroma =
         resolvedFieldValue(
             record,
             [
@@ -3818,14 +3911,116 @@ function renderRecord(
                 "sensory.aroma",
                 "sensory.aromas",
                 "sensory.flavor",
+                "sensory.flavours",
                 "sensory.flavour",
 
                 "profile.aroma",
+                "profile.aromas",
                 "profile.flavor",
-                "profile.flavour"
+                "profile.flavors",
+                "profile.flavour",
+                "profile.flavours",
+
+                "evidence.aroma",
+                "evidence.aromas",
+                "evidence.flavor",
+                "evidence.flavours",
+
+                "reported.aroma",
+                "reported.aromas",
+                "reported.flavor",
+                "reported.flavours"
             ],
-            "NOT REPORTED"
+            ""
         );
+
+
+    /*
+        SECONDARY AROMA EVIDENCE
+
+        Some records do not have an explicit aroma field
+        but do contain flavour lists.
+    */
+
+    if(
+        !aroma
+    ){
+
+        const flavourList =
+            findList(
+                record,
+                [
+                    "flavors",
+                    "flavours",
+                    "flavor_profile",
+                    "flavour_profile",
+                    "sensory.flavor",
+                    "sensory.flavours",
+                    "reported.flavors",
+                    "reported.flavours"
+                ]
+            );
+
+
+        if(
+            flavourList.length
+        ){
+
+            aroma =
+                flavourList.join(
+                    " · "
+                );
+
+        }
+
+    }
+
+
+    /*
+        THIRD AROMA EVIDENCE
+
+        Terpene information is kept separate from
+        aroma where available. If no explicit sensory
+        description exists, the actual recorded terpene
+        profile becomes the final source-backed aromatic
+        description.
+    */
+
+    if(
+        !aroma
+    ){
+
+        const terpeneList =
+            findList(
+                record,
+                [
+                    "terpenes",
+                    "top_terpenes",
+                    "terpene_profile",
+                    "dominant_terpenes",
+                    "evidence.terpenes",
+                    "reported.terpenes"
+                ]
+            );
+
+
+        if(
+            terpeneList.length
+        ){
+
+            aroma =
+                terpeneList.join(
+                    " · "
+                );
+
+        }
+
+    }
+
+
+    aroma =
+        aroma ||
+        "NOT REPORTED";
 
 
     /* =====================================================
@@ -3859,7 +4054,7 @@ function renderRecord(
     /* =====================================================
        MASTER SPECIMEN FIELDS
        
-       PRIMARY ARCHETYPE IS INTENTIONALLY REMOVED.
+       PRIMARY ARCHETYPE REMOVED.
     ===================================================== */
 
     specimenFields.innerHTML =
@@ -3943,11 +4138,6 @@ function renderRecord(
     );
 
 }
-
-
-/* =========================================================
-   FLOWER LOAD INVALIDATION
-========================================================= */
 
 
 /* =========================================================
