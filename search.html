@@ -3529,15 +3529,11 @@ async function loadRecord(
         }
 
 
-        /*
-            IMPORTANT: keep the COMPLETE CannaLib payload intact.
+        record =
+            unwrapRecord(
+                record
+            );
 
-            Do NOT unwrap to record.strain / record.data here.
-            CannaLib can place complementary fields beside the
-            primary record object. Throwing those siblings away is
-            exactly what caused otherwise available fields to render
-            empty. The deep resolver below searches the whole payload.
-        */
 
         if(
             !record ||
@@ -3660,23 +3656,180 @@ function renderLoadingRecord(){
    RENDER RECORD — W2 MULTI-SOURCE FIELD RESOLUTION
 ========================================================= */
 
+function collectLineageNames(record){
+
+    const found = [];
+    const seen = new WeakSet();
+
+    function add(value){
+        const text = resolveSourceDisplayValue(value);
+        if(!text) return;
+
+        text
+            .split(/\s*[×x]\s*|\s*\|\s*|\s*;\s*/)
+            .map(v => v.trim())
+            .filter(Boolean)
+            .forEach(v => {
+                if(!found.includes(v)) found.push(v);
+            });
+    }
+
+    function walk(value, context = "", depth = 0){
+        if(depth > 12 || value == null || typeof value !== "object") return;
+        if(seen.has(value)) return;
+        seen.add(value);
+
+        if(Array.isArray(value)){
+            value.forEach(item => walk(item, context, depth + 1));
+            return;
+        }
+
+        for(const [key, child] of Object.entries(value)){
+            const k = normaliseSourceKey(key);
+            const parentContext =
+                /parent|mother|father|lineage|parentage|familytree|family/.test(k) ||
+                /parent|mother|father|lineage|parentage|family/.test(context);
+
+            if(parentContext){
+                if(typeof child === "string" || typeof child === "number"){
+                    add(child);
+                }else if(child && typeof child === "object"){
+                    const direct = first(child, [
+                        "name",
+                        "strain_name",
+                        "strain",
+                        "parent_name",
+                        "parent_strain",
+                        "mother_name",
+                        "mother_strain",
+                        "father_name",
+                        "father_strain"
+                    ]);
+
+                    if(hasUsableValue(direct)) add(direct);
+                }
+            }
+
+            if(child && typeof child === "object"){
+                walk(child, parentContext ? k : context, depth + 1);
+            }
+        }
+    }
+
+    walk(record);
+
+    return found;
+}
+
+
+function resolveCanonicalChemistryValue(slim, record, field){
+
+    const slimKey =
+        field === "thc" ? "thc_range" :
+        field === "cbd" ? "cbd_range" :
+        field;
+
+    /*
+       CannaLib explicitly documents these as the canonical
+       values on the search card. Use them first. This prevents
+       a recursive search from accidentally selecting one of
+       the many individual chemistry claims in evidence. 
+    */
+    const slimValue =
+        slim && hasUsableValue(slim[slimKey])
+            ? resolveSourceDisplayValue(slim[slimKey])
+            : "";
+
+    if(slimValue) return slimValue;
+
+    /*
+       Full records may carry a summary object. Only inspect
+       canonical summary/range keys here — never an arbitrary
+       nested key called simply "thc" or "cbd".
+    */
+    const summaryValue =
+        resolvedFieldValue(
+            record,
+            field === "thc"
+                ? [
+                    "thc_range",
+                    "chemistry.thc_range",
+                    "chemistry.flower_lab_range.thc",
+                    "evidence.chemistry.thc_range",
+                    "evidence.chemistry.flower_lab_range.thc"
+                ]
+                : [
+                    "cbd_range",
+                    "chemistry.cbd_range",
+                    "chemistry.flower_lab_range.cbd",
+                    "evidence.chemistry.cbd_range",
+                    "evidence.chemistry.flower_lab_range.cbd"
+                ],
+            ""
+        );
+
+    return summaryValue || "NOT REPORTED";
+}
+
+
+function resolveCanonicalTopTerpenes(slim, record){
+
+    const fromSlim =
+        normalizeList(slim?.top_terpenes);
+
+    if(fromSlim.length) return fromSlim;
+
+    return findList(
+        record,
+        [
+            "top_terpenes",
+            "terpene_summary",
+            "terpene_profile.top",
+            "chemistry.top_terpenes",
+            "evidence.chemistry.top_terpenes"
+        ]
+    );
+}
+
+
+function resolveCanonicalLineage(record, slim){
+
+    const parents =
+        collectLineageNames(record);
+
+    if(parents.length){
+        return parents.join(" × ");
+    }
+
+    /*
+       The slim card intentionally has no parent branch.
+       Therefore we do not invent lineage from another strain
+       or from a generic genetics label.
+    */
+    return "NOT REPORTED";
+}
+
+
+/* =========================================================
+   RENDER RECORD — CANONICAL CANNALIB FIELD MAPPING
+========================================================= */
+
 function renderRecord(
     record,
     slim
 ){
 
     /*
-        Keep the complete live payload.
+       IMPORTANT:
 
-        Do NOT unwrap nested record/data/strain containers here.
-        The CannaLib response may contain useful fields in the
-        wrapper as well as inside the nested specimen object.
-        All field resolution is deliberately deep, so preserving
-        the complete payload prevents real source data being lost.
+       Keep the complete payload available for the information
+       panel, while also retaining the actual strain object for
+       the normal field resolver.
     */
+    const payload = record;
+    const unwrapped = unwrapRecord(record) || record;
 
-    currentRecord =
-        record;
+    currentRecord = payload;
 
 
     /* =====================================================
@@ -3685,7 +3838,7 @@ function renderRecord(
 
     const name =
         resolvedFieldValue(
-            record,
+            unwrapped,
             [
                 "name",
                 "strain_name",
@@ -3693,14 +3846,12 @@ function renderRecord(
                 "title",
                 "strain"
             ],
-            slim?.name ||
-            "UNKNOWN STRAIN"
+            slim?.name || "UNKNOWN STRAIN"
         );
-
 
     const id =
         resolvedFieldValue(
-            record,
+            unwrapped,
             [
                 "id",
                 "strain_id",
@@ -3710,648 +3861,108 @@ function renderRecord(
                 "name_norm"
             ],
             slim?.id ||
+            slim?.name_norm ||
             "NOT REPORTED"
         );
 
 
     /* =====================================================
-   GENETICS — MULTI-SOURCE
-   -----------------------------------------------------
-   Reads genetics/lineage from the actual CannaLib record.
-   Handles direct lineage strings, parent arrays, and
-   nested mother/father/parent objects.
-===================================================== */
+       GENETICS / RECORDED PARENTS
+    ===================================================== */
 
-let genetics = "";
-
-
-/* =====================================================
-   PASS 1 — DIRECT GENETICS / LINEAGE FIELDS
-===================================================== */
-
-genetics =
-    resolvedFieldValue(
-        record,
-        [
-            "genetics",
-            "genetic_lineage",
-            "genetic",
-            "lineage",
-            "lineage_summary",
-            "parentage",
-            "breeding_lineage",
-            "genetic_background",
-
-            "genetics.lineage",
-            "genetics.parentage",
-            "genetics.parents",
-            "genetics.parent_strains",
-
-            "lineage.parents",
-            "lineage.parentage",
-            "lineage.lineage",
-
-            "evidence.lineage",
-            "evidence.genetics",
-            "evidence.parentage",
-
-            "reported.lineage",
-            "reported.genetics",
-            "reported.parentage"
-        ],
-        ""
-    );
-
-
-/* =====================================================
-   PASS 2 — EXPLICIT PARENT LISTS
-===================================================== */
-
-if(
-    !genetics
-){
-
-    const parents =
-        findList(
-            record,
-            [
-                "parents",
-                "parent_strains",
-                "parent",
-                "parentage",
-
-                "genetics.parents",
-                "genetics.parent_strains",
-
-                "lineage.parents",
-                "lineage.parentage",
-
-                "evidence.parents",
-                "evidence.parent_strains",
-                "evidence.parentage",
-
-                "reported.parents",
-                "reported.parent_strains"
-            ]
+    const genetics =
+        resolveCanonicalLineage(
+            unwrapped,
+            slim
         );
-
-
-    if(
-        parents.length
-    ){
-
-        genetics =
-            parents
-                .filter(Boolean)
-                .join(
-                    " × "
-                );
-
-    }
-
-}
-
-
-/* =====================================================
-   PASS 3 — MOTHER / FATHER
-===================================================== */
-
-if(
-    !genetics
-){
-
-    const mother =
-        resolvedFieldValue(
-            record,
-            [
-                "mother",
-                "mother_strain",
-                "mother_parent",
-                "female_parent",
-
-                "genetics.mother",
-                "genetics.mother_strain",
-
-                "lineage.mother",
-                "lineage.mother_strain",
-
-                "parentage.mother",
-                "parentage.female",
-
-                "parents.mother",
-                "parents.female"
-            ],
-            ""
-        );
-
-
-    const father =
-        resolvedFieldValue(
-            record,
-            [
-                "father",
-                "father_strain",
-                "father_parent",
-                "male_parent",
-
-                "genetics.father",
-                "genetics.father_strain",
-
-                "lineage.father",
-                "lineage.father_strain",
-
-                "parentage.father",
-                "parentage.male",
-
-                "parents.father",
-                "parents.male"
-            ],
-            ""
-        );
-
-
-    const parentParts = [];
-
-
-    if(
-        mother
-    ){
-
-        parentParts.push(
-            mother
-        );
-
-    }
-
-
-    if(
-        father
-    ){
-
-        parentParts.push(
-            father
-        );
-
-    }
-
-
-    if(
-        parentParts.length
-    ){
-
-        genetics =
-            parentParts.join(
-                " × "
-            );
-
-    }
-
-}
-
-
-/* =====================================================
-   PASS 4 — DEEP SEARCH FOR PARENT OBJECTS
-   -----------------------------------------------------
-   Used only when the named fields above did not resolve.
-===================================================== */
-
-if(
-    !genetics
-){
-
-    const discoveredParents = [];
-
-
-    function collectGeneticParents(
-        value,
-        depth = 0,
-        seen = new WeakSet()
-    ){
-
-        if(
-            depth > 10 ||
-            value === null ||
-            value === undefined ||
-            typeof value !== "object"
-        ){
-
-            return;
-
-        }
-
-
-        if(
-            seen.has(value)
-        ){
-
-            return;
-
-        }
-
-
-        seen.add(value);
-
-
-        if(
-            Array.isArray(value)
-        ){
-
-            value.forEach(
-                item =>
-                    collectGeneticParents(
-                        item,
-                        depth + 1,
-                        seen
-                    )
-            );
-
-            return;
-
-        }
-
-
-        Object.entries(
-            value
-        )
-        .forEach(
-            (
-                [
-                    key,
-                    child
-                ]
-            ) => {
-
-                const cleanKey =
-                    String(
-                        key
-                    )
-                    .trim()
-                    .toLowerCase();
-
-
-                const isParentKey =
-                    [
-                        "mother",
-                        "father",
-                        "female_parent",
-                        "male_parent",
-                        "mother_strain",
-                        "father_strain",
-                        "parent_strain",
-                        "parent_strains"
-                    ]
-                    .includes(
-                        cleanKey
-                    );
-
-
-                if(
-                    isParentKey
-                ){
-
-                    const display =
-                        resolveSourceDisplayValue(
-                            child
-                        );
-
-
-                    if(
-                        display &&
-                        !discoveredParents.includes(
-                            display
-                        )
-                    ){
-
-                        discoveredParents.push(
-                            display
-                        );
-
-                    }
-
-                }
-
-
-                if(
-                    child &&
-                    typeof child === "object"
-                ){
-
-                    collectGeneticParents(
-                        child,
-                        depth + 1,
-                        seen
-                    );
-
-                }
-
-            }
-        );
-
-    }
-
-
-    collectGeneticParents(
-        record
-    );
-
-
-    if(
-        discoveredParents.length
-    ){
-
-        genetics =
-            discoveredParents.join(
-                " × "
-            );
-
-    }
-
-}
-
-
-/* =====================================================
-   PASS 5 — SLIM SEARCH RESULT FALLBACK
-===================================================== */
-
-if(
-    !genetics
-){
-
-    genetics =
-        resolvedFieldValue(
-            slim,
-            [
-                "genetics",
-                "genetic_lineage",
-                "genetic",
-                "lineage",
-                "lineage_summary",
-                "parentage",
-                "parents",
-                "parent_strains"
-            ],
-            ""
-        );
-
-}
-
-
-/* =====================================================
-   FINAL GENETICS VALUE
-===================================================== */
-
-genetics =
-    genetics ||
-    "NOT REPORTED";
 
 
     /* =====================================================
-       TYPE
+       CANONICAL SEARCH-CARD FIELDS
+       These are deliberately taken from the CannaLib slim
+       result first. They are not guessed from arbitrary nested
+       evidence rows.
     ===================================================== */
 
     const type =
+        resolveSourceDisplayValue(
+            slim?.type
+        ) ||
         resolvedFieldValue(
-            record,
+            unwrapped,
             [
                 "type",
                 "strain_type",
                 "classification",
-                "category",
-                "evidence.type",
-                "reported.type"
+                "category"
             ],
-            slim?.type ||
             "NOT REPORTED"
         );
-
-
-    /* =====================================================
-       THC — MULTI-SOURCE
-    ===================================================== */
-
-    const thc =
-        resolvedFieldValue(
-            record,
-            [
-                "thc_range",
-                "thc",
-                "thc_percent",
-                "thc_percentage",
-                "total_thc",
-                "totalTHC",
-
-                "chemistry.thc_range",
-                "chemistry.thc",
-                "chemistry.total_thc",
-
-                "cannabinoids.thc",
-                "cannabinoid_profile.thc",
-
-                "evidence.chemistry.thc_range",
-                "evidence.chemistry.thc",
-                "evidence.chemistry.total_thc",
-
-                "reported.chemistry.thc"
-            ],
-            slim?.thc_range ||
-            "NOT REPORTED"
-        );
-
-
-    /* =====================================================
-       CBD — MULTI-SOURCE
-    ===================================================== */
-
-    const cbd =
-        resolvedFieldValue(
-            record,
-            [
-                "cbd_range",
-                "cbd",
-                "cbd_percent",
-                "cbd_percentage",
-                "total_cbd",
-                "totalCBD",
-
-                "chemistry.cbd_range",
-                "chemistry.cbd",
-                "chemistry.total_cbd",
-
-                "cannabinoids.cbd",
-                "cannabinoid_profile.cbd",
-
-                "evidence.chemistry.cbd_range",
-                "evidence.chemistry.cbd",
-                "evidence.chemistry.total_cbd",
-
-                "reported.chemistry.cbd",
-
-                "lab_results.cbd",
-                "lab.cbd",
-                "analysis.cbd",
-                "cannabinoid_results.cbd"
-            ],
-            slim?.cbd_range ||
-            "NOT REPORTED"
-        );
-
-
-    /* =====================================================
-       BREEDER
-    ===================================================== */
 
     const breeder =
+        resolveSourceDisplayValue(
+            slim?.breeder
+        ) ||
         resolvedFieldValue(
-            record,
+            unwrapped,
             [
                 "breeder",
                 "breeder_name",
-                "breederName",
-                "breeder.name",
-                "breeder.display_name",
-                "breeder.label",
-
-                "evidence.breeder",
-                "reported.breeder"
+                "breederName"
             ],
-            slim?.breeder ||
             "NOT REPORTED"
+        );
+
+    const thc =
+        resolveCanonicalChemistryValue(
+            slim,
+            unwrapped,
+            "thc"
+        );
+
+    const cbd =
+        resolveCanonicalChemistryValue(
+            slim,
+            unwrapped,
+            "cbd"
+        );
+
+    const topTerpenes =
+        resolveCanonicalTopTerpenes(
+            slim,
+            unwrapped
         );
 
 
     /* =====================================================
-       AROMA / FLAVOUR — MULTI-SOURCE
+       AROMA / FLAVOUR
+       Only use actual sensory fields. Terpenes are shown
+       separately and are not silently relabelled as aroma.
     ===================================================== */
 
     let aroma =
         resolvedFieldValue(
-            record,
+            unwrapped,
             [
                 "aroma",
                 "aromas",
                 "aroma_profile",
-
                 "flavor",
                 "flavors",
                 "flavour",
                 "flavours",
-
                 "flavor_profile",
                 "flavour_profile",
-
                 "sensory.aroma",
-                "sensory.aromas",
                 "sensory.flavor",
-                "sensory.flavours",
-                "sensory.flavour",
-
-                "profile.aroma",
-                "profile.aromas",
-                "profile.flavor",
-                "profile.flavors",
-                "profile.flavour",
-                "profile.flavours",
-
-                "evidence.aroma",
-                "evidence.aromas",
-                "evidence.flavor",
-                "evidence.flavours",
-
-                "reported.aroma",
-                "reported.aromas",
-                "reported.flavor",
-                "reported.flavours"
+                "sensory.flavour"
             ],
             ""
         );
 
-
-    /*
-        SECONDARY AROMA EVIDENCE
-
-        Some records do not have an explicit aroma field
-        but do contain flavour lists.
-    */
-
-    if(
-        !aroma
-    ){
-
-        const flavourList =
-            findList(
-                record,
-                [
-                    "flavors",
-                    "flavours",
-                    "flavor_profile",
-                    "flavour_profile",
-                    "sensory.flavor",
-                    "sensory.flavours",
-                    "reported.flavors",
-                    "reported.flavours"
-                ]
-            );
-
-
-        if(
-            flavourList.length
-        ){
-
-            aroma =
-                flavourList.join(
-                    " · "
-                );
-
-        }
-
+    if(!aroma){
+        aroma = "NOT REPORTED";
     }
-
-
-    /*
-        THIRD AROMA EVIDENCE
-
-        Terpene information is kept separate from
-        aroma where available. If no explicit sensory
-        description exists, the actual recorded terpene
-        profile becomes the final source-backed aromatic
-        description.
-    */
-
-    if(
-        !aroma
-    ){
-
-        const terpeneList =
-            findList(
-                record,
-                [
-                    "terpenes",
-                    "top_terpenes",
-                    "terpene_profile",
-                    "dominant_terpenes",
-                    "evidence.terpenes",
-                    "reported.terpenes"
-                ]
-            );
-
-
-        if(
-            terpeneList.length
-        ){
-
-            aroma =
-                terpeneList.join(
-                    " · "
-                );
-
-        }
-
-    }
-
-
-    aroma =
-        aroma ||
-        "NOT REPORTED";
 
 
     /* =====================================================
@@ -4360,7 +3971,7 @@ genetics =
 
     const codex =
         resolveCodexAlignment(
-            record,
+            unwrapped,
             slim,
             name
         );
@@ -4372,73 +3983,37 @@ genetics =
 
     const pictures =
         extractPictures(
-            record
+            payload
         );
 
-
     renderFlower(
-        record,
+        payload,
         pictures
     );
 
 
     /* =====================================================
        MASTER SPECIMEN FIELDS
-       
-       PRIMARY ARCHETYPE REMOVED.
     ===================================================== */
 
     specimenFields.innerHTML =
-
+        field("SPECIMEN ID", id) +
+        field("SPECIMEN IDENTITY", name) +
+        field("GENETICS / RECORDED PARENTS", genetics) +
+        field("TYPE", type) +
+        field("BREEDER", breeder) +
+        field("THC RANGE", thc) +
+        field("CBD RANGE", cbd) +
+        field("AROMA / FLAVOUR", aroma) +
         field(
-            "SPECIMEN ID",
-            id
+            "TOP TERPENES",
+            topTerpenes.length
+                ? topTerpenes.join(" · ")
+                : "NOT REPORTED"
         ) +
-
-        field(
-            "SPECIMEN IDENTITY",
-            name
-        ) +
-
-        field(
-            "GENETICS",
-            genetics
-        ) +
-
-        field(
-            "TYPE",
-            type
-        ) +
-
-        field(
-            "THC RANGE",
-            thc
-        ) +
-
-        field(
-            "CBD RANGE",
-            cbd
-        ) +
-
-        field(
-            "AROMA",
-            aroma
-        ) +
-
-        field(
-            "RAW CHAKRA",
-            codex.chakra
-        ) +
-
-        field(
-            "RAW PLANET",
-            codex.planet
-        ) +
-
-        field(
-            "CODEX FREQUENCY",
-            `${codex.frequency} Hz`
-        );
+        field("RAW CHAKRA", codex.chakra) +
+        field("RAW PLANET", codex.planet) +
+        field("CODEX FREQUENCY", `${codex.frequency} Hz`);
 
 
     /* =====================================================
@@ -4446,16 +4021,18 @@ genetics =
     ===================================================== */
 
     renderResonance(
-        record
+        unwrapped
     );
 
 
     /* =====================================================
        INFORMATION PANELS
+       Pass the complete payload so the additional live-data
+       panel can expose information that is not a headline field.
     ===================================================== */
 
     renderInfo(
-        record,
+        payload,
         {
             name,
             breeder,
@@ -4464,12 +4041,12 @@ genetics =
             thc,
             cbd,
             aroma,
-            codex
+            codex,
+            topTerpenes
         }
     );
 
 }
-
 
 /* =========================================================
    FLOWER LOAD INVALIDATION
