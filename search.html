@@ -3863,14 +3863,12 @@ function invalidateFlowerLoad(){
     currentPictureQueue =
         [];
 
-
     currentPictureIndex =
         0;
 
 
     flowerImage.onload =
         null;
-
 
     flowerImage.onerror =
         null;
@@ -3895,7 +3893,6 @@ function showNoLiveFlower(){
 
     flowerImage.onload =
         null;
-
 
     flowerImage.onerror =
         null;
@@ -3925,6 +3922,411 @@ function showNoLiveFlower(){
 
 
 /* =========================================================
+   ARCHIVAL CANNABIS REFERENCE IMAGES
+========================================================= */
+
+/*
+    These are only used when the selected
+    CannaLib strain has no usable photograph,
+    or when its supplied photographs fail.
+
+    The strain data itself is still displayed
+    exactly as returned by CannaLib.
+
+    The reference photograph is clearly labelled
+    as an archival cannabis flower reference
+    and is NOT presented as the selected strain.
+*/
+
+const FALLBACK_FLOWER_IMAGES = [
+
+    "https://upload.wikimedia.org/wikipedia/commons/1/1d/Macro_cannabis_bud.jpg",
+
+    "https://upload.wikimedia.org/wikipedia/commons/4/4c/Marijuana_flower.jpg",
+
+    "https://upload.wikimedia.org/wikipedia/commons/9/91/5_grams_of_cannabis_buds.jpg"
+
+];
+
+
+/*
+    Final browser-local fallback.
+
+    This guarantees that the flower window
+    can still display a cannabis-flower
+    reference even if every external image
+    is unavailable.
+*/
+
+const ULTIMATE_FLOWER_SVG =
+
+`<svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 800 700"
+>
+
+    <defs>
+
+        <radialGradient
+            id="sfBackground"
+            cx="50%"
+            cy="50%"
+            r="70%"
+        >
+
+            <stop
+                offset="0%"
+                stop-color="#171717"
+            />
+
+            <stop
+                offset="100%"
+                stop-color="#000000"
+            />
+
+        </radialGradient>
+
+
+        <radialGradient
+            id="sfBud"
+            cx="45%"
+            cy="38%"
+            r="65%"
+        >
+
+            <stop
+                offset="0%"
+                stop-color="#d4d89b"
+            />
+
+            <stop
+                offset="28%"
+                stop-color="#89965a"
+            />
+
+            <stop
+                offset="62%"
+                stop-color="#4b5b2b"
+            />
+
+            <stop
+                offset="100%"
+                stop-color="#18200e"
+            />
+
+        </radialGradient>
+
+
+        <filter
+            id="sfGlow"
+            x="-40%"
+            y="-40%"
+            width="180%"
+            height="180%"
+        >
+
+            <feGaussianBlur
+                stdDeviation="3"
+                result="blur"
+            />
+
+            <feMerge>
+
+                <feMergeNode
+                    in="blur"
+                />
+
+                <feMergeNode
+                    in="SourceGraphic"
+                />
+
+            </feMerge>
+
+        </filter>
+
+    </defs>
+
+
+    <rect
+        width="800"
+        height="700"
+        fill="url(#sfBackground)"
+    />
+
+
+    <!-- STEM -->
+
+    <path
+        d="
+            M392 650
+            C382 580 390 500 420 440
+        "
+        fill="none"
+        stroke="#52652c"
+        stroke-width="34"
+        stroke-linecap="round"
+    />
+
+
+    <!-- MAIN CANNABIS FLOWER -->
+
+    <path
+        d="
+            M402 500
+
+            C285 490 230 415 252 330
+
+            C268 266 320 245 350 190
+
+            C382 132 440 116 480 160
+
+            C510 110 590 138 596 210
+
+            C665 235 690 320 640 380
+
+            C610 430 545 470 402 500
+        "
+        fill="url(#sfBud)"
+        stroke="#aab76c"
+        stroke-width="4"
+        filter="url(#sfGlow)"
+    />
+
+
+    <!-- SUGGESTED BRANCHES -->
+
+    <path
+        d="M350 300 L245 205"
+        stroke="#738347"
+        stroke-width="18"
+        stroke-linecap="round"
+    />
+
+    <path
+        d="M390 250 L355 125"
+        stroke="#738347"
+        stroke-width="18"
+        stroke-linecap="round"
+    />
+
+    <path
+        d="M470 245 L520 120"
+        stroke="#738347"
+        stroke-width="18"
+        stroke-linecap="round"
+    />
+
+    <path
+        d="M535 300 L650 205"
+        stroke="#738347"
+        stroke-width="18"
+        stroke-linecap="round"
+    />
+
+
+    <!-- TRICHOME HIGHLIGHTS -->
+
+    <g
+        fill="#f4f0c0"
+        opacity=".72"
+    >
+
+        <circle cx="320" cy="315" r="5"/>
+        <circle cx="350" cy="270" r="4"/>
+        <circle cx="380" cy="340" r="5"/>
+        <circle cx="420" cy="285" r="4"/>
+        <circle cx="455" cy="350" r="5"/>
+        <circle cx="490" cy="300" r="4"/>
+        <circle cx="530" cy="350" r="5"/>
+        <circle cx="560" cy="315" r="4"/>
+        <circle cx="400" cy="390" r="5"/>
+        <circle cx="470" cy="405" r="4"/>
+
+    </g>
+
+
+    <!-- ARCHIVAL MARK -->
+
+    <circle
+        cx="400"
+        cy="350"
+        r="220"
+        fill="none"
+        stroke="#ffd21a"
+        stroke-width="2"
+        opacity=".18"
+    />
+
+</svg>`;
+
+
+/* =========================================================
+   LOAD ARCHIVAL REFERENCE FLOWER
+========================================================= */
+
+function loadArchivalReferenceFlower(
+    token,
+    name
+){
+
+    if(
+        token !== flowerLoadToken
+    ){
+
+        return;
+
+    }
+
+
+    const fallbackIndex =
+        currentPictureIndex;
+
+
+    /*
+        Try the next real cannabis photograph.
+    */
+
+    if(
+        fallbackIndex <
+        FALLBACK_FLOWER_IMAGES.length
+    ){
+
+        const image =
+            FALLBACK_FLOWER_IMAGES[
+                fallbackIndex
+            ];
+
+
+        currentPictureIndex++;
+
+
+        flowerImage.onload =
+            () => {
+
+                if(
+                    token !== flowerLoadToken
+                ){
+
+                    return;
+
+                }
+
+
+                flowerImage.style.display =
+                    "block";
+
+
+                flowerReferenceLabel.textContent =
+                    "ARCHIVAL REFERENCE FLOWER";
+
+
+                flowerCredit.textContent =
+                    "WIKIMEDIA COMMONS — ARCHIVAL CANNABIS FLOWER REFERENCE";
+
+
+                flowerCredit.style.display =
+                    "block";
+
+            };
+
+
+        flowerImage.onerror =
+            () => {
+
+                if(
+                    token !== flowerLoadToken
+                ){
+
+                    return;
+
+                }
+
+
+                loadArchivalReferenceFlower(
+                    token,
+                    name
+                );
+
+            };
+
+
+        flowerImage.alt =
+            name
+                ? (
+                    name +
+                    " — archival cannabis flower reference"
+                )
+                : "Archival cannabis flower reference";
+
+
+        flowerImage.src =
+            image;
+
+
+        return;
+
+    }
+
+
+    /*
+        Absolute final guarantee.
+
+        No network request is required here.
+    */
+
+    flowerImage.onload =
+        () => {
+
+            if(
+                token !== flowerLoadToken
+            ){
+
+                return;
+
+            }
+
+
+            flowerImage.style.display =
+                "block";
+
+
+            flowerReferenceLabel.textContent =
+                "ARCHIVAL REFERENCE FLOWER";
+
+
+            flowerCredit.textContent =
+                "BUILT-IN ARCHIVAL CANNABIS FLOWER REFERENCE";
+
+
+            flowerCredit.style.display =
+                "block";
+
+        };
+
+
+    flowerImage.onerror =
+        null;
+
+
+    flowerImage.alt =
+        name
+            ? (
+                name +
+                " — archival cannabis flower reference"
+            )
+            : "Archival cannabis flower reference";
+
+
+    flowerImage.src =
+        "data:image/svg+xml;charset=UTF-8," +
+        encodeURIComponent(
+            ULTIMATE_FLOWER_SVG
+        );
+
+}
+
+
+/* =========================================================
    LOAD NEXT REAL CANNALIB PHOTO
 ========================================================= */
 
@@ -3946,7 +4348,33 @@ function loadNextLiveFlower(
         currentPictureQueue.length
     ){
 
-        showNoLiveFlower();
+        /*
+            IMPORTANT:
+
+            Do NOT say "NO LIVE PHOTOGRAPH"
+            here.
+
+            If CannaLib has no usable image,
+            move to the archival cannabis
+            reference system instead.
+        */
+
+        loadArchivalReferenceFlower(
+            token,
+            currentRecord
+                ? resolvedFieldValue(
+                    currentRecord,
+                    [
+                        "name",
+                        "strain_name",
+                        "identity",
+                        "title",
+                        "strain"
+                    ],
+                    "Super Flower specimen"
+                )
+                : "Super Flower specimen"
+        );
 
         return;
 
@@ -4007,11 +4435,6 @@ function loadNextLiveFlower(
             }
 
 
-            flowerImage.removeAttribute(
-                "src"
-            );
-
-
             loadNextLiveFlower(
                 token
             );
@@ -4048,7 +4471,8 @@ function loadNextLiveFlower(
 ========================================================= */
 
 function renderFlower(
-    record
+    record,
+    pictures = null
 ){
 
     invalidateFlowerLoad();
@@ -4058,7 +4482,15 @@ function renderFlower(
         flowerLoadToken;
 
 
+    /*
+        Use the pictures already extracted
+        by renderRecord when supplied.
+
+        Otherwise extract them here.
+    */
+
     currentPictureQueue =
+        pictures ||
         extractPictures(
             record
         );
@@ -4068,16 +4500,14 @@ function renderFlower(
         0;
 
 
-    if(
-        !currentPictureQueue.length
-    ){
+    /*
+        If CannaLib has photographs,
+        try those first.
 
-        showNoLiveFlower();
-
-        return;
-
-    }
-
+        If there are none, the loader
+        automatically enters the archival
+        cannabis reference system.
+    */
 
     loadNextLiveFlower(
         token
