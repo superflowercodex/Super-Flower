@@ -2361,6 +2361,7 @@ async function fetchSearchPage(
             {
                 method:"GET",
                 headers:getHeaders(),
+                cache:"no-store",
                 signal
             }
         );
@@ -2466,6 +2467,26 @@ function extractSearchResults(
     ){
 
         return data.data;
+
+    }
+
+
+    if(
+        data?.data &&
+        typeof data.data === "object"
+    ){
+
+        if(Array.isArray(data.data.items)){
+            return data.data.items;
+        }
+
+        if(Array.isArray(data.data.results)){
+            return data.data.results;
+        }
+
+        if(Array.isArray(data.data.strains)){
+            return data.data.strains;
+        }
 
     }
 
@@ -3388,13 +3409,26 @@ async function loadRecord(
     slim
 ){
 
-    const id =
-        slim.id ||
-        slim.name_norm ||
-        slim.name;
+    const candidateIds = [
+        slim.id,
+        slim.name_norm,
+        slim.name
+    ]
+    .map(
+        value =>
+            String(
+                value ??
+                ""
+            ).trim()
+    )
+    .filter(Boolean)
+    .filter(
+        (value,index,array) =>
+            array.indexOf(value) === index
+    );
 
 
-    if(!id){
+    if(!candidateIds.length){
 
         setStatus(
             "THIS RESULT HAS NO USABLE RECORD ID.",
@@ -3416,43 +3450,107 @@ async function loadRecord(
 
     try{
 
-        const response =
-            await fetch(
-                RECORD_ENDPOINT(
-                    id
-                ),
-                {
-                    method:"GET",
-                    headers:getHeaders()
-                }
-            );
-
+        let response =
+            null;
 
         let record =
             null;
 
+        let id =
+            candidateIds[0];
 
-        try{
+        let lastError =
+            null;
 
-            record =
-                await response.json();
 
-        }catch{
+        for(
+            const candidateId of candidateIds
+        ){
 
-            record =
-                null;
+            try{
+
+                response =
+                    await fetch(
+                        RECORD_ENDPOINT(
+                            candidateId
+                        ),
+                        {
+                            method:"GET",
+                            headers:getHeaders(),
+                            cache:"no-store"
+                        }
+                    );
+
+
+                let candidateRecord =
+                    null;
+
+
+                try{
+
+                    candidateRecord =
+                        await response.json();
+
+                }catch{
+
+                    candidateRecord =
+                        null;
+
+                }
+
+
+                if(
+                    response.ok
+                ){
+
+                    record =
+                        candidateRecord;
+
+                    id =
+                        candidateId;
+
+                    break;
+
+                }
+
+
+                lastError =
+                    new Error(
+                        candidateRecord?.error ||
+                        candidateRecord?.message ||
+                        `HTTP ${response.status}`
+                    );
+
+
+                if(
+                    response.status !== 404
+                ){
+
+                    break;
+
+                }
+
+            }catch(error){
+
+                lastError =
+                    error;
+
+            }
 
         }
 
 
         if(
-            !response.ok
+            !response ||
+            !response.ok ||
+            !record
         ){
 
-            throw new Error(
-                record?.error ||
-                record?.message ||
-                `HTTP ${response.status}`
+            throw (
+                lastError ||
+                new Error(
+                    "CANNALIB RECORD COULD NOT BE LOADED."
+                )
             );
 
         }
@@ -4055,41 +4153,56 @@ function renderResonance(
 
         [
             "RELAXATION",
-            findDeep(
+            first(
                 record,
-                "relaxation"
+                [
+                    "relaxation",
+                    "effects.relaxation"
+                ]
             )
         ],
 
         [
             "FOCUS",
-            findDeep(
+            first(
                 record,
-                "focus"
+                [
+                    "focus",
+                    "effects.focus"
+                ]
             )
         ],
 
         [
             "CREATIVITY",
-            findDeep(
+            first(
                 record,
-                "creativity"
+                [
+                    "creativity",
+                    "effects.creativity"
+                ]
             )
         ],
 
         [
             "MEDITATION",
-            findDeep(
+            first(
                 record,
-                "meditation"
+                [
+                    "meditation",
+                    "effects.meditation"
+                ]
             )
         ],
 
         [
             "RECOVERY",
-            findDeep(
+            first(
                 record,
-                "recovery"
+                [
+                    "recovery",
+                    "effects.recovery"
+                ]
             )
         ]
 
@@ -4714,10 +4827,15 @@ function hasResonanceData(
     ]
     .some(
         key =>
-            findDeep(
-                record,
-                key
-            ) !== undefined
+            hasUsableValue(
+                first(
+                    record,
+                    [
+                        key,
+                        `effects.${key}`
+                    ]
+                )
+            )
     );
 
 }
@@ -5736,27 +5854,43 @@ function normalizeList(
    FIRST VALUE — ALIAS ORDERED
 ========================================================= */
 
-function first(
+function getObjectKey(
     object,
-    keys
+    wantedKey
 ){
 
-    if(!object || !Array.isArray(keys)){
+    if(
+        !object ||
+        typeof object !== "object" ||
+        wantedKey === undefined ||
+        wantedKey === null
+    ){
 
         return null;
 
     }
 
 
-    for(const key of keys){
+    const target =
+        String(
+            wantedKey
+        )
+        .trim()
+        .toLowerCase();
 
-        const value =
-            findDeep(object,key);
 
+    for(
+        const key of Object.keys(object)
+    ){
 
-        if(hasUsableValue(value)){
+        if(
+            String(key)
+                .trim()
+                .toLowerCase() ===
+            target
+        ){
 
-            return value;
+            return key;
 
         }
 
@@ -5768,20 +5902,15 @@ function first(
 }
 
 
-/* =========================================================
-   DEEP FIND — CONTROLLED DIRECT-FIRST RESOLUTION
-========================================================= */
-
-function findDeep(
+function getPath(
     object,
-    wantedKey
+    path
 ){
 
     if(
         object === undefined ||
         object === null ||
-        wantedKey === undefined ||
-        wantedKey === null
+        !path
     ){
 
         return undefined;
@@ -5789,94 +5918,100 @@ function findDeep(
     }
 
 
-    const target =
-        String(wantedKey)
-            .trim()
-            .toLowerCase();
+    const parts =
+        String(path)
+            .split(".")
+            .map(
+                part =>
+                    part.trim()
+            )
+            .filter(Boolean);
 
 
-    const queue = [];
-    const seen = new WeakSet();
+    let current =
+        object;
 
 
-    if(
-        typeof object === "object" &&
-        object !== null
+    for(
+        const part of parts
     ){
 
-        queue.push(object);
-        seen.add(object);
+        if(
+            current === undefined ||
+            current === null ||
+            typeof current !== "object"
+        ){
+
+            return undefined;
+
+        }
+
+
+        const actualKey =
+            getObjectKey(
+                current,
+                part
+            );
+
+
+        if(!actualKey){
+
+            return undefined;
+
+        }
+
+
+        current =
+            current[actualKey];
 
     }
 
 
-    while(queue.length){
+    return current;
 
-        const current =
-            queue.shift();
-
-
-        if(Array.isArray(current)){
-
-            for(const item of current){
-
-                if(
-                    item &&
-                    typeof item === "object" &&
-                    !seen.has(item)
-                ){
-
-                    seen.add(item);
-                    queue.push(item);
-
-                }
-
-            }
-
-            continue;
-
-        }
+}
 
 
-        /*
-            Search THIS level completely before moving
-            deeper. This prevents an unrelated nested
-            object from winning over the real field.
-        */
+function first(
+    object,
+    keys
+){
 
-        for(const [key,value] of Object.entries(current)){
+    if(
+        !object ||
+        !Array.isArray(keys)
+    ){
 
-            if(
-                String(key).trim().toLowerCase() === target &&
-                hasUsableValue(value)
-            ){
+        return null;
 
-                return value;
-
-            }
-
-        }
+    }
 
 
-        for(const value of Object.values(current)){
+    for(
+        const key of keys
+    ){
 
-            if(
-                value &&
-                typeof value === "object" &&
-                !seen.has(value)
-            ){
+        const value =
+            getPath(
+                object,
+                key
+            );
 
-                seen.add(value);
-                queue.push(value);
 
-            }
+        if(
+            hasUsableValue(
+                value
+            )
+        ){
+
+            return value;
 
         }
 
     }
 
 
-    return undefined;
+    return null;
 
 }
 
@@ -6217,6 +6352,22 @@ function resolveSourceDisplayValue(
 
 
     return "";
+
+}
+
+
+function formatValue(
+    value
+){
+
+    const display =
+        resolveSourceDisplayValue(
+            value
+        );
+
+
+    return display ||
+        "NOT REPORTED";
 
 }
 
