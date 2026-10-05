@@ -4164,9 +4164,607 @@ const ULTIMATE_FLOWER_SVG =
    LOAD ARCHIVAL REFERENCE FLOWER
 ========================================================= */
 
+/*
+    FLOWER PHOTO QUALITY GATE
+
+    The main flower image must be an actual photograph of
+    cannabis flower — not a logo, breeder graphic,
+    packaging, artwork, illustration, poster or branding.
+
+    This is deliberately conservative.
+*/
+
+const FLOWER_PHOTO_REJECT_TERMS = [
+    "logo",
+    "brand",
+    "branding",
+    "breeder logo",
+    "breeder branding",
+    "pack",
+    "package",
+    "packaging",
+    "seed pack",
+    "seedbank",
+    "seed bank",
+    "label",
+    "poster",
+    "advert",
+    "advertisement",
+    "advertising",
+    "promo",
+    "promotional",
+    "merch",
+    "merchandise",
+    "product",
+    "bottle",
+    "cartoon",
+    "illustration",
+    "illustrated",
+    "artwork",
+    "drawing",
+    "graphic",
+    "graphics",
+    "render",
+    "screenshot",
+    "comic",
+    "sticker",
+    "mascot",
+    "character"
+];
+
+
+/*
+    Only inspect fields that describe the image itself.
+
+    Do NOT stringify the entire picture object because
+    useful metadata such as breeder names can otherwise
+    accidentally cause a genuine flower photograph to fail.
+*/
+
+function getFlowerPictureMeta(
+    picture
+){
+
+    if(
+        !picture ||
+        typeof picture !== "object"
+    ){
+
+        return "";
+
+    }
+
+
+    const fields = [
+        "title",
+        "caption",
+        "description",
+        "alt",
+        "image_alt",
+        "image_title",
+        "kind",
+        "type",
+        "category",
+        "format",
+        "filename",
+        "file_name",
+        "credit",
+        "source",
+        "attribution",
+        "url"
+    ];
+
+
+    return fields
+        .map(
+            key => {
+
+                const value =
+                    picture[key];
+
+                return (
+                    typeof value === "string"
+                        ? value
+                        : ""
+                );
+
+            }
+        )
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
+
+}
+
+
+/*
+    Reject obvious graphics / branding before the browser
+    even attempts to display the image.
+*/
+
+function isObviousFlowerGraphic(
+    picture
+){
+
+    const meta =
+        getFlowerPictureMeta(
+            picture
+        );
+
+
+    if(
+        !meta
+    ){
+
+        return false;
+
+    }
+
+
+    return FLOWER_PHOTO_REJECT_TERMS.some(
+        term =>
+            meta.includes(
+                term
+            )
+    );
+
+}
+
+
+/*
+    Reject obviously unsuitable image URLs.
+
+    This supplements the metadata test because some
+    image records have useful filenames even when the
+    descriptive fields are empty.
+*/
+
+function isObviousFlowerGraphicURL(
+    url
+){
+
+    if(
+        typeof url !== "string" ||
+        !url
+    ){
+
+        return true;
+
+    }
+
+
+    const value =
+        url.toLowerCase();
+
+
+    return FLOWER_PHOTO_REJECT_TERMS.some(
+        term =>
+            value.includes(
+                term.replace(
+                    / /g,
+                    "-"
+                )
+            ) ||
+            value.includes(
+                term.replace(
+                    / /g,
+                    "_"
+                )
+            )
+    );
+
+}
+
+
+/*
+    Browser-side photographic quality gate.
+
+    This is intentionally not an AI classifier.
+
+    It checks:
+      - real image dimensions
+      - sensible photographic proportions
+      - enough visual variation / texture
+      - excessive flat white/black graphic backgrounds
+
+    Cross-origin canvas access can be blocked by the
+    source server. In that situation we safely fall back
+    to the dimension/proportion tests rather than rejecting
+    every legitimate external photograph.
+*/
+
+function imagePassesFlowerQualityCheck(
+    image
+){
+
+    if(
+        !image
+    ){
+
+        return false;
+
+    }
+
+
+    const width =
+        Number(
+            image.naturalWidth ||
+            image.width ||
+            0
+        );
+
+
+    const height =
+        Number(
+            image.naturalHeight ||
+            image.height ||
+            0
+        );
+
+
+    /*
+        High-quality flower photography should not be a
+        tiny thumbnail, icon or tiny web graphic.
+    */
+
+    if(
+        width < 700 ||
+        height < 700
+    ){
+
+        return false;
+
+    }
+
+
+    const aspect =
+        width /
+        height;
+
+
+    /*
+        Reject extremely wide/tall promotional banners,
+        strips and obvious logo graphics.
+    */
+
+    if(
+        aspect < 0.45 ||
+        aspect > 2.2
+    ){
+
+        return false;
+
+    }
+
+
+    /*
+        Attempt a lightweight photographic texture test.
+    */
+
+    try{
+
+        const canvas =
+            document.createElement(
+                "canvas"
+            );
+
+
+        const sampleSize =
+            96;
+
+
+        canvas.width =
+            sampleSize;
+
+        canvas.height =
+            sampleSize;
+
+
+        const context =
+            canvas.getContext(
+                "2d",
+                {
+                    willReadFrequently: true
+                }
+            );
+
+
+        if(
+            !context
+        ){
+
+            return true;
+
+        }
+
+
+        context.drawImage(
+            image,
+            0,
+            0,
+            sampleSize,
+            sampleSize
+        );
+
+
+        const data =
+            context.getImageData(
+                0,
+                0,
+                sampleSize,
+                sampleSize
+            ).data;
+
+
+        let totalLuma = 0;
+        let totalLumaSquared = 0;
+        let nearWhite = 0;
+        let nearBlack = 0;
+        let colourVariation = 0;
+
+
+        const pixelCount =
+            sampleSize *
+            sampleSize;
+
+
+        for(
+            let i = 0;
+            i < data.length;
+            i += 4
+        ){
+
+            const r =
+                data[i];
+
+
+            const g =
+                data[i + 1];
+
+
+            const b =
+                data[i + 2];
+
+
+            const luma =
+                (
+                    r * 0.299 +
+                    g * 0.587 +
+                    b * 0.114
+                );
+
+
+            totalLuma +=
+                luma;
+
+
+            totalLumaSquared +=
+                luma *
+                luma;
+
+
+            if(
+                r > 242 &&
+                g > 242 &&
+                b > 242
+            ){
+
+                nearWhite++;
+
+            }
+
+
+            if(
+                r < 12 &&
+                g < 12 &&
+                b < 12
+            ){
+
+                nearBlack++;
+
+            }
+
+
+            const maxChannel =
+                Math.max(
+                    r,
+                    g,
+                    b
+                );
+
+
+            const minChannel =
+                Math.min(
+                    r,
+                    g,
+                    b
+                );
+
+
+            colourVariation +=
+                maxChannel -
+                minChannel;
+
+        }
+
+
+        const averageLuma =
+            totalLuma /
+            pixelCount;
+
+
+        const variance =
+            (
+                totalLumaSquared /
+                pixelCount
+            ) -
+            (
+                averageLuma *
+                averageLuma
+            );
+
+
+        const standardDeviation =
+            Math.sqrt(
+                Math.max(
+                    0,
+                    variance
+                )
+            );
+
+
+        const whiteRatio =
+            nearWhite /
+            pixelCount;
+
+
+        const blackRatio =
+            nearBlack /
+            pixelCount;
+
+
+        const averageColourVariation =
+            colourVariation /
+            pixelCount;
+
+
+        /*
+            Extremely flat images are much more likely to be
+            logos, simple graphics or promotional artwork.
+
+            Keep the threshold deliberately low so genuine
+            macro flower photography is not unnecessarily lost.
+        */
+
+        if(
+            standardDeviation < 5 &&
+            averageColourVariation < 3
+        ){
+
+            return false;
+
+        }
+
+
+        /*
+            Reject images that are almost entirely a flat
+            white or black graphic.
+        */
+
+        if(
+            whiteRatio > 0.88 &&
+            standardDeviation < 35
+        ){
+
+            return false;
+
+        }
+
+
+        if(
+            blackRatio > 0.88 &&
+            standardDeviation < 35
+        ){
+
+            return false;
+
+        }
+
+
+        return true;
+
+    }catch(error){
+
+        /*
+            Cross-origin images may prevent canvas inspection.
+
+            The image has already passed the hard dimension
+            and proportion checks, so allow it rather than
+            breaking the flower loader.
+        */
+
+        return true;
+
+    }
+
+}
+
+
+/*
+    Combined suitability test for a CannaLib picture record.
+*/
+
+function isSuitableFlowerPicture(
+    picture
+){
+
+    if(
+        !picture ||
+        typeof picture !== "object"
+    ){
+
+        return false;
+
+    }
+
+
+    const url =
+        typeof picture.url === "string"
+            ? picture.url.trim()
+            : "";
+
+
+    if(
+        !url
+    ){
+
+        return false;
+
+    }
+
+
+    if(
+        isObviousFlowerGraphic(
+            picture
+        )
+    ){
+
+        return false;
+
+    }
+
+
+    if(
+        isObviousFlowerGraphicURL(
+            url
+        )
+    ){
+
+        return false;
+
+    }
+
+
+    return true;
+
+}
+
+
+/*
+    Load the archival reference photographs.
+
+    IMPORTANT:
+    fallbackIndex is completely independent from
+    currentPictureIndex.
+
+    The CannaLib queue and the archival fallback queue
+    must never share the same counter.
+*/
+
 function loadArchivalReferenceFlower(
     token,
-    name
+    name,
+    fallbackIndex = 0
 ){
 
     if(
@@ -4178,12 +4776,9 @@ function loadArchivalReferenceFlower(
     }
 
 
-    const fallbackIndex =
-        currentPictureIndex;
-
-
     /*
-        Try the next real cannabis photograph.
+        Try the next known high-quality cannabis flower
+        reference photograph.
     */
 
     if(
@@ -4197,15 +4792,40 @@ function loadArchivalReferenceFlower(
             ];
 
 
-        currentPictureIndex++;
-
-
         flowerImage.onload =
             () => {
 
                 if(
                     token !== flowerLoadToken
                 ){
+
+                    return;
+
+                }
+
+
+                /*
+                    Apply the same quality gate to the
+                    archival photograph.
+                */
+
+                if(
+                    !imagePassesFlowerQualityCheck(
+                        flowerImage
+                    )
+                ){
+
+                    flowerImage.onload =
+                        null;
+
+                    flowerImage.onerror =
+                        null;
+
+                    loadArchivalReferenceFlower(
+                        token,
+                        name,
+                        fallbackIndex + 1
+                    );
 
                     return;
 
@@ -4244,7 +4864,8 @@ function loadArchivalReferenceFlower(
 
                 loadArchivalReferenceFlower(
                     token,
-                    name
+                    name,
+                    fallbackIndex + 1
                 );
 
             };
@@ -4343,21 +4964,17 @@ function loadNextLiveFlower(
     }
 
 
+    /*
+        CannaLib queue exhausted.
+
+        Move to the independent archival reference
+        system. Start its own counter at zero.
+    */
+
     if(
         currentPictureIndex >=
         currentPictureQueue.length
     ){
-
-        /*
-            IMPORTANT:
-
-            Do NOT say "NO LIVE PHOTOGRAPH"
-            here.
-
-            If CannaLib has no usable image,
-            move to the archival cannabis
-            reference system instead.
-        */
 
         loadArchivalReferenceFlower(
             token,
@@ -4373,7 +4990,8 @@ function loadNextLiveFlower(
                     ],
                     "Super Flower specimen"
                 )
-                : "Super Flower specimen"
+                : "Super Flower specimen",
+            0
         );
 
         return;
@@ -4390,6 +5008,26 @@ function loadNextLiveFlower(
     currentPictureIndex++;
 
 
+    /*
+        Reject obvious logos, branding, packaging,
+        artwork and promotional graphics BEFORE loading.
+    */
+
+    if(
+        !isSuitableFlowerPicture(
+            picture
+        )
+    ){
+
+        loadNextLiveFlower(
+            token
+        );
+
+        return;
+
+    }
+
+
     flowerImage.onload =
         () => {
 
@@ -4401,6 +5039,45 @@ function loadNextLiveFlower(
 
             }
 
+
+            /*
+                The image loaded, but it still has to pass
+                the photographic quality gate.
+
+                A successful HTTP/image load does NOT mean
+                it is a suitable flower photograph.
+            */
+
+            if(
+                !imagePassesFlowerQualityCheck(
+                    flowerImage
+                )
+            ){
+
+                flowerImage.onload =
+                    null;
+
+                flowerImage.onerror =
+                    null;
+
+                flowerImage.removeAttribute(
+                    "src"
+                );
+
+
+                loadNextLiveFlower(
+                    token
+                );
+
+                return;
+
+            }
+
+
+            /*
+                ONLY HERE does an image become the selected
+                LIVE SOURCE FLOWER.
+            */
 
             flowerImage.style.display =
                 "block";
@@ -4501,12 +5178,13 @@ function renderFlower(
 
 
     /*
-        If CannaLib has photographs,
-        try those first.
+        Start with CannaLib photographs.
 
-        If there are none, the loader
-        automatically enters the archival
-        cannabis reference system.
+        Every candidate now passes through the strict
+        flower-photo suitability gate.
+
+        If all candidates fail, the loader automatically
+        enters the archival cannabis reference system.
     */
 
     loadNextLiveFlower(
@@ -4514,6 +5192,11 @@ function renderFlower(
     );
 
 }
+
+
+/* =========================================================
+   FIELD
+========================================================= */
 
 
 /* =========================================================
