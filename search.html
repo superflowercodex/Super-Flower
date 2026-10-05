@@ -3369,7 +3369,7 @@ function unwrapRecord(
 
 
 /* =========================================================
-   LOAD RECORD
+   LOAD RECORD + EXTERNAL STRAIN ENRICHMENT
 ========================================================= */
 
 async function loadRecord(
@@ -3377,9 +3377,13 @@ async function loadRecord(
 ){
 
     const candidateIds = [
+
         slim.id,
+
         slim.name_norm,
+
         slim.name
+
     ]
     .map(
         value =>
@@ -3429,6 +3433,10 @@ async function loadRecord(
         let lastError =
             null;
 
+
+        /* =====================================================
+           PRIMARY LIVE SOURCE — CANNALIB
+        ===================================================== */
 
         for(
             const candidateId of candidateIds
@@ -3540,6 +3548,357 @@ async function loadRecord(
 
         }
 
+
+        /* =====================================================
+           SUPER FLOWER EXTERNAL ENRICHMENT
+           
+           CannaLib remains the primary record.
+           These values are only used where the primary
+           record is genuinely missing the field.
+
+           IMPORTANT:
+           Conflicting source claims are retained rather
+           than silently pretending they are one identical
+           fact.
+        ===================================================== */
+
+        const enrichmentKey =
+            String(
+                first(
+                    record,
+                    [
+                        "name",
+                        "strain_name",
+                        "identity",
+                        "title",
+                        "strain"
+                    ]
+                ) ||
+                slim?.name ||
+                id ||
+                ""
+            )
+            .toLowerCase()
+            .replace(
+                /[^a-z0-9]+/g,
+                " "
+            )
+            .trim();
+
+
+        const EXTERNAL_STRAIN_EVIDENCE = {
+
+            "acai mintz auto": {
+
+                genetics:
+                    "Acai Berry × Kush Mints / Acai Berry Gelato × Mintz Auto",
+
+                cbd:
+                    "<1%",
+
+                thc:
+                    "28%",
+
+                aroma:
+                    "Orange · Pine · Diesel",
+
+                breeder:
+                    "Advanced Seeds",
+
+                type:
+                    "Autoflowering",
+
+                externalSources: [
+
+                    {
+                        name:
+                            "Advanced Seeds — 2025 Catalogue",
+
+                        url:
+                            "https://advancedseeds.com/catalogo/catalogo-advanced-seeds-2025.pdf",
+
+                        fields:
+                            [
+                                "THC",
+                                "aroma"
+                            ]
+                    },
+
+                    {
+                        name:
+                            "Seedfinder",
+
+                        url:
+                            "https://www.seedfinder.com/cannabis-strain/acai-mintz-autoflowering-cannabis-seeds",
+
+                        fields:
+                            [
+                                "genetics",
+                                "CBD",
+                                "THC",
+                                "terpenes"
+                            ]
+                    },
+
+                    {
+                        name:
+                            "Alchimia",
+
+                        url:
+                            "https://www.alchimiaweb.com/en/acai-mintz-autoflower-advanced-seeds-product-20995.php",
+
+                        fields:
+                            [
+                                "genetics",
+                                "aroma",
+                                "effects"
+                            ]
+                    }
+
+                ]
+
+            }
+
+        };
+
+
+        const external =
+            EXTERNAL_STRAIN_EVIDENCE[
+                enrichmentKey
+            ];
+
+
+        if(
+            external
+        ){
+
+            /* =================================================
+               ONLY FILL ACTUALLY EMPTY PRIMARY FIELDS
+            ================================================= */
+
+            const primaryName =
+                String(
+                    first(
+                        record,
+                        [
+                            "name",
+                            "strain_name",
+                            "identity",
+                            "title",
+                            "strain"
+                        ]
+                    ) ||
+                    ""
+                )
+                .trim();
+
+
+            const primaryGenetics =
+                resolveSourceDisplayValue(
+                    first(
+                        record,
+                        [
+                            "genetics",
+                            "genetic_lineage",
+                            "genetic",
+                            "lineage",
+                            "lineage_summary",
+                            "parentage",
+                            "parents",
+                            "parent_strains"
+                        ]
+                    )
+                );
+
+
+            const primaryTHC =
+                resolveSourceDisplayValue(
+                    first(
+                        record,
+                        [
+                            "thc_range",
+                            "thc",
+                            "thc_percent",
+                            "thc_percentage",
+                            "total_thc",
+                            "totalTHC"
+                        ]
+                    )
+                );
+
+
+            const primaryCBD =
+                resolveSourceDisplayValue(
+                    first(
+                        record,
+                        [
+                            "cbd_range",
+                            "cbd",
+                            "cbd_percent",
+                            "cbd_percentage",
+                            "total_cbd",
+                            "totalCBD"
+                        ]
+                    )
+                );
+
+
+            const primaryAroma =
+                resolveSourceDisplayValue(
+                    first(
+                        record,
+                        [
+                            "aroma",
+                            "aromas",
+                            "flavour",
+                            "flavor",
+                            "flavours",
+                            "flavors",
+                            "aroma_profile",
+                            "flavour_profile",
+                            "flavor_profile"
+                        ]
+                    )
+                );
+
+
+            const primaryBreeder =
+                resolveSourceDisplayValue(
+                    first(
+                        record,
+                        [
+                            "breeder",
+                            "breeder_name",
+                            "breederName"
+                        ]
+                    )
+                );
+
+
+            const primaryType =
+                resolveSourceDisplayValue(
+                    first(
+                        record,
+                        [
+                            "type",
+                            "strain_type",
+                            "classification",
+                            "category"
+                        ]
+                    )
+                );
+
+
+            if(
+                !primaryGenetics
+            ){
+
+                record.genetics =
+                    external.genetics;
+
+            }
+
+
+            if(
+                !primaryTHC
+            ){
+
+                record.thc_range =
+                    external.thc;
+
+            }
+
+
+            if(
+                !primaryCBD
+            ){
+
+                record.cbd_range =
+                    external.cbd;
+
+            }
+
+
+            if(
+                !primaryAroma
+            ){
+
+                record.aroma =
+                    external.aroma;
+
+            }
+
+
+            if(
+                !primaryBreeder
+            ){
+
+                record.breeder =
+                    external.breeder;
+
+            }
+
+
+            if(
+                !primaryType
+            ){
+
+                record.type =
+                    external.type;
+
+            }
+
+
+            /* ================================================
+               EXTERNAL SOURCE RECEIPTS
+            ================================================ */
+
+            record.superFlowerExternalEvidence = {
+
+                matchedName:
+                    primaryName ||
+                    enrichmentKey,
+
+                sources:
+                    external.externalSources,
+
+                enrichment:
+                    [
+                        !primaryGenetics
+                            ? "GENETICS"
+                            : null,
+
+                        !primaryTHC
+                            ? "THC"
+                            : null,
+
+                        !primaryCBD
+                            ? "CBD"
+                            : null,
+
+                        !primaryAroma
+                            ? "AROMA"
+                            : null,
+
+                        !primaryBreeder
+                            ? "BREEDER"
+                            : null,
+
+                        !primaryType
+                            ? "TYPE"
+                            : null
+
+                    ]
+                    .filter(Boolean)
+
+            };
+
+        }
+
+
+        /* =====================================================
+           FINAL RECORD
+        ===================================================== */
 
         currentRecord =
             record;
