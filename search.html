@@ -1710,38 +1710,32 @@ function resolveCodexAlignment(
             ...override,
 
             basis:
-                "SUPER FLOWER CODEX EXPLICIT OVERRIDE",
-
-            sourceStatus:
-                "EXPLICIT"
+                "SUPER FLOWER CODEX OVERRIDE"
 
         };
 
     }
 
 
-    const calculated =
-        record?.__superFlower?.codex;
-
-    if(calculated && calculated.frequency){
-        return calculated;
-    }
+    const index =
+        stableHash(
+            identity
+        ) %
+        GLCTC1_CODEX_FREQUENCIES.length;
 
 
     return {
 
-        frequency:null,
-        chakra:null,
-        planet:null,
+        ...GLCTC1_CODEX_FREQUENCIES[
+            index
+        ],
+
         basis:
-            "NOT CALCULATED — SOURCE DATA INSUFFICIENT",
-        sourceStatus:
-            "NOT CALCULABLE"
+            "SUPER FLOWER CODEX REFERENCE ALIGNMENT"
 
     };
 
 }
-
 
 /* =========================================================
    ELEMENTS
@@ -3034,11 +3028,16 @@ function resolveSearchRecord(
     const cbg =
         resolvedFieldValue(
             record,
-            ["cbg", "CBG", "cbg_percent", "cbg_percentage", "total_cbg", "totalCBG"],
+            [
+                "cbg",
+                "CBG",
+                "cbg_percent",
+                "cbg_percentage",
+                "total_cbg",
+                "totalCBG"
+            ],
             ""
-        ) ||
-        record?.__sf_cbg ||
-        "";
+        );
 
 
     const genetics =
@@ -3373,727 +3372,6 @@ function unwrapRecord(
    LOAD RECORD
 ========================================================= */
 
-
-/* =========================================================
-   SUPER FLOWER LIVING RECORD ENGINE
-
-   This is deliberately source-first.
-
-   1. Read the live CannaLib record.
-   2. Identify missing fields.
-   3. Research only those missing fields through public
-      Internet sources available to a static GitHub page.
-   4. Keep the evidence and source URL with every researched value.
-   5. Calculate Codex values only from recorded/researched data.
-   6. Never use a hash to invent a final Codex assignment.
-========================================================= */
-
-const SUPER_FLOWER_FIELD_DEFINITIONS = {
-
-    name:{
-        label:"STRAIN NAME",
-        paths:["name","strain_name","title","strain"]
-    },
-
-    breeder:{
-        label:"BREEDER",
-        paths:["breeder","breeder_name","breeder.name"]
-    },
-
-    type:{
-        label:"TYPE",
-        paths:["type","strain_type","classification","category"]
-    },
-
-    genetics:{
-        label:"GENETICS / LINEAGE",
-        paths:["genetics","genetic_lineage","lineage","parentage","parents","parent_strains"]
-    },
-
-    thc:{
-        label:"THC",
-        paths:["thc_range","thc","thc_percent","thc_percentage","total_thc","chemistry.thc","cannabinoids.thc"]
-    },
-
-    cbd:{
-        label:"CBD",
-        paths:["cbd_range","cbd","cbd_percent","cbd_percentage","total_cbd","chemistry.cbd","cannabinoids.cbd"]
-    },
-
-    terpenes:{
-        label:"TERPENES",
-        paths:["terpenes","top_terpenes","terpene_profile","dominant_terpenes"]
-    },
-
-    aroma:{
-        label:"AROMA / FLAVOUR",
-        paths:["aroma","aromas","flavor","flavors","flavour","flavours","flavor_profile","flavour_profile"]
-    },
-
-    effects:{
-        label:"EFFECTS",
-        paths:["effects","reported_effects","effect"]
-    },
-
-    flowering:{
-        label:"FLOWERING TIME",
-        paths:["flowering_days","flowering_time","flowering"]
-    },
-
-    height:{
-        label:"HEIGHT",
-        paths:["height_cm","height","height_band"]
-    },
-
-    yield:{
-        label:"YIELD",
-        paths:["yield","yield_value","yield_range","yield_per_m2"]
-    },
-
-    origin:{
-        label:"ORIGIN",
-        paths:["origin","country_of_origin","region_of_origin"]
-    },
-
-    aliases:{
-        label:"ALIASES",
-        paths:["aliases","alias"]
-    },
-
-    children:{
-        label:"DESCENDANTS",
-        paths:["children","offspring","descendants"]
-    },
-
-    photoperiod:{
-        label:"PHOTOPERIOD",
-        paths:["photoperiod"]
-    },
-
-    autoflower:{
-        label:"AUTOFLOWER",
-        paths:["autoflower","auto_flowering","autoflowering"]
-    },
-
-    cbg:{
-        label:"CBG",
-        paths:["cbg","CBG","cbg_percent","cbg_percentage","total_cbg","totalCBG"]
-    },
-
-    cbn:{
-        label:"CBN",
-        paths:["cbn","CBN","cbn_percent","cbn_percentage","total_cbn","totalCBN"]
-    },
-
-    cbc:{
-        label:"CBC",
-        paths:["cbc","CBC","cbc_percent","cbc_percentage","total_cbc","totalCBC"]
-    },
-
-    thcv:{
-        label:"THCV",
-        paths:["thcv","THCV","thcv_percent","thcv_percentage","total_thcv","totalTHCV"]
-    }
-
-};
-
-
-const SUPER_FLOWER_RESEARCH_SOURCES = [
-    {
-        name:"Wikipedia",
-        searchUrl:q =>
-            "https://en.wikipedia.org/w/api.php?action=query&list=search&srsearch=" +
-            encodeURIComponent(q) +
-            "&format=json&origin=*"
-    },
-    {
-        name:"Wikidata",
-        searchUrl:q =>
-            "https://www.wikidata.org/w/api.php?action=wbsearchentities&search=" +
-            encodeURIComponent(q) +
-            "&language=en&format=json&origin=*"
-    },
-    {
-        name:"DuckDuckGo Instant Answers",
-        searchUrl:q =>
-            "https://api.duckduckgo.com/?q=" +
-            encodeURIComponent(q) +
-            "&format=json&no_html=1&skip_disambig=1"
-    }
-];
-
-
-function sfCleanText(value){
-
-    return String(value ?? "")
-        .replace(/<[^>]*>/g," ")
-        .replace(/\s+/g," ")
-        .trim();
-
-}
-
-
-function sfNumber(value){
-
-    if(typeof value === "number" && Number.isFinite(value)){
-        return value;
-    }
-
-    const match =
-        String(value ?? "")
-            .replace(/,/g,"")
-            .match(/-?\d+(?:\.\d+)?/);
-
-    return match ? Number(match[0]) : null;
-
-}
-
-
-function sfList(value){
-
-    if(Array.isArray(value)){
-        return value
-            .flatMap(item =>
-                typeof item === "object"
-                    ? [resolveSourceDisplayValue(item)]
-                    : [item]
-            )
-            .map(sfCleanText)
-            .filter(Boolean);
-    }
-
-    if(value && typeof value === "object"){
-        return Object.values(value)
-            .flatMap(sfList)
-            .filter(Boolean);
-    }
-
-    return String(value ?? "")
-        .split(/[,;|]/)
-        .map(sfCleanText)
-        .filter(Boolean);
-
-}
-
-
-function sfSourceValue(record, paths){
-
-    for(const path of paths){
-
-        const value =
-            resolvedFieldValue(
-                record,
-                [path],
-                ""
-            );
-
-        if(value !== "" && value != null){
-            return value;
-        }
-
-    }
-
-    return "";
-
-}
-
-
-function sfValue(fields,key,fallback=""){
-
-    const value = fields?.[key]?.value;
-
-    return value !== undefined && value !== null && String(value).trim()
-        ? value
-        : fallback;
-
-}
-
-
-function sfFieldStatus(value){
-
-    if(value !== "" && value != null){
-        return "REPORTED";
-    }
-
-    return "NOT FOUND";
-
-}
-
-
-function sfNormalise(record, slim){
-
-    const fields = {};
-
-    for(const [key,definition] of Object.entries(SUPER_FLOWER_FIELD_DEFINITIONS)){
-
-        const value =
-            sfSourceValue(
-                record,
-                definition.paths
-            ) ||
-            sfSourceValue(
-                slim,
-                definition.paths
-            );
-
-        fields[key] = {
-            label:definition.label,
-            value:value || "",
-            status:sfFieldStatus(value),
-            provenance:value
-                ? {type:"SOURCE",source:"CannaLib"}
-                : null
-        };
-
-    }
-
-    return fields;
-
-}
-
-
-function sfResearchTargets(fields){
-
-    return Object.entries(fields)
-        .filter(([,field]) => field.status === "NOT FOUND")
-        .map(([key,field]) => ({
-            key,
-            label:field.label
-        }));
-
-}
-
-
-async function sfFetchJSON(url){
-
-    const response =
-        await fetch(
-            url,
-            {
-                method:"GET",
-                headers:{Accept:"application/json"},
-                cache:"no-store"
-            }
-        );
-
-    if(!response.ok){
-        throw new Error(`HTTP ${response.status}`);
-    }
-
-    return response.json();
-
-}
-
-
-function sfExtractResearchValue(fieldKey,text){
-
-    const clean = sfCleanText(text);
-
-    if(!clean){
-        return "";
-    }
-
-    const patterns = {
-        breeder:[/bred by ([^.]{2,100})/i,/breeder[:\s]+([^.;]{2,100})/i],
-        genetics:[/(?:genetics|genetic lineage|lineage|parents?)[:\s]+([^.;]{4,180})/i,/cross(?:ed)? with ([^.]{4,120})/i],
-        thc:[/THC[^\d]{0,20}(\d+(?:\.\d+)?)\s*%/i],
-        cbd:[/CBD[^\d]{0,20}(\d+(?:\.\d+)?)\s*%/i],
-        flowering:[/flower(?:ing)?(?: time| period)?[^\d]{0,20}(\d+(?:\s*[-–]\s*\d+)?)\s*(?:days|weeks)/i],
-        height:[/height[^\d]{0,20}(\d+(?:\.\d+)?)\s*(cm|m|in|ft)/i],
-        yield:[/yield[^\d]{0,20}(\d+(?:\.\d+)?)\s*(g|grams|oz|ounces)/i],
-        origin:[/origin(?:ates)?(?: from)?[:\s]+([^.;]{3,120})/i],
-        type:[/\b(indica|sativa|hybrid|ruderalis)\b/i],
-        aroma:[/aroma(?:s)?[:\s]+([^.;]{4,180})/i],
-        effects:[/effects?[:\s]+([^.;]{4,180})/i],
-        terpenes:[/terpenes?[:\s]+([^.;]{4,180})/i]
-    };
-
-    const list = patterns[fieldKey] || [];
-
-    for(const pattern of list){
-        const match = clean.match(pattern);
-        if(match){
-            return sfCleanText(match[1] || match[0]);
-        }
-    }
-
-    return "";
-
-}
-
-
-async function sfResearchField(strainName,fieldKey){
-
-    const query =
-        `${strainName} cannabis ${SUPER_FLOWER_FIELD_DEFINITIONS[fieldKey]?.label || fieldKey}`;
-
-    const evidence = [];
-
-    for(const provider of SUPER_FLOWER_RESEARCH_SOURCES){
-
-        try{
-
-            const data =
-                await sfFetchJSON(
-                    provider.searchUrl(query)
-                );
-
-            let text = "";
-            let url = provider.searchUrl(query);
-
-            if(provider.name === "Wikipedia"){
-                const pages = data?.query?.search || [];
-                if(pages.length){
-                    text = pages.map(p => p.snippet || p.title || "").join(" ");
-                    url = "https://en.wikipedia.org/wiki/" +
-                        encodeURIComponent(pages[0].title.replace(/ /g,"_"));
-                }
-            }
-
-            if(provider.name === "Wikidata"){
-                const item = data?.search?.[0];
-                if(item){
-                    text = [item.label,item.description].filter(Boolean).join(" — ");
-                    url = item.concepturi || url;
-                }
-            }
-
-            if(provider.name === "DuckDuckGo Instant Answers"){
-                const related = Array.isArray(data?.RelatedTopics)
-                    ? data.RelatedTopics
-                    : [];
-                text = [
-                    data?.AbstractText,
-                    data?.Answer,
-                    ...related.map(x => x?.Text || "")
-                ].filter(Boolean).join(" ");
-                url = data?.AbstractURL || url;
-            }
-
-            const value =
-                sfExtractResearchValue(
-                    fieldKey,
-                    text
-                );
-
-            if(value){
-                evidence.push({
-                    value,
-                    source:provider.name,
-                    url,
-                    query,
-                    status:"RESEARCHED"
-                });
-                break;
-            }
-
-        }catch(error){
-            /* A failed public research provider must never
-               become fabricated data. Continue to the next. */
-        }
-
-    }
-
-    return evidence;
-
-}
-
-
-async function sfResearchMissingFields(fields,strainName){
-
-    const targets =
-        sfResearchTargets(fields);
-
-    const researchLog = [];
-
-    for(const target of targets){
-
-        setStatus(
-            `RESEARCHING MISSING FIELD: ${target.label}...`
-        );
-
-        const evidence =
-            await sfResearchField(
-                strainName,
-                target.key
-            );
-
-        researchLog.push({
-            field:target.key,
-            label:target.label,
-            evidence
-        });
-
-        if(evidence.length){
-
-            fields[target.key].value =
-                evidence[0].value;
-
-            fields[target.key].status =
-                "RESEARCHED";
-
-            fields[target.key].provenance = {
-                type:"INTERNET RESEARCH",
-                source:evidence[0].source,
-                url:evidence[0].url,
-                query:evidence[0].query
-            };
-
-        }
-
-    }
-
-    return researchLog;
-
-}
-
-
-function sfEffectText(record,fields){
-
-    const raw =
-        fields.effects?.value ||
-        sfSourceValue(record,["effects","reported_effects","effect"]);
-
-    return sfList(raw).join(" ").toLowerCase();
-
-}
-
-
-function sfCalculateResonance(record,fields){
-
-    const text =
-        sfEffectText(record,fields);
-
-    const terpeneText =
-        sfList(fields.terpenes?.value).join(" ").toLowerCase();
-
-    const aromaText =
-        sfList(fields.aroma?.value).join(" ").toLowerCase();
-
-    const all = `${text} ${terpeneText} ${aromaText}`;
-
-    const keywords = {
-        relaxation:["relax","calm","sedat","sleep","sooth","body"],
-        focus:["focus","alert","clear","concentrat"],
-        creativity:["creativ","euphor","inspir","uplift","happy"],
-        meditation:["meditat","introspect","dream","spiritual","tranquil"],
-        recovery:["pain","relief","recover","muscle","stress","tension"]
-    };
-
-    const resonance = {};
-
-    for(const [name,words] of Object.entries(keywords)){
-
-        let score = 0;
-
-        for(const word of words){
-            if(all.includes(word)) score += 20;
-        }
-
-        resonance[name] =
-            score
-                ? Math.min(100,score)
-                : null;
-
-    }
-
-    return resonance;
-
-}
-
-
-function sfCalculateCodex(resonance){
-
-    const mapping = {
-        relaxation:{frequency:396,chakra:"ROOT",planet:"MARS"},
-        creativity:{frequency:417,chakra:"SACRAL",planet:"VENUS"},
-        recovery:{frequency:639,chakra:"HEART",planet:"EARTH"},
-        focus:{frequency:741,chakra:"THROAT",planet:"MERCURY"},
-        meditation:{frequency:852,chakra:"THIRD EYE",planet:"JUPITER"}
-    };
-
-    let best = null;
-
-    for(const [key,value] of Object.entries(resonance)){
-        if(!Number.isFinite(value)) continue;
-        if(!best || value > best.score) best = {key,score:value};
-    }
-
-    if(!best){
-        return {
-            frequency:null,
-            chakra:null,
-            planet:null,
-            basis:"NOT CALCULABLE — NO SOURCE-BACKED RESONANCE EVIDENCE",
-            sourceStatus:"NOT CALCULABLE"
-        };
-    }
-
-    return {
-        ...mapping[best.key],
-        basis:`CALCULATED FROM SOURCE-BACKED RESONANCE: ${best.key.toUpperCase()} ${best.score}/100`,
-        sourceStatus:"CALCULATED",
-        driver:best.key,
-        score:best.score
-    };
-
-}
-
-
-function sfCalculateDerived(fields,resonance){
-
-    const thc = sfNumber(fields.thc?.value);
-    const cbd = sfNumber(fields.cbd?.value);
-    const cannabinoidValues = [thc,cbd]
-        .filter(Number.isFinite);
-
-    const terpeneCount =
-        sfList(fields.terpenes?.value).length || null;
-
-    return {
-        thcCbdRatio:
-            Number.isFinite(thc) && Number.isFinite(cbd) && cbd !== 0
-                ? (thc/cbd).toFixed(2) + ":1"
-                : null,
-        cannabinoidTotal:
-            cannabinoidValues.length
-                ? cannabinoidValues.reduce((a,b)=>a+b,0).toFixed(2) + "%"
-                : null,
-        terpeneCount,
-        dataCompleteness:
-            Math.round(
-                Object.values(fields)
-                    .filter(field => field.value !== "" && field.status !== "NOT FOUND")
-                    .length /
-                Object.values(fields).length * 100
-            )
-    };
-}
-
-
-function sfAttach(record,fields,researchLog,resonance,codex,derived){
-
-    const enriched = {
-        ...record
-    };
-
-    for(const [key,field] of Object.entries(fields)){
-        if(field.value === "") continue;
-
-        const existing =
-            sfSourceValue(record, SUPER_FLOWER_FIELD_DEFINITIONS[key].paths);
-
-        if(existing === ""){
-            enriched[`__sf_${key}`] = field.value;
-        }
-    }
-
-    enriched.__superFlower = {
-        fields,
-        researchLog,
-        resonance,
-        codex,
-        derived,
-        completedAt:new Date().toISOString()
-    };
-
-    return enriched;
-
-}
-
-
-async function enrichSuperFlowerRecord(record,slim){
-
-    const fields =
-        sfNormalise(
-            record,
-            slim
-        );
-
-    const name =
-        fields.name.value ||
-        slim?.name ||
-        "UNKNOWN STRAIN";
-
-    const researchLog =
-        await sfResearchMissingFields(
-            fields,
-            name
-        );
-
-    const resonance =
-        sfCalculateResonance(
-            record,
-            fields
-        );
-
-    const codex =
-        sfCalculateCodex(
-            resonance
-        );
-
-    const derived =
-        sfCalculateDerived(
-            fields,
-            resonance
-        );
-
-    return sfAttach(
-        record,
-        fields,
-        researchLog,
-        resonance,
-        codex,
-        derived
-    );
-
-}
-
-
-function renderSuperFlowerAudit(record){
-
-    const sf =
-        record?.__superFlower;
-
-    if(!sf){
-        return dataItem("STATUS","SUPER FLOWER ENGINE NOT INITIALISED");
-    }
-
-    const fieldRows =
-        Object.values(sf.fields)
-            .map(field =>
-                dataItem(
-                    field.label,
-                    `${field.value || "NOT FOUND"} — ${field.status}`
-                )
-            )
-            .join("");
-
-    const researchRows =
-        sf.researchLog
-            .flatMap(item => item.evidence || [])
-            .map(item =>
-                `<li>${escapeHTML(item.source)} — ${escapeHTML(item.value)} — <a href="${escapeAttribute(item.url)}" target="_blank" rel="noopener noreferrer">SOURCE</a></li>`
-            )
-            .join("");
-
-    return `
-        <div class="info-data-grid">
-            ${fieldRows}
-            ${dataItem("DATA COMPLETENESS", `${sf.derived.dataCompleteness}%`)}
-            ${dataItem("THC : CBD", sf.derived.thcCbdRatio || "NOT CALCULABLE")}
-            ${dataItem("CANNABINOID TOTAL", sf.derived.cannabinoidTotal || "NOT CALCULABLE")}
-            ${dataItem("TERPENE COUNT", sf.derived.terpeneCount ?? "NOT CALCULABLE")}
-            ${dataItem("CODEX BASIS", sf.codex.basis)}
-        </div>
-        <div class="info-panel-note">
-            RESEARCH IS SHOWN WITH ITS SOURCE STATUS. NO MISSING VALUE IS SILENTLY FABRICATED.
-        </div>
-        ${researchRows ? `<ul class="source-list">${researchRows}</ul>` : ""}
-    `;
-}
-
-
 async function loadRecord(
     slim
 ){
@@ -4287,29 +3565,12 @@ async function loadRecord(
         */
 
 
-        /* =====================================================
-           SUPER FLOWER INTELLIGENCE PIPELINE
-           SOURCE → COMPLETENESS → INTERNET RESEARCH → CALCULATOR
-        ===================================================== */
-
-        setStatus(
-            "AUDITING SOURCE DATA..."
-        );
-
-
-        const enrichedRecord =
-            await enrichSuperFlowerRecord(
-                record,
-                slim
-            );
-
-
         currentRecord =
-            enrichedRecord;
+            record;
 
 
         renderRecord(
-            enrichedRecord,
+            record,
             slim
         );
 
@@ -4404,9 +3665,6 @@ function renderRecord(
     slim
 ){
 
-    const sfFields =
-        record?.__superFlower?.fields || {};
-
     /*
         Keep the complete live payload.
 
@@ -4435,7 +3693,8 @@ function renderRecord(
                 "title",
                 "strain"
             ],
-            sfValue(sfFields,"name",slim?.name || "UNKNOWN STRAIN")
+            slim?.name ||
+            "UNKNOWN STRAIN"
         );
 
 
@@ -4861,7 +4120,8 @@ genetics =
                 "evidence.type",
                 "reported.type"
             ],
-            sfValue(sfFields,"type",slim?.type || "NOT REPORTED")
+            slim?.type ||
+            "NOT REPORTED"
         );
 
 
@@ -4893,7 +4153,8 @@ genetics =
 
                 "reported.chemistry.thc"
             ],
-            sfValue(sfFields,"thc",slim?.thc_range || "NOT REPORTED")
+            slim?.thc_range ||
+            "NOT REPORTED"
         );
 
 
@@ -4930,7 +4191,8 @@ genetics =
                 "analysis.cbd",
                 "cannabinoid_results.cbd"
             ],
-            sfValue(sfFields,"cbd",slim?.cbd_range || "NOT REPORTED")
+            slim?.cbd_range ||
+            "NOT REPORTED"
         );
 
 
@@ -4952,7 +4214,8 @@ genetics =
                 "evidence.breeder",
                 "reported.breeder"
             ],
-            sfValue(sfFields,"breeder",slim?.breeder || "NOT REPORTED")
+            slim?.breeder ||
+            "NOT REPORTED"
         );
 
 
@@ -5088,7 +4351,6 @@ genetics =
 
     aroma =
         aroma ||
-        sfValue(sfFields,"aroma","") ||
         "NOT REPORTED";
 
 
@@ -6814,17 +6076,62 @@ function renderResonance(
     record
 ){
 
-    const calculated =
-        record?.__superFlower?.resonance || {};
-
-
     const values = [
 
-        ["RELAXATION", calculated.relaxation],
-        ["FOCUS", calculated.focus],
-        ["CREATIVITY", calculated.creativity],
-        ["MEDITATION", calculated.meditation],
-        ["RECOVERY", calculated.recovery]
+        [
+            "RELAXATION",
+            first(
+                record,
+                [
+                    "relaxation",
+                    "effects.relaxation"
+                ]
+            )
+        ],
+
+        [
+            "FOCUS",
+            first(
+                record,
+                [
+                    "focus",
+                    "effects.focus"
+                ]
+            )
+        ],
+
+        [
+            "CREATIVITY",
+            first(
+                record,
+                [
+                    "creativity",
+                    "effects.creativity"
+                ]
+            )
+        ],
+
+        [
+            "MEDITATION",
+            first(
+                record,
+                [
+                    "meditation",
+                    "effects.meditation"
+                ]
+            )
+        ],
+
+        [
+            "RECOVERY",
+            first(
+                record,
+                [
+                    "recovery",
+                    "effects.recovery"
+                ]
+            )
+        ]
 
     ];
 
@@ -7021,39 +6328,68 @@ function renderInfo(
 
 
     const flowering =
-        resolvedFieldValue(record,["flowering_days","flowering_time","flowering"]) ||
-        record?.__sf_flowering ||
-        "";
+        resolvedFieldValue(
+            record,
+            [
+                "flowering_days",
+                "flowering_time",
+                "flowering"
+            ]
+        );
 
 
     const height =
-        resolvedFieldValue(record,["height_cm","height","height_band"]) ||
-        record?.__sf_height ||
-        "";
+        resolvedFieldValue(
+            record,
+            [
+                "height_cm",
+                "height",
+                "height_band"
+            ]
+        );
 
 
     const photoperiod =
-        resolvedFieldValue(record,["photoperiod"]) ||
-        record?.__sf_photoperiod ||
-        "";
+        resolvedFieldValue(
+            record,
+            [
+                "photoperiod"
+            ]
+        );
 
 
     const autoflower =
-        resolvedFieldValue(record,["autoflower","auto_flowering","autoflowering"]) ||
-        record?.__sf_autoflower ||
-        "";
+        resolvedFieldValue(
+            record,
+            [
+                "autoflower",
+                "auto_flowering",
+                "autoflowering"
+            ]
+        );
 
 
     const yieldValue =
-        resolvedFieldValue(record,["yield","yield_value","yield_range","yield_per_m2"]) ||
-        record?.__sf_yield ||
-        "";
+        resolvedFieldValue(
+            record,
+            [
+                "yield",
+                "yield_value",
+                "yield_range",
+                "yield_per_m2"
+            ]
+        );
 
 
     const origin =
-        resolvedFieldValue(record,["origin","country_of_origin","region_of_origin"]) ||
-        record?.__sf_origin ||
-        "";
+        resolvedFieldValue(
+            record,
+            [
+                "origin",
+                "country_of_origin",
+                "region_of_origin"
+            ]
+        );
 
 
     const aliases =
@@ -7083,31 +6419,272 @@ function renderInfo(
     const cbn =
         resolvedFieldValue(
             record,
-            ["cbn", "CBN", "cbn_percent", "cbn_percentage", "total_cbn", "totalCBN"],
-            ""
-        ) ||
-        record?.__sf_cbn ||
-        "";
+            [
+                "cbn",
+                "CBN",
+                "cbn_percent",
+                "cbn_percentage",
+                "total_cbn",
+                "totalCBN"
+            ]
+        );
 
 
     const cbc =
         resolvedFieldValue(
             record,
-            ["cbc", "CBC", "cbc_percent", "cbc_percentage", "total_cbc", "totalCBC"],
-            ""
-        ) ||
-        record?.__sf_cbc ||
-        "";
+            [
+                "cbc",
+                "CBC",
+                "cbc_percent",
+                "cbc_percentage",
+                "total_cbc",
+                "totalCBC"
+            ]
+        );
 
 
     const thcv =
         resolvedFieldValue(
             record,
-            ["thcv", "THCV", "thcv_percent", "thcv_percentage", "total_thcv", "totalTHCV"],
-            ""
-        ) ||
-        record?.__sf_thcv ||
-        "";
+            [
+                "thcv",
+                "THCV",
+                "thcv_percent",
+                "thcv_percentage",
+                "total_thcv",
+                "totalTHCV"
+            ]
+        );
+
+
+    infoContent.innerHTML = `
+
+        <div class="info-grid">
+
+            <section class="info-panel">
+
+                <div class="info-panel-title">
+                    SPECIMEN IDENTITY
+                </div>
+
+                <div class="info-data-grid">
+
+                    ${dataItem("STRAIN",summary.name)}
+
+                    ${dataItem(
+                        "BREEDER",
+                        summary.breeder || "NOT REPORTED"
+                    )}
+
+                    ${dataItem(
+                        "TYPE",
+                        resolvedFieldValue(
+                            record,
+                            [
+                                "type",
+                                "strain_type",
+                                "classification",
+                                "category"
+                            ]
+                        )
+                    )}
+
+                    ${dataItem(
+                        "ORIGIN",
+                        origin
+                    )}
+
+                </div>
+
+                ${
+                    aliases.length
+                        ? `
+                            <div class="info-panel-note">
+                                ALIASES:
+                                ${escapeHTML(aliases.join(" · "))}
+                            </div>
+                          `
+                        : ""
+                }
+
+            </section>
+
+            <section class="info-panel">
+
+                <div class="info-panel-title">
+                    CANNABINOID PROFILE
+                </div>
+
+                <div class="info-data-grid">
+
+                    ${dataItem("THC",summary.thc)}
+                    ${dataItem("CBD",summary.cbd)}
+                    ${dataItem("CBG",cbg)}
+                    ${dataItem("CBN",cbn)}
+                    ${dataItem("CBC",cbc)}
+                    ${dataItem("THCV",thcv)}
+
+                </div>
+
+            </section>
+
+            <section class="info-panel">
+
+                <div class="info-panel-title">
+                    TERPENE PROFILE
+                </div>
+
+                ${renderChips(terpenes)}
+
+            </section>
+
+            <section class="info-panel">
+
+                <div class="info-panel-title">
+                    EFFECTS / REPORTED CHARACTER
+                </div>
+
+                ${renderChips(effects)}
+
+            </section>
+
+            <section class="info-panel">
+
+                <div class="info-panel-title">
+                    FLAVOUR / AROMA
+                </div>
+
+                ${renderChips(flavours)}
+
+            </section>
+
+            <section class="info-panel">
+
+                <div class="info-panel-title">
+                    GENETIC LINEAGE
+                </div>
+
+                <div class="lineage">
+
+                    ${
+                        parents.length
+                            ? `
+                                <strong>RECORDED PARENTS</strong>
+                                <br>
+                                ${escapeHTML(parents.join(" × "))}
+                                <br><br>
+                              `
+                            : ""
+                    }
+
+                    ${
+                        children.length
+                            ? `
+                                <strong>RECORDED DESCENDANTS</strong>
+                                <br>
+                                ${escapeHTML(children.join(" · "))}
+                              `
+                            : ""
+                    }
+
+                    ${
+                        !parents.length && !children.length
+                            ? `NO LINEAGE DATA REPORTED.`
+                            : ""
+                    }
+
+                </div>
+
+            </section>
+
+            <section class="info-panel">
+
+                <div class="info-panel-title">
+                    CULTIVATION / GROW DATA
+                </div>
+
+                <div class="info-data-grid">
+
+                    ${dataItem("FLOWERING",flowering)}
+                    ${dataItem("HEIGHT",height)}
+                    ${dataItem("PHOTOPERIOD",photoperiod)}
+                    ${dataItem("AUTOFLOWER",autoflower)}
+                    ${dataItem("YIELD",yieldValue)}
+                    ${dataItem("ORIGIN",origin)}
+
+                </div>
+
+            </section>
+
+            <section class="info-panel full">
+
+                <div class="info-panel-title">
+                    SUPER FLOWER CODEX CLASSIFICATION
+                </div>
+
+                <div class="info-data-grid">
+
+                    ${dataItem(
+                        "RAW CHAKRA",
+                        summary.codex?.chakra || "NOT ASSIGNED"
+                    )}
+
+                    ${dataItem(
+                        "RAW PLANET",
+                        summary.codex?.planet || "NOT ASSIGNED"
+                    )}
+
+                    <div class="info-data-grid">
+
+    ${dataItem(
+        "RAW CHAKRA",
+        summary.codex?.chakra || "NOT ASSIGNED"
+    )}
+
+    ${dataItem(
+        "RAW PLANET",
+        summary.codex?.planet || "NOT ASSIGNED"
+    )}
+
+</div>
+
+                <div class="info-panel-note">
+                    CHAKRA / PLANET / FREQUENCY ARE
+                    SUPER FLOWER CODEX REFERENCE
+                    ALIGNMENTS, NOT CANNALIB SOURCE FIELDS.
+                    <br><br>
+                    ${escapeHTML(
+                        summary.codex?.basis ||
+                        "SUPER FLOWER CODEX REFERENCE ALIGNMENT"
+                    )}
+                </div>
+
+            </section>
+
+            <section class="info-panel full">
+
+                <div class="info-panel-title">
+                    SPECIMEN PHOTOGRAPHS / SOURCE CREDIT
+                </div>
+
+                ${renderPhotos(summary.pictures,summary.name)}
+
+            </section>
+
+            <section class="info-panel full">
+
+                           <div class="info-panel-title">
+                RECEIPTS / SOURCES
+            </div>
+
+            ${renderSources(record)}
+
+        </section>
+
+        </div>
+
+    `;
 
 
     const galleryImages =
@@ -9805,5 +9382,3 @@ loadFromHash();
 </body>
 
 </html>
-
-
