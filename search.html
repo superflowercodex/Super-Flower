@@ -4168,35 +4168,18 @@ const ULTIMATE_FLOWER_SVG =
 ========================================================= */
 
 /*
-    SUPER FLOWER PHOTO SELECTION SYSTEM
+    SUPER FLOWER LIVE FLOWER PHOTO SELECTOR
 
-    The flower window must prefer:
+    RULES:
 
-      1. Genuine flower photographs.
-      2. High-resolution photographs.
-      3. Close-up / macro photographs.
-      4. Sources that describe the image as a photograph.
-      5. Images with useful photographic metadata.
-
-    It must strongly reject:
-
-      - logos
-      - breeder branding
-      - packaging
-      - seed packets
-      - product shots
-      - artwork
-      - illustrations
-      - posters
-      - advertisements
-      - screenshots
-      - promotional graphics
-
-    IMPORTANT:
-
-    We score ALL usable CannaLib photographs first.
-
-    We do NOT simply display the first image returned.
+    1. Prefer the actual CannaLib photograph.
+    2. Reject obvious logos / packaging / artwork.
+    3. Do NOT reject a photograph merely because it is
+       smaller than 700px.
+    4. Do NOT use a generic stock photograph as though it
+       belongs to the strain.
+    5. If no acceptable live photograph exists, show a
+       clear "NO LIVE FLOWER PHOTOGRAPH" state instead.
 */
 
 
@@ -4207,13 +4190,10 @@ const ULTIMATE_FLOWER_SVG =
 const FLOWER_PHOTO_REJECT_TERMS = [
 
     "logo",
-    "brand",
     "branding",
     "breeder logo",
     "breeder branding",
 
-    "pack",
-    "package",
     "packaging",
     "seed pack",
     "seedbank",
@@ -4232,7 +4212,6 @@ const FLOWER_PHOTO_REJECT_TERMS = [
     "merch",
     "merchandise",
 
-    "product",
     "product shot",
 
     "bottle",
@@ -4258,6 +4237,7 @@ const FLOWER_PHOTO_REJECT_TERMS = [
 
     "flyer",
     "banner"
+
 ];
 
 
@@ -4270,6 +4250,7 @@ const FLOWER_PHOTO_POSITIVE_TERMS = [
     "flower",
     "bud",
     "buds",
+
     "cannabis flower",
     "cannabis bud",
     "marijuana flower",
@@ -4287,6 +4268,7 @@ const FLOWER_PHOTO_POSITIVE_TERMS = [
     "trichome",
     "trichomes",
     "resin",
+
     "cola",
     "nug",
     "nugs",
@@ -4294,6 +4276,7 @@ const FLOWER_PHOTO_POSITIVE_TERMS = [
     "live flower",
     "flower photograph",
     "flower photo"
+
 ];
 
 
@@ -4318,12 +4301,13 @@ function getFlowerPictureMeta(
     /*
         IMPORTANT:
 
-        Only inspect fields describing the IMAGE.
+        Only inspect fields that actually describe the
+        image itself.
 
-        Do NOT stringify the entire picture object.
+        Do NOT use the strain record here.
 
-        The breeder name belongs to the strain record and
-        must NOT cause a genuine flower photograph to fail.
+        Do NOT use breeder/source ownership information
+        as a reason to reject the photograph.
     */
 
     const fields = [
@@ -4331,6 +4315,7 @@ function getFlowerPictureMeta(
         "title",
         "caption",
         "description",
+
         "alt",
         "image_alt",
         "image_title",
@@ -4342,13 +4327,6 @@ function getFlowerPictureMeta(
 
         "filename",
         "file_name",
-        "file",
-
-        "credit",
-        "credit_line",
-        "source",
-        "attribution",
-        "author",
 
         "url"
 
@@ -4378,7 +4356,7 @@ function getFlowerPictureMeta(
 
 
 /* =========================================================
-   NORMALISE TEXT FOR SCORING
+   NORMALISE PHOTO TEXT
 ========================================================= */
 
 function normaliseFlowerPhotoText(
@@ -4488,7 +4466,7 @@ function isObviousFlowerGraphicURL(
 
 
 /* =========================================================
-   HARD IMAGE DIMENSION TEST
+   IMAGE DIMENSION TEST
 ========================================================= */
 
 function flowerImageHasGoodDimensions(
@@ -4521,12 +4499,19 @@ function flowerImageHasGoodDimensions(
 
 
     /*
-        Reject tiny thumbnails, icons and small graphics.
+        IMPORTANT:
+
+        Do NOT demand 700x700.
+
+        CannaLib may legitimately return a good photograph
+        through a smaller image endpoint.
+
+        We only reject genuinely tiny assets.
     */
 
     if(
-        width < 700 ||
-        height < 700
+        width < 400 ||
+        height < 400
     ){
 
         return false;
@@ -4578,13 +4563,12 @@ function imagePassesFlowerQualityCheck(
 
 
     /*
-        Canvas inspection is deliberately best-effort.
+        Best-effort visual sanity check.
 
-        Some external servers do not permit cross-origin
-        canvas inspection.
+        If the external image blocks canvas inspection,
+        the photograph is NOT rejected.
 
-        In that situation the hard dimension test remains
-        valid and the image is allowed through.
+        Metadata + dimensions remain the primary filter.
     */
 
     try{
@@ -4780,9 +4764,9 @@ function imagePassesFlowerQualityCheck(
 
 
         /*
-            Reject almost completely flat images.
+            Reject extremely flat images.
 
-            This catches many logos / plain graphics.
+            This is deliberately conservative.
         */
 
         if(
@@ -4796,13 +4780,12 @@ function imagePassesFlowerQualityCheck(
 
 
         /*
-            Reject images that are almost entirely flat
-            white or flat black.
+            Reject almost completely blank graphics.
         */
 
         if(
-            whiteRatio > 0.88 &&
-            standardDeviation < 35
+            whiteRatio > 0.94 &&
+            standardDeviation < 30
         ){
 
             return false;
@@ -4811,8 +4794,8 @@ function imagePassesFlowerQualityCheck(
 
 
         if(
-            blackRatio > 0.88 &&
-            standardDeviation < 35
+            blackRatio > 0.94 &&
+            standardDeviation < 30
         ){
 
             return false;
@@ -4825,9 +4808,9 @@ function imagePassesFlowerQualityCheck(
     }catch(error){
 
         /*
-            Cross-origin canvas protection.
+            Cross-origin image protection.
 
-            Keep legitimate external photographs alive.
+            Do NOT kill a legitimate external photograph.
         */
 
         return true;
@@ -4869,6 +4852,10 @@ function scoreFlowerPicture(
 
     }
 
+
+    /*
+        Hard reject obvious branding / graphics.
+    */
 
     if(
         isObviousFlowerGraphic(
@@ -4928,19 +4915,13 @@ function scoreFlowerPicture(
 
 
     /*
-        Strong preference for photographs.
+        Strong preference for explicit photograph wording.
     */
 
     if(
-        meta.includes(
-            "photograph"
-        ) ||
-        meta.includes(
-            "photography"
-        ) ||
-        meta.includes(
-            "photo"
-        )
+        meta.includes("photograph") ||
+        meta.includes("photography") ||
+        meta.includes("photo")
     ){
 
         score += 25;
@@ -4949,13 +4930,11 @@ function scoreFlowerPicture(
 
 
     /*
-        Strong preference for actual flower / bud wording.
+        Strong preference for flower / bud wording.
     */
 
     if(
-        meta.includes(
-            "flower"
-        )
+        meta.includes("flower")
     ){
 
         score += 30;
@@ -4964,9 +4943,7 @@ function scoreFlowerPicture(
 
 
     if(
-        meta.includes(
-            "bud"
-        )
+        meta.includes("bud")
     ){
 
         score += 30;
@@ -4975,12 +4952,8 @@ function scoreFlowerPicture(
 
 
     if(
-        meta.includes(
-            "trichome"
-        ) ||
-        meta.includes(
-            "trichomes"
-        )
+        meta.includes("trichome") ||
+        meta.includes("trichomes")
     ){
 
         score += 20;
@@ -4989,23 +4962,14 @@ function scoreFlowerPicture(
 
 
     /*
-        Close-up / macro photographs are especially useful
-        for the Super Flower specimen window.
+        Close-up photographs are ideal for the specimen window.
     */
 
     if(
-        meta.includes(
-            "macro"
-        ) ||
-        meta.includes(
-            "closeup"
-        ) ||
-        meta.includes(
-            "close-up"
-        ) ||
-        meta.includes(
-            "close up"
-        )
+        meta.includes("macro") ||
+        meta.includes("closeup") ||
+        meta.includes("close-up") ||
+        meta.includes("close up")
     ){
 
         score += 30;
@@ -5014,72 +4978,11 @@ function scoreFlowerPicture(
 
 
     /*
-        Prefer known photographic source wording.
-    */
-
-    const source =
-        normaliseFlowerPhotoText(
-            picture.source ||
-            picture.credit ||
-            picture.attribution ||
-            ""
-        );
-
-
-    if(
-        source
-    ){
-
-        score += 8;
-
-    }
-
-
-    /*
-        Penalise suspicious image words rather than
-        immediately rejecting them when they are weak.
-
-        Hard rejection has already happened above for
-        obvious graphics.
-    */
-
-    const softRejectTerms = [
-
-        "seed",
-        "breeder",
-        "strain pack",
-        "catalogue",
-        "catalog",
-        "store",
-        "shop",
-        "sale"
-
-    ];
-
-
-    softRejectTerms.forEach(
-        term => {
-
-            if(
-                meta.includes(
-                    term
-                )
-            ){
-
-                score -= 18;
-
-            }
-
-        }
-    );
-
-
-    /*
-        Prefer normal photographic extensions.
+        Prefer normal photographic file types.
     */
 
     if(
-        /\.(jpg|jpeg|png|webp)(?:[?#]|$)/i.test(
+        /\.(jpg|jpeg|png|webp|avif)(?:[?#]|$)/i.test(
             url
         )
     ){
@@ -5090,7 +4993,7 @@ function scoreFlowerPicture(
 
 
     /*
-        Prefer larger-looking source names where available.
+        Prefer original / larger source paths where available.
     */
 
     if(
@@ -5169,10 +5072,6 @@ function rankFlowerPictures(
                 }
 
 
-                /*
-                    Preserve CannaLib order when scores tie.
-                */
-
                 return (
                     a.index -
                     b.index
@@ -5189,13 +5088,12 @@ function rankFlowerPictures(
 
 
 /* =========================================================
-   ARCHIVAL REFERENCE FLOWER
+   NO LIVE FLOWER PHOTO STATE
 ========================================================= */
 
-function loadArchivalReferenceFlower(
+function showNoLiveFlowerPhoto(
     token,
-    name,
-    fallbackIndex = 0
+    name
 ){
 
     if(
@@ -5207,173 +5105,37 @@ function loadArchivalReferenceFlower(
     }
 
 
-    /*
-        Try the known archival flower photographs.
-
-        IMPORTANT:
-
-        fallbackIndex is independent from the CannaLib
-        picture queue index.
-    */
-
-    if(
-        fallbackIndex <
-        FALLBACK_FLOWER_IMAGES.length
-    ){
-
-        const image =
-            FALLBACK_FLOWER_IMAGES[
-                fallbackIndex
-            ];
-
-
-        flowerImage.onload =
-            () => {
-
-                if(
-                    token !== flowerLoadToken
-                ){
-
-                    return;
-
-                }
-
-
-                if(
-                    !imagePassesFlowerQualityCheck(
-                        flowerImage
-                    )
-                ){
-
-                    flowerImage.onload =
-                        null;
-
-                    flowerImage.onerror =
-                        null;
-
-                    loadArchivalReferenceFlower(
-                        token,
-                        name,
-                        fallbackIndex + 1
-                    );
-
-                    return;
-
-                }
-
-
-                flowerImage.style.display =
-                    "block";
-
-
-                flowerReferenceLabel.textContent =
-                    "ARCHIVAL REFERENCE FLOWER";
-
-
-                flowerCredit.textContent =
-                    "WIKIMEDIA COMMONS — ARCHIVAL CANNABIS FLOWER REFERENCE";
-
-
-                flowerCredit.style.display =
-                    "block";
-
-            };
-
-
-        flowerImage.onerror =
-            () => {
-
-                if(
-                    token !== flowerLoadToken
-                ){
-
-                    return;
-
-                }
-
-
-                loadArchivalReferenceFlower(
-                    token,
-                    name,
-                    fallbackIndex + 1
-                );
-
-            };
-
-
-        flowerImage.alt =
-            name
-                ? (
-                    name +
-                    " — archival cannabis flower reference"
-                )
-                : "Archival cannabis flower reference";
-
-
-        flowerImage.src =
-            image;
-
-
-        return;
-
-    }
-
-
-    /*
-        Absolute final fallback.
-
-        This is clearly labelled as an archival reference,
-        never as the selected strain photograph.
-    */
-
     flowerImage.onload =
-        () => {
-
-            if(
-                token !== flowerLoadToken
-            ){
-
-                return;
-
-            }
-
-
-            flowerImage.style.display =
-                "block";
-
-
-            flowerReferenceLabel.textContent =
-                "ARCHIVAL REFERENCE FLOWER";
-
-
-            flowerCredit.textContent =
-                "BUILT-IN ARCHIVAL CANNABIS FLOWER REFERENCE";
-
-
-            flowerCredit.style.display =
-                "block";
-
-        };
-
+        null;
 
     flowerImage.onerror =
         null;
 
 
-    flowerImage.alt =
+    flowerImage.removeAttribute(
+        "src"
+    );
+
+
+    flowerImage.style.display =
+        "none";
+
+
+    flowerReferenceLabel.textContent =
+        "NO LIVE FLOWER PHOTOGRAPH ON RECORD";
+
+
+    flowerCredit.textContent =
         name
             ? (
                 name +
-                " — archival cannabis flower reference"
+                " — no acceptable CannaLib flower photograph available"
             )
-            : "Archival cannabis flower reference";
+            : "No acceptable CannaLib flower photograph available";
 
 
-    flowerImage.src =
-        "data:image/svg+xml;charset=UTF-8," +
-        encodeURIComponent(
-            ULTIMATE_FLOWER_SVG
-        );
+    flowerCredit.style.display =
+        "block";
 
 }
 
@@ -5396,9 +5158,14 @@ function loadNextLiveFlower(
 
 
     /*
-        No more CannaLib photographs.
+        Every CannaLib candidate has now been tested.
 
-        Move to the independent archival reference system.
+        IMPORTANT:
+
+        Do NOT replace it with a generic stock photograph.
+
+        If the source has no acceptable flower photograph,
+        say so.
     */
 
     if(
@@ -5406,9 +5173,7 @@ function loadNextLiveFlower(
         currentPictureQueue.length
     ){
 
-        loadArchivalReferenceFlower(
-            token,
-
+        const name =
             currentRecord
                 ? resolvedFieldValue(
                     currentRecord,
@@ -5421,9 +5186,12 @@ function loadNextLiveFlower(
                     ],
                     "Super Flower specimen"
                 )
-                : "Super Flower specimen",
+                : "Super Flower specimen";
 
-            0
+
+        showNoLiveFlowerPhoto(
+            token,
+            name
         );
 
         return;
@@ -5441,10 +5209,7 @@ function loadNextLiveFlower(
 
 
     /*
-        This is a final safety gate.
-
-        A photograph that is obviously branding,
-        packaging or artwork never reaches the image element.
+        Final metadata safety gate.
     */
 
     if(
@@ -5475,11 +5240,8 @@ function loadNextLiveFlower(
 
 
             /*
-                Successful image loading is NOT enough.
-
-                It must still pass the actual image quality
-                test before it is allowed into the specimen
-                window.
+                The photograph must pass the actual image
+                quality test before being displayed.
             */
 
             if(
@@ -5508,8 +5270,8 @@ function loadNextLiveFlower(
 
 
             /*
-                ONLY HERE does the image become the
-                selected LIVE SOURCE FLOWER.
+                THIS is the only point at which the image
+                becomes the selected live flower photograph.
             */
 
             flowerImage.style.display =
@@ -5610,19 +5372,7 @@ function renderFlower(
 
 
     /*
-        IMPORTANT:
-
-        Rank every photograph before loading anything.
-
-        This is the key change.
-
-        We are no longer saying:
-
-            "first image wins"
-
-        We are saying:
-
-            "best flower photograph wins"
+        Rank every supplied photograph.
     */
 
     currentPictureQueue =
@@ -5636,10 +5386,7 @@ function renderFlower(
 
 
     /*
-        Start the ranked CannaLib photograph queue.
-
-        If every candidate fails, the archival reference
-        system takes over automatically.
+        Start with the best actual source photograph.
     */
 
     loadNextLiveFlower(
@@ -5647,16 +5394,6 @@ function renderFlower(
     );
 
 }
-
-
-/* =========================================================
-   FIELD
-========================================================= */
-
-
-/* =========================================================
-   FIELD
-========================================================= */
 
 
 /* =========================================================
