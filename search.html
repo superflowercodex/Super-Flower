@@ -3529,11 +3529,15 @@ async function loadRecord(
         }
 
 
-        record =
-            unwrapRecord(
-                record
-            );
+        /*
+            IMPORTANT: keep the COMPLETE CannaLib payload intact.
 
+            Do NOT unwrap to record.strain / record.data here.
+            CannaLib can place complementary fields beside the
+            primary record object. Throwing those siblings away is
+            exactly what caused otherwise available fields to render
+            empty. The deep resolver below searches the whole payload.
+        */
 
         if(
             !record ||
@@ -3656,600 +3660,814 @@ function renderLoadingRecord(){
    RENDER RECORD — W2 MULTI-SOURCE FIELD RESOLUTION
 ========================================================= */
 
-/* =========================================================
-   SUPER FLOWER CANONICAL CONSOLIDATION ENGINE
-   ---------------------------------------------------------
-   SOURCE DATA → OBSERVATIONS → NORMALISE → SOURCE GROUPS
-   → AVERAGE / CONSENSUS → CALCULATE → DISTINGUISH → CODEX
-   ---------------------------------------------------------
-   This layer does not invent missing factual observations.
-   If a value cannot be sourced or validly calculated, it is
-   explicitly marked UNKNOWN — AWAITING EVIDENCE.
-========================================================= */
+function renderRecord(
+    record,
+    slim
+){
 
-const SuperFlowerCanonical = (() => {
+    /*
+        Keep the complete live payload.
 
-    const UNKNOWN = "UNKNOWN — AWAITING EVIDENCE";
+        Do NOT unwrap nested record/data/strain containers here.
+        The CannaLib response may contain useful fields in the
+        wrapper as well as inside the nested specimen object.
+        All field resolution is deliberately deep, so preserving
+        the complete payload prevents real source data being lost.
+    */
 
-    const TERPENE_FAMILY = {
-        myrcene:"MONOTERPENE",
-        limonene:"MONOTERPENE",
-        pinene:"MONOTERPENE",
-        linalool:"MONOTERPENE",
-        terpinolene:"MONOTERPENE",
-        ocimene:"MONOTERPENE",
-        terpineol:"MONOTERPENE",
-        caryophyllene:"SESQUITERPENE",
-        humulene:"SESQUITERPENE",
-        bisabolol:"SESQUITERPENE",
-        farnesene:"SESQUITERPENE",
-        valencene:"SESQUITERPENE"
-    };
+    currentRecord =
+        record;
 
-    function has(v){
-        return v !== undefined && v !== null &&
-            String(v).trim() !== "" &&
-            !["null","undefined"].includes(String(v).trim().toLowerCase());
+
+    /* =====================================================
+       IDENTITY
+    ===================================================== */
+
+    const name =
+        resolvedFieldValue(
+            record,
+            [
+                "name",
+                "strain_name",
+                "identity",
+                "title",
+                "strain"
+            ],
+            slim?.name ||
+            "UNKNOWN STRAIN"
+        );
+
+
+    const id =
+        resolvedFieldValue(
+            record,
+            [
+                "id",
+                "strain_id",
+                "catalog_id",
+                "uuid",
+                "slug",
+                "name_norm"
+            ],
+            slim?.id ||
+            "NOT REPORTED"
+        );
+
+
+    /* =====================================================
+   GENETICS — MULTI-SOURCE
+   -----------------------------------------------------
+   Reads genetics/lineage from the actual CannaLib record.
+   Handles direct lineage strings, parent arrays, and
+   nested mother/father/parent objects.
+===================================================== */
+
+let genetics = "";
+
+
+/* =====================================================
+   PASS 1 — DIRECT GENETICS / LINEAGE FIELDS
+===================================================== */
+
+genetics =
+    resolvedFieldValue(
+        record,
+        [
+            "genetics",
+            "genetic_lineage",
+            "genetic",
+            "lineage",
+            "lineage_summary",
+            "parentage",
+            "breeding_lineage",
+            "genetic_background",
+
+            "genetics.lineage",
+            "genetics.parentage",
+            "genetics.parents",
+            "genetics.parent_strains",
+
+            "lineage.parents",
+            "lineage.parentage",
+            "lineage.lineage",
+
+            "evidence.lineage",
+            "evidence.genetics",
+            "evidence.parentage",
+
+            "reported.lineage",
+            "reported.genetics",
+            "reported.parentage"
+        ],
+        ""
+    );
+
+
+/* =====================================================
+   PASS 2 — EXPLICIT PARENT LISTS
+===================================================== */
+
+if(
+    !genetics
+){
+
+    const parents =
+        findList(
+            record,
+            [
+                "parents",
+                "parent_strains",
+                "parent",
+                "parentage",
+
+                "genetics.parents",
+                "genetics.parent_strains",
+
+                "lineage.parents",
+                "lineage.parentage",
+
+                "evidence.parents",
+                "evidence.parent_strains",
+                "evidence.parentage",
+
+                "reported.parents",
+                "reported.parent_strains"
+            ]
+        );
+
+
+    if(
+        parents.length
+    ){
+
+        genetics =
+            parents
+                .filter(Boolean)
+                .join(
+                    " × "
+                );
+
     }
 
-    function clean(v){
-        return has(v) ? String(v).replace(/\s+/g," ").trim() : "";
+}
+
+
+/* =====================================================
+   PASS 3 — MOTHER / FATHER
+===================================================== */
+
+if(
+    !genetics
+){
+
+    const mother =
+        resolvedFieldValue(
+            record,
+            [
+                "mother",
+                "mother_strain",
+                "mother_parent",
+                "female_parent",
+
+                "genetics.mother",
+                "genetics.mother_strain",
+
+                "lineage.mother",
+                "lineage.mother_strain",
+
+                "parentage.mother",
+                "parentage.female",
+
+                "parents.mother",
+                "parents.female"
+            ],
+            ""
+        );
+
+
+    const father =
+        resolvedFieldValue(
+            record,
+            [
+                "father",
+                "father_strain",
+                "father_parent",
+                "male_parent",
+
+                "genetics.father",
+                "genetics.father_strain",
+
+                "lineage.father",
+                "lineage.father_strain",
+
+                "parentage.father",
+                "parentage.male",
+
+                "parents.father",
+                "parents.male"
+            ],
+            ""
+        );
+
+
+    const parentParts = [];
+
+
+    if(
+        mother
+    ){
+
+        parentParts.push(
+            mother
+        );
+
     }
 
-    function nums(v){
-        if(!has(v)) return [];
-        const m = String(v).replace(/,/g,"").match(/-?\d+(?:\.\d+)?/g);
-        return m ? m.map(Number).filter(Number.isFinite) : [];
+
+    if(
+        father
+    ){
+
+        parentParts.push(
+            father
+        );
+
     }
 
-    function range(v){
-        const n = nums(v);
-        if(!n.length) return null;
-        if(n.length === 1) return {low:n[0],high:n[0]};
-        return {low:Math.min(n[0],n[1]),high:Math.max(n[0],n[1])};
+
+    if(
+        parentParts.length
+    ){
+
+        genetics =
+            parentParts.join(
+                " × "
+            );
+
     }
 
-    function avg(a){
-        const n = a.filter(Number.isFinite);
-        return n.length ? n.reduce((x,y)=>x+y,0)/n.length : null;
-    }
+}
 
-    function mid(r){
-        return r ? (r.low+r.high)/2 : null;
-    }
 
-    function fmt(n,d=2){
-        return Number.isFinite(n) ? Number(n.toFixed(d)).toString() : "";
-    }
+/* =====================================================
+   PASS 4 — DEEP SEARCH FOR PARENT OBJECTS
+   -----------------------------------------------------
+   Used only when the named fields above did not resolve.
+===================================================== */
 
-    function fmtRange(r,unit="%"){
-        if(!r) return UNKNOWN;
-        const a=fmt(r.low), b=fmt(r.high);
-        return a===b ? `${a}${unit}` : `${a}–${b}${unit}`;
-    }
+if(
+    !genetics
+){
 
-    function path(obj,p){
-        return String(p).split(".").reduce((x,k)=>x==null?undefined:x[k],obj);
-    }
+    const discoveredParents = [];
 
-    function first(obj,paths,fallback=""){
-        for(const p of paths){
-            const v=path(obj,p);
-            if(has(v)) return v;
+
+    function collectGeneticParents(
+        value,
+        depth = 0,
+        seen = new WeakSet()
+    ){
+
+        if(
+            depth > 10 ||
+            value === null ||
+            value === undefined ||
+            typeof value !== "object"
+        ){
+
+            return;
+
         }
-        return fallback;
-    }
 
-    function sourceName(node,fallback="CannaLib"){
-        if(!node || typeof node!=="object") return fallback;
-        return clean(node.source_name ?? node.source ?? node.sourceName ??
-            node.provider ?? node.publisher ?? node.organization ??
-            node.site_name ?? node.site ?? fallback) || fallback;
-    }
 
-    function sourceId(node,fallback=""){
-        if(!node || typeof node!=="object") return fallback;
-        return clean(node.source_id ?? node.sourceId ?? node.evidence_id ??
-            node.evidenceId ?? node.dataset_id ?? fallback);
-    }
+        if(
+            seen.has(value)
+        ){
 
-    function list(v){
-        if(!has(v)) return [];
-        if(Array.isArray(v)) return [...new Set(v.flatMap(list).filter(Boolean))];
-        if(typeof v === "object"){
-            return list(v.name ?? v.value ?? v.label ?? v.title ?? v.terpene ?? "");
+            return;
+
         }
-        return [...new Set(String(v).split(/\s*(?:,|;|\||\/|\n|•)\s*/)
-            .map(clean).filter(Boolean))];
-    }
 
-    function walk(root,visit){
-        const seen=new WeakSet();
-        function go(node,pathParts=[],ctx={source:"CannaLib",sourceId:""}){
-            if(node===null || node===undefined || typeof node!=="object" || seen.has(node)) return;
-            seen.add(node);
-            const ctx2={
-                source:sourceName(node,ctx.source),
-                sourceId:sourceId(node,ctx.sourceId)
-            };
-            visit(node,pathParts,ctx2);
-            if(Array.isArray(node)){
-                node.forEach((x,i)=>go(x,pathParts.concat(String(i)),ctx2));
-            }else{
-                Object.entries(node).forEach(([k,v])=>{
-                    if(k!=="raw" && k!=="html" && k!=="text_html") go(v,pathParts.concat(k),ctx2);
-                });
-            }
+
+        seen.add(value);
+
+
+        if(
+            Array.isArray(value)
+        ){
+
+            value.forEach(
+                item =>
+                    collectGeneticParents(
+                        item,
+                        depth + 1,
+                        seen
+                    )
+            );
+
+            return;
+
         }
-        go(root);
-    }
 
-    function sourceObs(field,value,ctx,basis="SOURCE"){
-        if(!has(value)) return null;
-        return {
-            field,
-            value,
-            source:clean(ctx?.source)||"UNKNOWN SOURCE",
-            sourceId:clean(ctx?.sourceId)||clean(ctx?.source)||"UNKNOWN SOURCE",
-            basis,
-            raw:value
-        };
-    }
 
-    function chemistry(payload,field,slimValue="",slimKey=""){
-        const out=[];
-        if(has(slimValue)) out.push(sourceObs(field,slimValue,{
-            source:"CannaLib SEARCH CARD",sourceId:"CannaLib"
-        },slimKey||"SOURCE"));
+        Object.entries(
+            value
+        )
+        .forEach(
+            (
+                [
+                    key,
+                    child
+                ]
+            ) => {
 
-        const fieldRegex = new RegExp(`(?:^|[._])${field}(?:$|[._]|_)`,"i");
-        const bad=/(non[_-]?flower|extract|concentrate|oil|vape|edible|hash|resin|trim|leaf)/i;
+                const cleanKey =
+                    String(
+                        key
+                    )
+                    .trim()
+                    .toLowerCase();
 
-        walk(payload,(node,p,ctx)=>{
-            const joined=p.join(".");
-            if(!fieldRegex.test(joined) || bad.test(joined)) return;
-            const vals=[];
-            if(typeof node==="number" || typeof node==="string") vals.push(node);
-            if(node && typeof node==="object"){
-                ["value","percent","percentage","pct","amount","result","range","value_range","reported","claim"]
-                    .forEach(k=>{ if(has(node[k])) vals.push(node[k]); });
+
+                const isParentKey =
+                    [
+                        "mother",
+                        "father",
+                        "female_parent",
+                        "male_parent",
+                        "mother_strain",
+                        "father_strain",
+                        "parent_strain",
+                        "parent_strains"
+                    ]
+                    .includes(
+                        cleanKey
+                    );
+
+
+                if(
+                    isParentKey
+                ){
+
+                    const display =
+                        resolveSourceDisplayValue(
+                            child
+                        );
+
+
+                    if(
+                        display &&
+                        !discoveredParents.includes(
+                            display
+                        )
+                    ){
+
+                        discoveredParents.push(
+                            display
+                        );
+
+                    }
+
+                }
+
+
+                if(
+                    child &&
+                    typeof child === "object"
+                ){
+
+                    collectGeneticParents(
+                        child,
+                        depth + 1,
+                        seen
+                    );
+
+                }
+
             }
-            vals.forEach(v=>{
-                const r=range(v);
-                if(!r) return;
-                const key=[field,ctx.sourceId,fmt(r.low,5),fmt(r.high,5)].join("|");
-                if(out.some(o=>[o.field,o.sourceId,fmt(range(o.value)?.low,5),fmt(range(o.value)?.high,5)].join("|")===key)) return;
-                out.push(sourceObs(field,fmtRange(r),ctx,"SOURCE OBSERVATION"));
-            });
-        });
-        return out;
+        );
+
     }
 
-    function groupedAverage(obs){
-        const groups=new Map();
-        obs.forEach(o=>{
-            const r=range(o.value); if(!r) return;
-            const k=o.sourceId||o.source||"UNKNOWN SOURCE";
-            if(!groups.has(k)) groups.set(k,[]);
-            groups.get(k).push(r);
-        });
-        const sourceRanges=[...groups.values()].map(rs=>({
-            low:avg(rs.map(r=>r.low)), high:avg(rs.map(r=>r.high))
-        })).filter(r=>Number.isFinite(r.low)&&Number.isFinite(r.high));
-        if(!sourceRanges.length) return {range:null,average:null,sources:0,observations:obs.length};
-        const finalRange={low:avg(sourceRanges.map(r=>r.low)),high:avg(sourceRanges.map(r=>r.high))};
-        return {range:finalRange,average:mid(finalRange),sources:sourceRanges.length,observations:obs.length};
+
+    collectGeneticParents(
+        record
+    );
+
+
+    if(
+        discoveredParents.length
+    ){
+
+        genetics =
+            discoveredParents.join(
+                " × "
+            );
+
     }
 
-    function categorical(values){
-        const map=new Map();
-        values.forEach(o=>{
-            list(o.value).forEach(v=>{
-                const k=v.toLowerCase();
-                if(!map.has(k)) map.set(k,{value:v,sources:new Set(),count:0});
-                const item=map.get(k);
-                item.count++;
-                item.sources.add(o.sourceId||o.source||"UNKNOWN SOURCE");
-            });
-        });
-        const ranked=[...map.values()].sort((a,b)=>b.sources.size-a.sources.size || b.count-a.count);
-        return ranked.length ? {
-            value:ranked[0].value,
-            sources:ranked[0].sources.size,
-            observations:values.length,
-            alternatives:ranked.map(x=>x.value)
-        } : {value:"",sources:0,observations:0,alternatives:[]};
+}
+
+
+/* =====================================================
+   PASS 5 — SLIM SEARCH RESULT FALLBACK
+===================================================== */
+
+if(
+    !genetics
+){
+
+    genetics =
+        resolvedFieldValue(
+            slim,
+            [
+                "genetics",
+                "genetic_lineage",
+                "genetic",
+                "lineage",
+                "lineage_summary",
+                "parentage",
+                "parents",
+                "parent_strains"
+            ],
+            ""
+        );
+
+}
+
+
+/* =====================================================
+   FINAL GENETICS VALUE
+===================================================== */
+
+genetics =
+    genetics ||
+    "NOT REPORTED";
+
+
+    /* =====================================================
+       TYPE
+    ===================================================== */
+
+    const type =
+        resolvedFieldValue(
+            record,
+            [
+                "type",
+                "strain_type",
+                "classification",
+                "category",
+                "evidence.type",
+                "reported.type"
+            ],
+            slim?.type ||
+            "NOT REPORTED"
+        );
+
+
+    /* =====================================================
+       THC — MULTI-SOURCE
+    ===================================================== */
+
+    const thc =
+        resolvedFieldValue(
+            record,
+            [
+                "thc_range",
+                "thc",
+                "thc_percent",
+                "thc_percentage",
+                "total_thc",
+                "totalTHC",
+
+                "chemistry.thc_range",
+                "chemistry.thc",
+                "chemistry.total_thc",
+
+                "cannabinoids.thc",
+                "cannabinoid_profile.thc",
+
+                "evidence.chemistry.thc_range",
+                "evidence.chemistry.thc",
+                "evidence.chemistry.total_thc",
+
+                "reported.chemistry.thc"
+            ],
+            slim?.thc_range ||
+            "NOT REPORTED"
+        );
+
+
+    /* =====================================================
+       CBD — MULTI-SOURCE
+    ===================================================== */
+
+    const cbd =
+        resolvedFieldValue(
+            record,
+            [
+                "cbd_range",
+                "cbd",
+                "cbd_percent",
+                "cbd_percentage",
+                "total_cbd",
+                "totalCBD",
+
+                "chemistry.cbd_range",
+                "chemistry.cbd",
+                "chemistry.total_cbd",
+
+                "cannabinoids.cbd",
+                "cannabinoid_profile.cbd",
+
+                "evidence.chemistry.cbd_range",
+                "evidence.chemistry.cbd",
+                "evidence.chemistry.total_cbd",
+
+                "reported.chemistry.cbd",
+
+                "lab_results.cbd",
+                "lab.cbd",
+                "analysis.cbd",
+                "cannabinoid_results.cbd"
+            ],
+            slim?.cbd_range ||
+            "NOT REPORTED"
+        );
+
+
+    /* =====================================================
+       BREEDER
+    ===================================================== */
+
+    const breeder =
+        resolvedFieldValue(
+            record,
+            [
+                "breeder",
+                "breeder_name",
+                "breederName",
+                "breeder.name",
+                "breeder.display_name",
+                "breeder.label",
+
+                "evidence.breeder",
+                "reported.breeder"
+            ],
+            slim?.breeder ||
+            "NOT REPORTED"
+        );
+
+
+    /* =====================================================
+       AROMA / FLAVOUR — MULTI-SOURCE
+    ===================================================== */
+
+    let aroma =
+        resolvedFieldValue(
+            record,
+            [
+                "aroma",
+                "aromas",
+                "aroma_profile",
+
+                "flavor",
+                "flavors",
+                "flavour",
+                "flavours",
+
+                "flavor_profile",
+                "flavour_profile",
+
+                "sensory.aroma",
+                "sensory.aromas",
+                "sensory.flavor",
+                "sensory.flavours",
+                "sensory.flavour",
+
+                "profile.aroma",
+                "profile.aromas",
+                "profile.flavor",
+                "profile.flavors",
+                "profile.flavour",
+                "profile.flavours",
+
+                "evidence.aroma",
+                "evidence.aromas",
+                "evidence.flavor",
+                "evidence.flavours",
+
+                "reported.aroma",
+                "reported.aromas",
+                "reported.flavor",
+                "reported.flavours"
+            ],
+            ""
+        );
+
+
+    /*
+        SECONDARY AROMA EVIDENCE
+
+        Some records do not have an explicit aroma field
+        but do contain flavour lists.
+    */
+
+    if(
+        !aroma
+    ){
+
+        const flavourList =
+            findList(
+                record,
+                [
+                    "flavors",
+                    "flavours",
+                    "flavor_profile",
+                    "flavour_profile",
+                    "sensory.flavor",
+                    "sensory.flavours",
+                    "reported.flavors",
+                    "reported.flavours"
+                ]
+            );
+
+
+        if(
+            flavourList.length
+        ){
+
+            aroma =
+                flavourList.join(
+                    " · "
+                );
+
+        }
+
     }
 
-    function categoricalPaths(payload,paths,field){
-        const out=[];
-        const seen=new Set();
-        const add=(v,ctx)=>{
-            list(v).forEach(x=>{
-                const k=field+"|"+(ctx.sourceId||ctx.source)+"|"+x.toLowerCase();
-                if(seen.has(k)) return;
-                seen.add(k);
-                out.push(sourceObs(field,x,ctx,"SOURCE"));
-            });
-        };
-        walk(payload,(node,p,ctx)=>{
-            const joined=p.join(".").toLowerCase();
-            if(paths.some(x=>joined===x.toLowerCase() || joined.endsWith("."+x.toLowerCase()))){
-                if(typeof node==="string" || typeof node==="number") add(node,ctx);
-                else if(node && typeof node==="object") add(node.value??node.name??node.label??node.type??node.breeder,ctx);
-            }
-        });
-        return out;
+
+    /*
+        THIRD AROMA EVIDENCE
+
+        Terpene information is kept separate from
+        aroma where available. If no explicit sensory
+        description exists, the actual recorded terpene
+        profile becomes the final source-backed aromatic
+        description.
+    */
+
+    if(
+        !aroma
+    ){
+
+        const terpeneList =
+            findList(
+                record,
+                [
+                    "terpenes",
+                    "top_terpenes",
+                    "terpene_profile",
+                    "dominant_terpenes",
+                    "evidence.terpenes",
+                    "reported.terpenes"
+                ]
+            );
+
+
+        if(
+            terpeneList.length
+        ){
+
+            aroma =
+                terpeneList.join(
+                    " · "
+                );
+
+        }
+
     }
 
-    function parents(payload){
-        const out=[],seen=new Set();
-        const add=v=>{
-            if(v===null||v===undefined) return;
-            if(Array.isArray(v)){v.forEach(add);return;}
-            if(typeof v==="object"){
-                add(v.name??v.strain??v.parent??v.parent_name??v.label); return;
-            }
-            const s=clean(v); if(!s) return;
-            const k=s.toLowerCase(); if(seen.has(k)) return;
-            seen.add(k); out.push(s);
-        };
-        const exact=["parents","parent_strains","parentage","lineage.parents","lineage.parentage",
-            "genetics.parents","genetics.parent_strains","evidence.parents","evidence.parent_strains",
-            "strain_tree_v1.parents","strain_tree_v1.parentage"];
-        const roots=[];
-        walk(payload,(node,p)=>{
-            const joined=p.join(".").toLowerCase();
-            if(exact.some(x=>joined===x.toLowerCase() || joined.endsWith("."+x.toLowerCase()))) add(node);
-        });
-        roots.forEach(add);
-        return out;
-    }
 
-    function terpenes(slim,payload){
-        const out=[]; const seen=new Set();
-        const add=(v,ctx)=>list(v).forEach(x=>{
-            const k=x.toLowerCase();
-            if(seen.has(k)) return;
-            seen.add(k); out.push(sourceObs("terpene",x,ctx,"SOURCE"));
-        });
-        add(slim?.top_terpenes,{source:"CannaLib SEARCH CARD",sourceId:"CannaLib"});
-        ["top_terpenes","terpenes","terpene_profile","terpene_summary","chemistry.top_terpenes"]
-            .forEach(p=>{
-                const v=path(payload,p);
-                if(has(v)) add(v,{source:"CannaLib RECORD",sourceId:"cannalib_record"});
-            });
-        return out;
-    }
-
-    function textEvidence(payload,paths,field){
-        const out=[]; const seen=new Set();
-        walk(payload,(node,p,ctx)=>{
-            const joined=p.join(".").toLowerCase();
-            if(!paths.some(x=>joined===x.toLowerCase() || joined.endsWith("."+x.toLowerCase()))) return;
-            const values=typeof node==="object" ? list(node.value??node.name??node.label??"") : list(node);
-            values.forEach(v=>{
-                const k=field+"|"+v.toLowerCase(); if(seen.has(k)) return;
-                seen.add(k); out.push(sourceObs(field,v,ctx,"SOURCE"));
-            });
-        });
-        return out;
-    }
-
-    function dominantTerpene(items){
-        if(!items.length) return "";
-        const count=new Map();
-        items.forEach(o=>{
-            const k=clean(o.value).toLowerCase();
-            count.set(k,(count.get(k)||0)+1);
-        });
-        return [...count.entries()].sort((a,b)=>b[1]-a[1])[0]?.[0] || "";
-    }
-
-    function family(name){
-        const k=clean(name).toLowerCase();
-        for(const [needle,value] of Object.entries(TERPENE_FAMILY)) if(k.includes(needle)) return value;
-        return k ? "OTHER" : "";
-    }
-
-    function thcClass(n){
-        if(!Number.isFinite(n)) return UNKNOWN;
-        if(n<5) return "VERY LOW";
-        if(n<10) return "LOW";
-        if(n<20) return "MODERATE";
-        if(n<25) return "HIGH";
-        if(n<30) return "VERY HIGH";
-        return "EXTREME";
-    }
-
-    function cbdClass(n){
-        if(!Number.isFinite(n)) return UNKNOWN;
-        if(n<0.5) return "LOW";
-        if(n<5) return "MODERATE";
-        if(n<10) return "HIGH";
-        return "VERY HIGH";
-    }
-
-    function floweringClass(r){
-        const n=mid(r); if(!Number.isFinite(n)) return UNKNOWN;
-        if(n<50) return "EARLY";
-        if(n<60) return "MEDIUM";
-        if(n<70) return "LATE";
-        return "VERY LATE";
-    }
-
-    function heightClass(r){
-        const n=mid(r); if(!Number.isFinite(n)) return UNKNOWN;
-        if(n<70) return "COMPACT";
-        if(n<120) return "MEDIUM";
-        if(n<180) return "TALL";
-        return "VERY TALL";
-    }
-
-    function confidence(sourceCount){
-        if(sourceCount>=5) return "HIGH";
-        if(sourceCount>=3) return "GOOD";
-        if(sourceCount>=2) return "MODERATE";
-        if(sourceCount>=1) return "LIMITED";
-        return "UNKNOWN";
-    }
-
-    function badge(kind){
-        const labels={source:"SOURCE",average:"SUPER FLOWER AVERAGE",consensus:"SUPER FLOWER CONSENSUS",calculated:"CALCULATED",derived:"DERIVED",codex:"CODEX",unknown:"UNKNOWN"};
-        return `<span style="display:inline-block;margin-left:6px;padding:2px 4px;border:1px solid rgba(255,210,26,.28);color:rgba(255,210,26,.58);font-size:.42rem;letter-spacing:.05em;vertical-align:middle">${escapeHTML(labels[kind]||kind||"UNKNOWN")}</span>`;
-    }
-
-    function item(key,value,kind="source"){
-        const v=has(value)?value:UNKNOWN;
-        return `<div class="data-item"><div class="data-key">${escapeHTML(key)} ${badge(kind)}</div><div class="data-value">${escapeHTML(v)}</div></div>`;
-    }
-
-    function chips(items){
-        const vals=[...new Set(items.map(x=>typeof x==="string"?x:x.value).filter(has))];
-        return vals.length ? `<div class="chips">${vals.map(v=>`<span class="chip">${escapeHTML(v)}</span>`).join("")}</div>` : `<div class="info-panel-note">${UNKNOWN}</div>`;
-    }
-
-    function build(slim,payload){
-        const record=unwrapRecord(payload)||payload;
-        const name=clean(slim?.name||first(record,["name","strain_name","title","strain"],"UNKNOWN STRAIN"));
-        const id=clean(slim?.id||slim?.name_norm||first(record,["id","strain_id","catalog_id","uuid","slug","name_norm"],"UNKNOWN"));
-
-        const typeObs=[];
-        if(has(slim?.type)) typeObs.push(sourceObs("type",slim.type,{source:"CannaLib SEARCH CARD",sourceId:"CannaLib"}));
-        typeObs.push(...categoricalPaths(record,["type","strain_type","classification","category","evidence.type","reported.type"],"type"));
-
-        const breederObs=[];
-        if(has(slim?.breeder)) breederObs.push(sourceObs("breeder",slim.breeder,{source:"CannaLib SEARCH CARD",sourceId:"CannaLib"}));
-        breederObs.push(...categoricalPaths(record,["breeder","breeder_name","breederName","evidence.breeder","reported.breeder"],"breeder"));
-
-        const originObs=categoricalPaths(record,["origin","country_of_origin","region_of_origin"],"origin");
-        const thc=groupedAverage(chemistry(payload,"thc",slim?.thc_range,"thc_range"));
-        const cbd=groupedAverage(chemistry(payload,"cbd",slim?.cbd_range,"cbd_range"));
-        const cbg=groupedAverage(chemistry(payload,"cbg"));
-        const cbn=groupedAverage(chemistry(payload,"cbn"));
-        const cbc=groupedAverage(chemistry(payload,"cbc"));
-        const thcv=groupedAverage(chemistry(payload,"thcv"));
-        const flowering=groupedAverage(chemistry(payload,"flowering",first(record,["flowering_days","flowering_time","flowering"],""),"flowering_days"));
-        const height=groupedAverage(chemistry(payload,"height",first(record,["height_cm","height"],""),"height_cm"));
-
-        const terp=terpenes(slim,payload);
-        const parentsFound=parents(payload);
-        const aroma=textEvidence(payload,["aroma","aromas","aroma_profile","sensory.aroma","sensory.aromas"],"aroma");
-        const flavour=textEvidence(payload,["flavor","flavors","flavour","flavours","flavor_profile","flavour_profile","sensory.flavor","sensory.flavour"],"flavour");
-        const effects=textEvidence(payload,["effects","effect","reported_effects","experience.effects","reported.effects"],"effect");
-        const aliases=[...new Set([...list(first(record,["aliases","alias"],"")),...list(slim?.aliases)])];
-
-        const dominant=dominantTerpene(terp);
-        const sourceSet=new Set([
-            ...chemistry(payload,"thc",slim?.thc_range,"thc_range"),
-            ...chemistry(payload,"cbd",slim?.cbd_range,"cbd_range"),
-            ...typeObs,...breederObs
-        ].map(x=>x.sourceId||x.source));
-
-        const codex=resolveCodexAlignment(record,slim,name);
-        const model={
-            identity:{name,id,aliases,type:categorical(typeObs),breeder:categorical(breederObs),origin:categorical(originObs)},
-            genetics:{parents:parentsFound,lineage:parentsFound.length?parentsFound.join(" × "):UNKNOWN,parentCount:parentsFound.length},
-            cannabinoids:{thc,cbd,cbg,cbn,cbc,thcv},
-            flowering,height,terpenes:terp,aroma,flavour,effects,
-            dominant,sourceCount:sourceSet.size,codex,raw:payload
-        };
-
-        model.breakdown={
-            thcStrength:thcClass(thc.average),
-            cbdStrength:cbdClass(cbd.average),
-            floweringClass:floweringClass(flowering.range),
-            heightClass:heightClass(height.range),
-            dominantTerpene:dominant||UNKNOWN,
-            terpeneFamily:family(dominant)||UNKNOWN,
-            cbdThcRatio:Number.isFinite(thc.average)&&thc.average!==0&&Number.isFinite(cbd.average) ? fmt(cbd.average/thc.average,4) : UNKNOWN,
-            confidence:confidence(sourceSet.size)
-        };
-        return model;
-    }
-
-    function render(model,record,slim){
-        const c=model.cannabinoids, b=model.breakdown;
-        currentRecord=record;
-
-        const pictures=extractPictures(record);
-        renderFlower(record,pictures);
-
-        specimenFields.innerHTML=
-            field("SPECIMEN ID",model.identity.id)+
-            field("SPECIMEN IDENTITY",model.identity.name)+
-            field("GENETICS",model.genetics.lineage)+
-            field("TYPE",model.identity.type.value||UNKNOWN)+
-            field("BREEDER",model.identity.breeder.value||UNKNOWN)+
-            field("THC — SUPER FLOWER",fmtRange(c.thc.range))+ 
-            field("CBD — SUPER FLOWER",fmtRange(c.cbd.range))+ 
-            field("FLOWERING — SUPER FLOWER",fmtRange(model.flowering.range," days"))+ 
-            field("HEIGHT — SUPER FLOWER",fmtRange(model.height.range," cm"))+ 
-            field("DOMINANT TERPENE",b.dominantTerpene)+
-            field("THC CLASS",b.thcStrength)+
-            field("CODEX FREQUENCY",`${model.codex.frequency} Hz`)+
-            field("CODEX CHAKRA",model.codex.chakra)+
-            field("CODEX PLANET",model.codex.planet);
-
-        /* Keep the existing source-backed resonance system intact. */
-        renderResonance(record);
-
-        const aliases=model.identity.aliases.length ? model.identity.aliases.join(" · ") : UNKNOWN;
-        const parentHTML=model.genetics.parents.length ? model.genetics.parents.map((p,i)=>`<strong>${i+1}.</strong> ${escapeHTML(p)}`).join("<br>") : UNKNOWN;
-        const numeric=[
-            ["THC",c.thc,"average"],["CBD",c.cbd,"average"],["CBG",c.cbg,"average"],
-            ["CBN",c.cbn,"average"],["CBC",c.cbc,"average"],["THCV",c.thcv,"average"]
-        ];
-
-        const numericHTML=numeric.map(([label,v,kind])=>item(label,fmtRange(v.range),kind)).join("");
-        const observations=[];
-        ["thc","cbd","cbg","cbn","cbc","thcv"].forEach(k=>{
-            const obs=chemistry(record,k,k==="thc"?slim?.thc_range:k==="cbd"?slim?.cbd_range:undefined,k);
-            obs.forEach(o=>observations.push(item(`${k.toUpperCase()} · ${o.sourceId||o.source}`,o.value,"source")));
-        });
-
-        infoContent.className="";
-        infoContent.innerHTML=`
-            <div class="info-grid">
-
-                <section class="info-panel">
-                    <div class="info-panel-title">SUPER FLOWER IDENTITY</div>
-                    <div class="info-data-grid">
-                        ${item("STRAIN",model.identity.name,"source")}
-                        ${item("ID",model.identity.id,"source")}
-                        ${item("TYPE",model.identity.type.value,"consensus")}
-                        ${item("BREEDER",model.identity.breeder.value,"consensus")}
-                        ${item("ORIGIN",model.identity.origin.value,"consensus")}
-                        ${item("SOURCE GROUPS",model.sourceCount,"calculated")}
-                        ${item("CONFIDENCE",b.confidence,"calculated")}
-                    </div>
-                    <div class="info-panel-note">ALIASES: ${escapeHTML(aliases)}</div>
-                </section>
-
-                <section class="info-panel">
-                    <div class="info-panel-title">SUPER FLOWER CANNABINOID CONSENSUS</div>
-                    <div class="info-data-grid">
-                        ${numericHTML}
-                        ${item("THC AVERAGE",Number.isFinite(c.thc.average)?fmt(c.thc.average)+"%":UNKNOWN,"average")}
-                        ${item("CBD AVERAGE",Number.isFinite(c.cbd.average)?fmt(c.cbd.average)+"%":UNKNOWN,"average")}
-                    </div>
-                    <div class="info-panel-note">Numerical discrepancies are consolidated by source group. A source with many nested observations does not automatically outweigh another source.</div>
-                </section>
-
-                <section class="info-panel">
-                    <div class="info-panel-title">SUPER FLOWER BREAKDOWN CALCULATOR</div>
-                    <div class="info-data-grid">
-                        ${item("THC STRENGTH",b.thcStrength,"calculated")}
-                        ${item("CBD LEVEL",b.cbdStrength,"calculated")}
-                        ${item("FLOWERING CLASS",b.floweringClass,"calculated")}
-                        ${item("HEIGHT CLASS",b.heightClass,"calculated")}
-                        ${item("DOMINANT TERPENE",b.dominantTerpene,"derived")}
-                        ${item("TERPENE FAMILY",b.terpeneFamily,"derived")}
-                        ${item("CBD : THC",b.cbdThcRatio,"calculated")}
-                        ${item("EVIDENCE CONFIDENCE",b.confidence,"calculated")}
-                    </div>
-                    <div class="info-panel-note">These classifications are Super Flower calculations from available evidence. They are not invented source facts and are not medical conclusions.</div>
-                </section>
-
-                <section class="info-panel">
-                    <div class="info-panel-title">TERPENE PROFILE</div>
-                    ${chips(model.terpenes)}
-                </section>
-
-                <section class="info-panel">
-                    <div class="info-panel-title">AROMA / FLAVOUR</div>
-                    <div class="info-data-grid">
-                        ${item("AROMA",model.aroma.map(x=>x.value).join(" · ")||UNKNOWN,"source")}
-                        ${item("FLAVOUR",model.flavour.map(x=>x.value).join(" · ")||UNKNOWN,"source")}
-                    </div>
-                </section>
-
-                <section class="info-panel">
-                    <div class="info-panel-title">REPORTED EXPERIENCE</div>
-                    ${chips(model.effects)}
-                    <div class="info-panel-note">Only source-reported experience descriptors are shown. No effects are inferred from chemistry.</div>
-                </section>
-
-                <section class="info-panel">
-                    <div class="info-panel-title">GENETIC LINEAGE</div>
-                    <div class="lineage">${parentHTML}</div>
-                    <div class="info-panel-note">${model.genetics.parentCount ? model.genetics.parentCount+" recorded parent names found." : "No recorded parent names found."}</div>
-                </section>
-
-                <section class="info-panel">
-                    <div class="info-panel-title">CULTIVATION / FLOWER BREAKDOWN</div>
-                    <div class="info-data-grid">
-                        ${item("FLOWERING",fmtRange(model.flowering.range," days"),"average")}
-                        ${item("HEIGHT",fmtRange(model.height.range," cm"),"average")}
-                        ${item("YIELD",first(record,["yield","yield_value","yield_range","yield_per_m2"],UNKNOWN),"source")}
-                        ${item("PHOTOPERIOD",first(record,["photoperiod"],UNKNOWN),"source")}
-                        ${item("AUTOFLOWER",first(record,["autoflower","auto_flowering","autoflowering"],UNKNOWN),"source")}
-                        ${item("ORIGIN",model.identity.origin.value,"consensus")}
-                    </div>
-                </section>
-
-                <section class="info-panel full">
-                    <div class="info-panel-title">SOURCE OBSERVATIONS USED</div>
-                    <div class="info-data-grid">${observations.length?observations.slice(0,80).join(""):item("OBSERVATIONS",UNKNOWN,"unknown")}</div>
-                </section>
-
-                <section class="info-panel full">
-                    <div class="info-panel-title">SUPER FLOWER CODEX ALIGNMENT</div>
-                    <div class="info-data-grid">
-                        ${item("FREQUENCY",`${model.codex.frequency} Hz`,"codex")}
-                        ${item("CHAKRA",model.codex.chakra,"codex")}
-                        ${item("PLANET",model.codex.planet,"codex")}
-                        ${item("BASIS",model.codex.basis,"codex")}
-                    </div>
-                    <div class="info-panel-note">Codex alignment is a Super Flower reference layer. It is not presented as a biological measurement from CannaLib.</div>
-                </section>
-
-                <section class="info-panel full">
-                    <div class="info-panel-title">SPECIMEN PHOTOGRAPHS / SOURCE CREDIT</div>
-                    ${renderPhotos(pictures,model.identity.name)}
-                </section>
-
-                <section class="info-panel full">
-                    <div class="info-panel-title">RECEIPTS / SOURCES</div>
-                    ${renderSources(record)}
-                </section>
-
-                <section class="info-panel full">
-                    <div class="info-panel-title">CANONICAL LOGIC</div>
-                    <div class="lineage">
-                        <strong>1.</strong> Every compatible source observation is collected.<br>
-                        <strong>2.</strong> Values are normalised into comparable forms.<br>
-                        <strong>3.</strong> Numerical observations are grouped by source identity.<br>
-                        <strong>4.</strong> Source-group averages are averaged into the Super Flower value.<br>
-                        <strong>5.</strong> Categorical facts use source consensus rather than numerical averaging.<br>
-                        <strong>6.</strong> Calculated distinctions are derived only from available values.<br>
-                        <strong>7.</strong> Missing evidence remains UNKNOWN — AWAITING EVIDENCE.
-                    </div>
-                </section>
-
-                <section class="info-panel full">
-                    <details class="raw-data">
-                        <summary>OPEN COMPLETE LIVE SOURCE PAYLOAD</summary>
-                        <pre>${escapeHTML(JSON.stringify(record,null,2))}</pre>
-                    </details>
-                </section>
-            </div>`;
-    }
-
-    return {build,render};
-})();
+    aroma =
+        aroma ||
+        "NOT REPORTED";
 
 
-/* =========================================================
-   RENDER RECORD — SUPER FLOWER CANONICAL RECORD
-========================================================= */
+    /* =====================================================
+       CODEX ALIGNMENT
+    ===================================================== */
 
-function renderRecord(record,slim){
-    const sourceRecord=unwrapRecord(record)||record;
-    currentRecord=sourceRecord;
-    const model=SuperFlowerCanonical.build(slim||{},sourceRecord);
-    sourceRecord.__superFlowerModel=model;
-    SuperFlowerCanonical.render(model,sourceRecord,slim||{});
+    const codex =
+        resolveCodexAlignment(
+            record,
+            slim,
+            name
+        );
+
+
+    /* =====================================================
+       LIVE FLOWER PHOTOGRAPHS
+    ===================================================== */
+
+    const pictures =
+        extractPictures(
+            record
+        );
+
+
+    renderFlower(
+        record,
+        pictures
+    );
+
+
+    /* =====================================================
+       MASTER SPECIMEN FIELDS
+       
+       PRIMARY ARCHETYPE REMOVED.
+    ===================================================== */
+
+    specimenFields.innerHTML =
+
+        field(
+            "SPECIMEN ID",
+            id
+        ) +
+
+        field(
+            "SPECIMEN IDENTITY",
+            name
+        ) +
+
+        field(
+            "GENETICS",
+            genetics
+        ) +
+
+        field(
+            "TYPE",
+            type
+        ) +
+
+        field(
+            "THC RANGE",
+            thc
+        ) +
+
+        field(
+            "CBD RANGE",
+            cbd
+        ) +
+
+        field(
+            "AROMA",
+            aroma
+        ) +
+
+        field(
+            "RAW CHAKRA",
+            codex.chakra
+        ) +
+
+        field(
+            "RAW PLANET",
+            codex.planet
+        ) +
+
+        field(
+            "CODEX FREQUENCY",
+            `${codex.frequency} Hz`
+        );
+
+
+    /* =====================================================
+       RESONANCE
+    ===================================================== */
+
+    renderResonance(
+        record
+    );
+
+
+    /* =====================================================
+       INFORMATION PANELS
+    ===================================================== */
+
+    renderInfo(
+        record,
+        {
+            name,
+            breeder,
+            pictures,
+            genetics,
+            thc,
+            cbd,
+            aroma,
+            codex
+        }
+    );
+
 }
 
 
