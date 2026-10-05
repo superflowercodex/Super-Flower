@@ -3369,7 +3369,7 @@ function unwrapRecord(
 
 
 /* =========================================================
-   LOAD RECORD + EXTERNAL STRAIN ENRICHMENT
+   LOAD RECORD
 ========================================================= */
 
 async function loadRecord(
@@ -3379,9 +3379,7 @@ async function loadRecord(
     const candidateIds = [
 
         slim.id,
-
         slim.name_norm,
-
         slim.name
 
     ]
@@ -3549,356 +3547,19 @@ async function loadRecord(
         }
 
 
-        /* =====================================================
-           SUPER FLOWER EXTERNAL ENRICHMENT
-           
-           CannaLib remains the primary record.
-           These values are only used where the primary
-           record is genuinely missing the field.
+        /*
+            IMPORTANT:
 
-           IMPORTANT:
-           Conflicting source claims are retained rather
-           than silently pretending they are one identical
-           fact.
-        ===================================================== */
+            CannaLib is the source record.
 
-        const enrichmentKey =
-            String(
-                first(
-                    record,
-                    [
-                        "name",
-                        "strain_name",
-                        "identity",
-                        "title",
-                        "strain"
-                    ]
-                ) ||
-                slim?.name ||
-                id ||
-                ""
-            )
-            .toLowerCase()
-            .replace(
-                /[^a-z0-9]+/g,
-                " "
-            )
-            .trim();
+            Do not inject invented or hard-coded
+            strain information here.
 
+            renderRecord() is responsible for
+            resolving all information actually
+            present anywhere inside this record.
+        */
 
-        const EXTERNAL_STRAIN_EVIDENCE = {
-
-            "acai mintz auto": {
-
-                genetics:
-                    "Acai Berry × Kush Mints / Acai Berry Gelato × Mintz Auto",
-
-                cbd:
-                    "<1%",
-
-                thc:
-                    "28%",
-
-                aroma:
-                    "Orange · Pine · Diesel",
-
-                breeder:
-                    "Advanced Seeds",
-
-                type:
-                    "Autoflowering",
-
-                externalSources: [
-
-                    {
-                        name:
-                            "Advanced Seeds — 2025 Catalogue",
-
-                        url:
-                            "https://advancedseeds.com/catalogo/catalogo-advanced-seeds-2025.pdf",
-
-                        fields:
-                            [
-                                "THC",
-                                "aroma"
-                            ]
-                    },
-
-                    {
-                        name:
-                            "Seedfinder",
-
-                        url:
-                            "https://www.seedfinder.com/cannabis-strain/acai-mintz-autoflowering-cannabis-seeds",
-
-                        fields:
-                            [
-                                "genetics",
-                                "CBD",
-                                "THC",
-                                "terpenes"
-                            ]
-                    },
-
-                    {
-                        name:
-                            "Alchimia",
-
-                        url:
-                            "https://www.alchimiaweb.com/en/acai-mintz-autoflower-advanced-seeds-product-20995.php",
-
-                        fields:
-                            [
-                                "genetics",
-                                "aroma",
-                                "effects"
-                            ]
-                    }
-
-                ]
-
-            }
-
-        };
-
-
-        const external =
-            EXTERNAL_STRAIN_EVIDENCE[
-                enrichmentKey
-            ];
-
-
-        if(
-            external
-        ){
-
-            /* =================================================
-               ONLY FILL ACTUALLY EMPTY PRIMARY FIELDS
-            ================================================= */
-
-            const primaryName =
-                String(
-                    first(
-                        record,
-                        [
-                            "name",
-                            "strain_name",
-                            "identity",
-                            "title",
-                            "strain"
-                        ]
-                    ) ||
-                    ""
-                )
-                .trim();
-
-
-            const primaryGenetics =
-                resolveSourceDisplayValue(
-                    first(
-                        record,
-                        [
-                            "genetics",
-                            "genetic_lineage",
-                            "genetic",
-                            "lineage",
-                            "lineage_summary",
-                            "parentage",
-                            "parents",
-                            "parent_strains"
-                        ]
-                    )
-                );
-
-
-            const primaryTHC =
-                resolveSourceDisplayValue(
-                    first(
-                        record,
-                        [
-                            "thc_range",
-                            "thc",
-                            "thc_percent",
-                            "thc_percentage",
-                            "total_thc",
-                            "totalTHC"
-                        ]
-                    )
-                );
-
-
-            const primaryCBD =
-                resolveSourceDisplayValue(
-                    first(
-                        record,
-                        [
-                            "cbd_range",
-                            "cbd",
-                            "cbd_percent",
-                            "cbd_percentage",
-                            "total_cbd",
-                            "totalCBD"
-                        ]
-                    )
-                );
-
-
-            const primaryAroma =
-                resolveSourceDisplayValue(
-                    first(
-                        record,
-                        [
-                            "aroma",
-                            "aromas",
-                            "flavour",
-                            "flavor",
-                            "flavours",
-                            "flavors",
-                            "aroma_profile",
-                            "flavour_profile",
-                            "flavor_profile"
-                        ]
-                    )
-                );
-
-
-            const primaryBreeder =
-                resolveSourceDisplayValue(
-                    first(
-                        record,
-                        [
-                            "breeder",
-                            "breeder_name",
-                            "breederName"
-                        ]
-                    )
-                );
-
-
-            const primaryType =
-                resolveSourceDisplayValue(
-                    first(
-                        record,
-                        [
-                            "type",
-                            "strain_type",
-                            "classification",
-                            "category"
-                        ]
-                    )
-                );
-
-
-            if(
-                !primaryGenetics
-            ){
-
-                record.genetics =
-                    external.genetics;
-
-            }
-
-
-            if(
-                !primaryTHC
-            ){
-
-                record.thc_range =
-                    external.thc;
-
-            }
-
-
-            if(
-                !primaryCBD
-            ){
-
-                record.cbd_range =
-                    external.cbd;
-
-            }
-
-
-            if(
-                !primaryAroma
-            ){
-
-                record.aroma =
-                    external.aroma;
-
-            }
-
-
-            if(
-                !primaryBreeder
-            ){
-
-                record.breeder =
-                    external.breeder;
-
-            }
-
-
-            if(
-                !primaryType
-            ){
-
-                record.type =
-                    external.type;
-
-            }
-
-
-            /* ================================================
-               EXTERNAL SOURCE RECEIPTS
-            ================================================ */
-
-            record.superFlowerExternalEvidence = {
-
-                matchedName:
-                    primaryName ||
-                    enrichmentKey,
-
-                sources:
-                    external.externalSources,
-
-                enrichment:
-                    [
-                        !primaryGenetics
-                            ? "GENETICS"
-                            : null,
-
-                        !primaryTHC
-                            ? "THC"
-                            : null,
-
-                        !primaryCBD
-                            ? "CBD"
-                            : null,
-
-                        !primaryAroma
-                            ? "AROMA"
-                            : null,
-
-                        !primaryBreeder
-                            ? "BREEDER"
-                            : null,
-
-                        !primaryType
-                            ? "TYPE"
-                            : null
-
-                    ]
-                    .filter(Boolean)
-
-            };
-
-        }
-
-
-        /* =====================================================
-           FINAL RECORD
-        ===================================================== */
 
         currentRecord =
             record;
@@ -7924,6 +7585,10 @@ function getObjectKey(
 }
 
 
+/* =========================================================
+   EXACT PATH READER
+========================================================= */
+
 function getPath(
     object,
     path
@@ -7994,6 +7659,280 @@ function getPath(
 }
 
 
+/* =========================================================
+   DEEP FIELD FINDER
+   ---------------------------------------------------------
+   Exact paths are always preferred.
+   If an exact path contains no usable value,
+   search the complete CannaLib record recursively.
+========================================================= */
+
+function findDeepField(
+    object,
+    keys
+){
+
+    if(
+        !object ||
+        typeof object !== "object" ||
+        !Array.isArray(keys) ||
+        !keys.length
+    ){
+
+        return null;
+
+    }
+
+
+    const aliases =
+        keys
+            .map(
+                key =>
+                    String(
+                        key
+                    )
+                    .trim()
+                    .toLowerCase()
+            )
+            .filter(Boolean);
+
+
+    if(!aliases.length){
+
+        return null;
+
+    }
+
+
+    const aliasRank =
+        new Map();
+
+
+    aliases.forEach(
+        (
+            alias,
+            index
+        ) => {
+
+            if(
+                !aliasRank.has(
+                    alias
+                )
+            ){
+
+                aliasRank.set(
+                    alias,
+                    index
+                );
+
+            }
+
+        }
+    );
+
+
+    const candidates = [];
+
+
+    const seen =
+        new WeakSet();
+
+
+    function walk(
+        current,
+        depth,
+        path
+    ){
+
+        if(
+            current === null ||
+            current === undefined ||
+            typeof current !== "object" ||
+            seen.has(current)
+        ){
+
+            return;
+
+        }
+
+
+        seen.add(
+            current
+        );
+
+
+        if(
+            Array.isArray(
+                current
+            )
+        ){
+
+            current.forEach(
+                (
+                    value,
+                    index
+                ) => {
+
+                    walk(
+                        value,
+                        depth + 1,
+                        path +
+                        "[" +
+                        index +
+                        "]"
+                    );
+
+                }
+            );
+
+
+            return;
+
+        }
+
+
+        Object.entries(
+            current
+        )
+        .forEach(
+            (
+                [
+                    key,
+                    value
+                ]
+            ) => {
+
+                const normalisedKey =
+                    String(
+                        key
+                    )
+                    .trim()
+                    .toLowerCase();
+
+
+                const rank =
+                    aliasRank.get(
+                        normalisedKey
+                    );
+
+
+                if(
+                    rank !== undefined &&
+                    hasUsableValue(
+                        value
+                    )
+                ){
+
+                    const display =
+                        resolveSourceDisplayValue(
+                            value
+                        );
+
+
+                    if(display){
+
+                        candidates.push({
+
+                            value:
+                                value,
+
+                            display:
+                                display,
+
+                            rank:
+                                rank,
+
+                            depth:
+                                depth,
+
+                            path:
+                                path
+                                    ? path +
+                                      "." +
+                                      key
+                                    : key
+
+                        });
+
+                    }
+
+                }
+
+
+                if(
+                    value &&
+                    typeof value === "object"
+                ){
+
+                    walk(
+                        value,
+                        depth + 1,
+                        path
+                            ? path +
+                              "." +
+                              key
+                            : key
+                    );
+
+                }
+
+            }
+        );
+
+    }
+
+
+    walk(
+        object,
+        0,
+        ""
+    );
+
+
+    if(!candidates.length){
+
+        return null;
+
+    }
+
+
+    candidates.sort(
+        (
+            a,
+            b
+        ) => {
+
+            if(
+                a.rank !==
+                b.rank
+            ){
+
+                return (
+                    a.rank -
+                    b.rank
+                );
+
+            }
+
+
+            return (
+                a.depth -
+                b.depth
+            );
+
+        }
+    );
+
+
+    return candidates[0].value;
+
+}
+
+
+/* =========================================================
+   FIRST VALUE
+========================================================= */
+
 function first(
     object,
     keys
@@ -8008,6 +7947,10 @@ function first(
 
     }
 
+
+    /* -----------------------------------------------------
+       PASS 1 — EXACT PATHS
+    ----------------------------------------------------- */
 
     for(
         const key of keys
@@ -8033,7 +7976,14 @@ function first(
     }
 
 
-    return null;
+    /* -----------------------------------------------------
+       PASS 2 — DEEP RECORD SEARCH
+    ----------------------------------------------------- */
+
+    return findDeepField(
+        object,
+        keys
+    );
 
 }
 
@@ -8178,7 +8128,9 @@ function resolveSourceDisplayValue(
     depth = 0
 ){
 
-    if(depth > 8){
+    if(
+        depth > 8
+    ){
 
         return "";
 
@@ -8195,7 +8147,9 @@ function resolveSourceDisplayValue(
     }
 
 
-    if(typeof value === "string"){
+    if(
+        typeof value === "string"
+    ){
 
         return value.trim();
 
@@ -8207,19 +8161,26 @@ function resolveSourceDisplayValue(
         typeof value === "boolean"
     ){
 
-        return String(value);
+        return String(
+            value
+        );
 
     }
 
 
-    if(Array.isArray(value)){
+    if(
+        Array.isArray(
+            value
+        )
+    ){
 
         return value
-            .map(item =>
-                resolveSourceDisplayValue(
-                    item,
-                    depth + 1
-                )
+            .map(
+                item =>
+                    resolveSourceDisplayValue(
+                        item,
+                        depth + 1
+                    )
             )
             .filter(Boolean)
             .join(" · ");
@@ -8227,9 +8188,12 @@ function resolveSourceDisplayValue(
     }
 
 
-    if(typeof value === "object"){
+    if(
+        typeof value === "object"
+    ){
 
         const preferred = [
+
             "display_name",
             "displayName",
             "name",
@@ -8242,16 +8206,31 @@ function resolveSourceDisplayValue(
             "percentage",
             "percent",
             "range"
+
         ];
 
 
-        for(const key of preferred){
+        for(
+            const key of preferred
+        ){
 
-            if(hasUsableValue(value[key])){
+            const actualKey =
+                getObjectKey(
+                    value,
+                    key
+                );
+
+
+            if(
+                actualKey &&
+                hasUsableValue(
+                    value[actualKey]
+                )
+            ){
 
                 const resolved =
                     resolveSourceDisplayValue(
-                        value[key],
+                        value[actualKey],
                         depth + 1
                     );
 
@@ -8259,21 +8238,49 @@ function resolveSourceDisplayValue(
                 if(resolved){
 
                     if(
-                        ["value","amount","percentage","percent"]
-                            .includes(key)
+                        [
+                            "value",
+                            "amount",
+                            "percentage",
+                            "percent"
+                        ]
+                        .includes(
+                            key
+                        )
                     ){
 
+                        const unitKey =
+                            getObjectKey(
+                                value,
+                                "unit"
+                            ) ||
+                            getObjectKey(
+                                value,
+                                "units"
+                            ) ||
+                            getObjectKey(
+                                value,
+                                "symbol"
+                            );
+
+
                         const unit =
-                            value.unit ||
-                            value.units ||
-                            value.symbol ||
-                            "";
+                            unitKey
+                                ? resolveSourceDisplayValue(
+                                    value[unitKey],
+                                    depth + 1
+                                )
+                                : "";
+
 
                         return unit
-                            ? resolved + " " + unit
+                            ? resolved +
+                              " " +
+                              unit
                             : resolved;
 
                     }
+
 
                     return resolved;
 
@@ -8284,23 +8291,78 @@ function resolveSourceDisplayValue(
         }
 
 
+        const minKey =
+            getObjectKey(
+                value,
+                "min"
+            ) ||
+            getObjectKey(
+                value,
+                "minimum"
+            ) ||
+            getObjectKey(
+                value,
+                "low"
+            ) ||
+            getObjectKey(
+                value,
+                "from"
+            );
+
+
+        const maxKey =
+            getObjectKey(
+                value,
+                "max"
+            ) ||
+            getObjectKey(
+                value,
+                "maximum"
+            ) ||
+            getObjectKey(
+                value,
+                "high"
+            ) ||
+            getObjectKey(
+                value,
+                "to"
+            );
+
+
+        const unitKey =
+            getObjectKey(
+                value,
+                "unit"
+            ) ||
+            getObjectKey(
+                value,
+                "units"
+            ) ||
+            getObjectKey(
+                value,
+                "symbol"
+            );
+
+
         const min =
-            value.min ??
-            value.minimum ??
-            value.low ??
-            value.from;
+            minKey
+                ? value[minKey]
+                : undefined;
+
 
         const max =
-            value.max ??
-            value.maximum ??
-            value.high ??
-            value.to;
+            maxKey
+                ? value[maxKey]
+                : undefined;
+
 
         const unit =
-            value.unit ||
-            value.units ||
-            value.symbol ||
-            "";
+            unitKey
+                ? resolveSourceDisplayValue(
+                    value[unitKey],
+                    depth + 1
+                )
+                : "";
 
 
         if(
@@ -8316,15 +8378,27 @@ function resolveSourceDisplayValue(
                     depth + 1
                 );
 
+
             const right =
                 resolveSourceDisplayValue(
                     max,
                     depth + 1
                 );
 
-            if(left && right){
 
-                return `${left}–${right}${unit ? " " + unit : ""}`;
+            if(
+                left &&
+                right
+            ){
+
+                return (
+                    `${left}–${right}` +
+                    (
+                        unit
+                            ? " " + unit
+                            : ""
+                    )
+                );
 
             }
 
@@ -8342,9 +8416,17 @@ function resolveSourceDisplayValue(
                     depth + 1
                 );
 
+
             if(left){
 
-                return `≥ ${left}${unit ? " " + unit : ""}`;
+                return (
+                    `≥ ${left}` +
+                    (
+                        unit
+                            ? " " + unit
+                            : ""
+                    )
+                );
 
             }
 
@@ -8362,9 +8444,17 @@ function resolveSourceDisplayValue(
                     depth + 1
                 );
 
+
             if(right){
 
-                return `≤ ${right}${unit ? " " + unit : ""}`;
+                return (
+                    `≤ ${right}` +
+                    (
+                        unit
+                            ? " " + unit
+                            : ""
+                    )
+                );
 
             }
 
@@ -8377,6 +8467,10 @@ function resolveSourceDisplayValue(
 
 }
 
+
+/* =========================================================
+   FORMAT VALUE
+========================================================= */
 
 function formatValue(
     value
@@ -8394,7 +8488,13 @@ function formatValue(
 }
 
 
-function hasUsableValue(value){
+/* =========================================================
+   USABLE VALUE
+========================================================= */
+
+function hasUsableValue(
+    value
+){
 
     if(
         value === undefined ||
@@ -8405,28 +8505,46 @@ function hasUsableValue(value){
 
     }
 
-    if(typeof value === "string"){
+
+    if(
+        typeof value === "string"
+    ){
 
         return value.trim() !== "";
 
     }
 
-    if(Array.isArray(value)){
+
+    if(
+        Array.isArray(
+            value
+        )
+    ){
 
         return value.length > 0;
 
     }
 
-    if(typeof value === "object"){
 
-        return Object.keys(value).length > 0;
+    if(
+        typeof value === "object"
+    ){
+
+        return Object.keys(
+            value
+        ).length > 0;
 
     }
+
 
     return true;
 
 }
 
+
+/* =========================================================
+   RESOLVED FIELD VALUE
+========================================================= */
 
 function resolvedFieldValue(
     object,
@@ -8435,13 +8553,21 @@ function resolvedFieldValue(
 ){
 
     const value =
-        first(object,keys);
+        first(
+            object,
+            keys
+        );
+
 
     const display =
-        resolveSourceDisplayValue(value);
+        resolveSourceDisplayValue(
+            value
+        );
 
 
-    return display || fallback;
+    return display ||
+        fallback;
+
 }
 
 
