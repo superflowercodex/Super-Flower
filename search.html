@@ -1042,6 +1042,7 @@ body::before{
 
 }
 
+
 </style>
 
 </head>
@@ -4341,6 +4342,77 @@ genetics =
 
             aroma =
                 terpeneList.join(
+                    " · "
+                );
+
+        }
+
+    }
+
+
+    /*
+        FOURTH AROMA EVIDENCE
+
+        The slim search card always carries top_terpenes.
+        Use it when the full record has no aroma/flavour,
+        and merge it with record terpenes so no terpene
+        reported by CannaLib is dropped.
+    */
+
+    {
+
+        const slimTerpenes =
+            Array.isArray(
+                slim?.top_terpenes
+            )
+                ? slim.top_terpenes
+                    .map(
+                        item =>
+                            resolveSourceDisplayValue(
+                                item
+                            )
+                    )
+                    .filter(Boolean)
+                : [];
+
+        if(
+            slimTerpenes.length
+        ){
+
+            const parts =
+                aroma
+                    ? aroma
+                        .split(" · ")
+                        .map(
+                            part =>
+                                part.trim()
+                        )
+                        .filter(Boolean)
+                    : [];
+
+            slimTerpenes.forEach(
+                terpene => {
+
+                    const exists =
+                        parts.some(
+                            part =>
+                                part.toLowerCase() ===
+                                terpene.toLowerCase()
+                        );
+
+                    if(
+                        !exists
+                    ){
+                        parts.push(
+                            terpene
+                        );
+                    }
+
+                }
+            );
+
+            aroma =
+                parts.join(
                     " · "
                 );
 
@@ -9377,8 +9449,10 @@ loadFromHash();
 
 })();
 
+
 </script>
 
 </body>
 
 </html>
+
