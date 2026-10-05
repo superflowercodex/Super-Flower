@@ -3707,12 +3707,371 @@ function renderRecord(
 
 
     /* =====================================================
-       GENETICS — MULTI-SOURCE
-    ===================================================== */
+   GENETICS — MULTI-SOURCE
+   -----------------------------------------------------
+   Reads genetics/lineage from the actual CannaLib record.
+   Handles direct lineage strings, parent arrays, and
+   nested mother/father/parent objects.
+===================================================== */
 
-    let genetics =
+let genetics = "";
+
+
+/* =====================================================
+   PASS 1 — DIRECT GENETICS / LINEAGE FIELDS
+===================================================== */
+
+genetics =
+    resolvedFieldValue(
+        record,
+        [
+            "genetics",
+            "genetic_lineage",
+            "genetic",
+            "lineage",
+            "lineage_summary",
+            "parentage",
+            "breeding_lineage",
+            "genetic_background",
+
+            "genetics.lineage",
+            "genetics.parentage",
+            "genetics.parents",
+            "genetics.parent_strains",
+
+            "lineage.parents",
+            "lineage.parentage",
+            "lineage.lineage",
+
+            "evidence.lineage",
+            "evidence.genetics",
+            "evidence.parentage",
+
+            "reported.lineage",
+            "reported.genetics",
+            "reported.parentage"
+        ],
+        ""
+    );
+
+
+/* =====================================================
+   PASS 2 — EXPLICIT PARENT LISTS
+===================================================== */
+
+if(
+    !genetics
+){
+
+    const parents =
+        findList(
+            record,
+            [
+                "parents",
+                "parent_strains",
+                "parent",
+                "parentage",
+
+                "genetics.parents",
+                "genetics.parent_strains",
+
+                "lineage.parents",
+                "lineage.parentage",
+
+                "evidence.parents",
+                "evidence.parent_strains",
+                "evidence.parentage",
+
+                "reported.parents",
+                "reported.parent_strains"
+            ]
+        );
+
+
+    if(
+        parents.length
+    ){
+
+        genetics =
+            parents
+                .filter(Boolean)
+                .join(
+                    " × "
+                );
+
+    }
+
+}
+
+
+/* =====================================================
+   PASS 3 — MOTHER / FATHER
+===================================================== */
+
+if(
+    !genetics
+){
+
+    const mother =
         resolvedFieldValue(
             record,
+            [
+                "mother",
+                "mother_strain",
+                "mother_parent",
+                "female_parent",
+
+                "genetics.mother",
+                "genetics.mother_strain",
+
+                "lineage.mother",
+                "lineage.mother_strain",
+
+                "parentage.mother",
+                "parentage.female",
+
+                "parents.mother",
+                "parents.female"
+            ],
+            ""
+        );
+
+
+    const father =
+        resolvedFieldValue(
+            record,
+            [
+                "father",
+                "father_strain",
+                "father_parent",
+                "male_parent",
+
+                "genetics.father",
+                "genetics.father_strain",
+
+                "lineage.father",
+                "lineage.father_strain",
+
+                "parentage.father",
+                "parentage.male",
+
+                "parents.father",
+                "parents.male"
+            ],
+            ""
+        );
+
+
+    const parentParts = [];
+
+
+    if(
+        mother
+    ){
+
+        parentParts.push(
+            mother
+        );
+
+    }
+
+
+    if(
+        father
+    ){
+
+        parentParts.push(
+            father
+        );
+
+    }
+
+
+    if(
+        parentParts.length
+    ){
+
+        genetics =
+            parentParts.join(
+                " × "
+            );
+
+    }
+
+}
+
+
+/* =====================================================
+   PASS 4 — DEEP SEARCH FOR PARENT OBJECTS
+   -----------------------------------------------------
+   Used only when the named fields above did not resolve.
+===================================================== */
+
+if(
+    !genetics
+){
+
+    const discoveredParents = [];
+
+
+    function collectGeneticParents(
+        value,
+        depth = 0,
+        seen = new WeakSet()
+    ){
+
+        if(
+            depth > 10 ||
+            value === null ||
+            value === undefined ||
+            typeof value !== "object"
+        ){
+
+            return;
+
+        }
+
+
+        if(
+            seen.has(value)
+        ){
+
+            return;
+
+        }
+
+
+        seen.add(value);
+
+
+        if(
+            Array.isArray(value)
+        ){
+
+            value.forEach(
+                item =>
+                    collectGeneticParents(
+                        item,
+                        depth + 1,
+                        seen
+                    )
+            );
+
+            return;
+
+        }
+
+
+        Object.entries(
+            value
+        )
+        .forEach(
+            (
+                [
+                    key,
+                    child
+                ]
+            ) => {
+
+                const cleanKey =
+                    String(
+                        key
+                    )
+                    .trim()
+                    .toLowerCase();
+
+
+                const isParentKey =
+                    [
+                        "mother",
+                        "father",
+                        "female_parent",
+                        "male_parent",
+                        "mother_strain",
+                        "father_strain",
+                        "parent_strain",
+                        "parent_strains"
+                    ]
+                    .includes(
+                        cleanKey
+                    );
+
+
+                if(
+                    isParentKey
+                ){
+
+                    const display =
+                        resolveSourceDisplayValue(
+                            child
+                        );
+
+
+                    if(
+                        display &&
+                        !discoveredParents.includes(
+                            display
+                        )
+                    ){
+
+                        discoveredParents.push(
+                            display
+                        );
+
+                    }
+
+                }
+
+
+                if(
+                    child &&
+                    typeof child === "object"
+                ){
+
+                    collectGeneticParents(
+                        child,
+                        depth + 1,
+                        seen
+                    );
+
+                }
+
+            }
+        );
+
+    }
+
+
+    collectGeneticParents(
+        record
+    );
+
+
+    if(
+        discoveredParents.length
+    ){
+
+        genetics =
+            discoveredParents.join(
+                " × "
+            );
+
+    }
+
+}
+
+
+/* =====================================================
+   PASS 5 — SLIM SEARCH RESULT FALLBACK
+===================================================== */
+
+if(
+    !genetics
+){
+
+    genetics =
+        resolvedFieldValue(
+            slim,
             [
                 "genetics",
                 "genetic_lineage",
@@ -3721,77 +4080,21 @@ function renderRecord(
                 "lineage_summary",
                 "parentage",
                 "parents",
-                "parent_strains",
-
-                "genetics.lineage",
-                "genetics.parentage",
-                "genetics.parents",
-
-                "lineage.parents",
-                "lineage.parentage",
-
-                "evidence.lineage",
-                "evidence.genetics",
-                "reported.lineage",
-                "reported.genetics"
+                "parent_strains"
             ],
             ""
         );
 
-
-    /*
-        If the source stores the parents separately,
-        build the lineage from those actual source values.
-    */
-
-    if(
-        !genetics ||
-        genetics === "NOT REPORTED"
-    ){
-
-        const parents =
-            findList(
-                record,
-                [
-                    "parents",
-                    "parent_strains",
-                    "parent",
-                    "parentage",
-                    "lineage.parents",
-                    "genetics.parents",
-                    "evidence.lineage.parents"
-                ]
-            );
+}
 
 
-        if(
-            parents.length
-        ){
+/* =====================================================
+   FINAL GENETICS VALUE
+===================================================== */
 
-            genetics =
-                parents.join(
-                    " × "
-                );
-
-        }
-
-    }
-
-
-    if(
-        !genetics
-    ){
-
-        genetics =
-            slim?.genetics ||
-            "";
-
-    }
-
-
-    genetics =
-        genetics ||
-        "NOT REPORTED";
+genetics =
+    genetics ||
+    "NOT REPORTED";
 
 
     /* =====================================================
@@ -6324,26 +6627,19 @@ function renderInfo(
                         summary.codex?.planet || "NOT ASSIGNED"
                     )}
 
-                    ${dataItem(
-                        "CODEX FREQUENCY",
-                        summary.codex?.frequency
-                            ? `${summary.codex.frequency} Hz`
-                            : "NOT ASSIGNED"
-                    )}
+                    <div class="info-data-grid">
 
-                    ${dataItem(
-                        "PRIMARY ARCHETYPE",
-                        summary.archetype || "NOT ASSIGNED"
-                    )}
+    ${dataItem(
+        "RAW CHAKRA",
+        summary.codex?.chakra || "NOT ASSIGNED"
+    )}
 
-                    ${dataItem(
-                        "RESONANCE",
-                        hasResonanceData(record)
-                            ? "SOURCE VALUE PRESENT"
-                            : "NOT ASSIGNED"
-                    )}
+    ${dataItem(
+        "RAW PLANET",
+        summary.codex?.planet || "NOT ASSIGNED"
+    )}
 
-                </div>
+</div>
 
                 <div class="info-panel-note">
                     CHAKRA / PLANET / FREQUENCY ARE
@@ -7534,7 +7830,36 @@ function normalizeList(
 
 
 /* =========================================================
-   FIRST VALUE — ALIAS ORDERED
+   FIRST VALUE — ALIAS ORDERED + DEEP SOURCE RESOLUTION
+   ---------------------------------------------------------
+   Handles CannaLib fields regardless of whether they are:
+   - top-level
+   - nested
+   - camelCase
+   - snake_case
+   - hyphenated
+   - buried inside source/evidence structures
+========================================================= */
+
+function normaliseSourceKey(
+    key
+){
+
+    return String(
+        key ?? ""
+    )
+    .trim()
+    .toLowerCase()
+    .replace(
+        /[\s_\-]+/g,
+        ""
+    );
+
+}
+
+
+/* =========================================================
+   OBJECT KEY MATCHER
 ========================================================= */
 
 function getObjectKey(
@@ -7555,11 +7880,9 @@ function getObjectKey(
 
 
     const target =
-        String(
+        normaliseSourceKey(
             wantedKey
-        )
-        .trim()
-        .toLowerCase();
+        );
 
 
     for(
@@ -7567,10 +7890,9 @@ function getObjectKey(
     ){
 
         if(
-            String(key)
-                .trim()
-                .toLowerCase() ===
-            target
+            normaliseSourceKey(
+                key
+            ) === target
         ){
 
             return key;
@@ -7661,10 +7983,6 @@ function getPath(
 
 /* =========================================================
    DEEP FIELD FINDER
-   ---------------------------------------------------------
-   Exact paths are always preferred.
-   If an exact path contains no usable value,
-   search the complete CannaLib record recursively.
 ========================================================= */
 
 function findDeepField(
@@ -7688,20 +8006,13 @@ function findDeepField(
         keys
             .map(
                 key =>
-                    String(
-                        key
+                    normaliseSourceKey(
+                        String(key)
+                            .split(".")
+                            .pop()
                     )
-                    .trim()
-                    .toLowerCase()
             )
             .filter(Boolean);
-
-
-    if(!aliases.length){
-
-        return null;
-
-    }
 
 
     const aliasRank =
@@ -7785,7 +8096,6 @@ function findDeepField(
                 }
             );
 
-
             return;
 
         }
@@ -7803,11 +8113,9 @@ function findDeepField(
             ) => {
 
                 const normalisedKey =
-                    String(
+                    normaliseSourceKey(
                         key
-                    )
-                    .trim()
-                    .toLowerCase();
+                    );
 
 
                 const rank =
@@ -7931,6 +8239,10 @@ function findDeepField(
 
 /* =========================================================
    FIRST VALUE
+   ---------------------------------------------------------
+   1. Exact aliases/paths first.
+   2. Deep recursive search second.
+   3. Normalised key matching handles naming variations.
 ========================================================= */
 
 function first(
@@ -7980,16 +8292,34 @@ function first(
        PASS 2 — DEEP RECORD SEARCH
     ----------------------------------------------------- */
 
-    return findDeepField(
-        object,
-        keys
-    );
+    const deepValue =
+        findDeepField(
+            object,
+            keys
+        );
+
+
+    if(
+        hasUsableValue(
+            deepValue
+        )
+    ){
+
+        return deepValue;
+
+    }
+
+
+    return null;
 
 }
 
 
 /* =========================================================
    WALK OBJECT
+   ---------------------------------------------------------
+   Generic recursive walker retained for image/source
+   discovery and other catalogue-wide searches.
 ========================================================= */
 
 function walkObject(
