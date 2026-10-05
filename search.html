@@ -1737,39 +1737,6 @@ function resolveCodexAlignment(
 
 }
 
-
-/* =========================================================
-   CODEX ARCHETYPE
-========================================================= */
-
-function resolveCodexArchetype(
-    record,
-    slim,
-    name
-){
-
-    const identity =
-        getStableStrainIdentity(
-            record,
-            slim,
-            name
-        );
-
-
-    const override =
-        SUPER_FLOWER_CODEX_OVERRIDES[
-            identity
-        ];
-
-
-    return (
-        override?.archetype ||
-        "NOT ASSIGNED"
-    );
-
-}
-
-
 /* =========================================================
    ELEMENTS
 ========================================================= */
@@ -3675,12 +3642,18 @@ function renderRecord(
 ){
 
     record =
-        unwrapRecord(record);
+        unwrapRecord(
+            record
+        );
 
 
     currentRecord =
         record;
 
+
+    /* =====================================================
+       IDENTITY
+    ===================================================== */
 
     const name =
         resolvedFieldValue(
@@ -3692,7 +3665,8 @@ function renderRecord(
                 "title",
                 "strain"
             ],
-            slim?.name || "UNKNOWN STRAIN"
+            slim?.name ||
+            "UNKNOWN STRAIN"
         );
 
 
@@ -3707,9 +3681,14 @@ function renderRecord(
                 "slug",
                 "name_norm"
             ],
-            slim?.id || "NOT REPORTED"
+            slim?.id ||
+            "NOT REPORTED"
         );
 
+
+    /* =====================================================
+       GENETICS / LINEAGE
+    ===================================================== */
 
     const genetics =
         resolvedFieldValue(
@@ -3717,13 +3696,26 @@ function renderRecord(
             [
                 "genetics",
                 "genetic_lineage",
+                "genetic",
                 "lineage",
+                "lineage_summary",
                 "parentage",
-                "parents"
+                "parents",
+                "parent_strains",
+                "genetics.lineage",
+                "genetics.parentage",
+                "genetics.parents",
+                "lineage.parents",
+                "lineage.parentage"
             ],
-            slim?.genetics || "NOT REPORTED"
+            slim?.genetics ||
+            "NOT REPORTED"
         );
 
+
+    /* =====================================================
+       TYPE
+    ===================================================== */
 
     const type =
         resolvedFieldValue(
@@ -3734,9 +3726,14 @@ function renderRecord(
                 "classification",
                 "category"
             ],
-            slim?.type || "NOT REPORTED"
+            slim?.type ||
+            "NOT REPORTED"
         );
 
+
+    /* =====================================================
+       THC
+    ===================================================== */
 
     const thc =
         resolvedFieldValue(
@@ -3747,11 +3744,19 @@ function renderRecord(
                 "thc_percent",
                 "thc_percentage",
                 "total_thc",
-                "totalTHC"
+                "totalTHC",
+                "chemistry.thc",
+                "cannabinoids.thc",
+                "cannabinoid_profile.thc"
             ],
-            slim?.thc_range || "NOT REPORTED"
+            slim?.thc_range ||
+            "NOT REPORTED"
         );
 
+
+    /* =====================================================
+       CBD
+    ===================================================== */
 
     const cbd =
         resolvedFieldValue(
@@ -3762,11 +3767,19 @@ function renderRecord(
                 "cbd_percent",
                 "cbd_percentage",
                 "total_cbd",
-                "totalCBD"
+                "totalCBD",
+                "chemistry.cbd",
+                "cannabinoids.cbd",
+                "cannabinoid_profile.cbd"
             ],
-            slim?.cbd_range || "NOT REPORTED"
+            slim?.cbd_range ||
+            "NOT REPORTED"
         );
 
+
+    /* =====================================================
+       BREEDER
+    ===================================================== */
 
     const breeder =
         resolvedFieldValue(
@@ -3774,11 +3787,17 @@ function renderRecord(
             [
                 "breeder",
                 "breeder_name",
-                "breederName"
+                "breederName",
+                "breeder.name"
             ],
-            slim?.breeder || "NOT REPORTED"
+            slim?.breeder ||
+            "NOT REPORTED"
         );
 
+
+    /* =====================================================
+       AROMA / FLAVOUR
+    ===================================================== */
 
     const aroma =
         resolvedFieldValue(
@@ -3786,14 +3805,32 @@ function renderRecord(
             [
                 "aroma",
                 "aromas",
+                "aroma_profile",
+
                 "flavor",
-                "flavour",
                 "flavors",
-                "flavours"
+                "flavour",
+                "flavours",
+
+                "flavor_profile",
+                "flavour_profile",
+
+                "sensory.aroma",
+                "sensory.aromas",
+                "sensory.flavor",
+                "sensory.flavour",
+
+                "profile.aroma",
+                "profile.flavor",
+                "profile.flavour"
             ],
             "NOT REPORTED"
         );
 
+
+    /* =====================================================
+       CODEX ALIGNMENT
+    ===================================================== */
 
     const codex =
         resolveCodexAlignment(
@@ -3803,40 +3840,93 @@ function renderRecord(
         );
 
 
-    const archetype =
-        resolveCodexArchetype(
-            record,
-            slim,
-            name
+    /* =====================================================
+       LIVE FLOWER PHOTOGRAPHS
+    ===================================================== */
+
+    const pictures =
+        extractPictures(
+            record
         );
 
 
-    const pictures =
-    extractPictures(record);
+    renderFlower(
+        record,
+        pictures
+    );
 
 
-renderFlower(
-    record,
-    pictures
-);
-
+    /* =====================================================
+       MASTER SPECIMEN FIELDS
+       
+       PRIMARY ARCHETYPE IS INTENTIONALLY REMOVED.
+    ===================================================== */
 
     specimenFields.innerHTML =
-        field("SPECIMEN ID",id) +
-        field("SPECIMEN IDENTITY",name) +
-        field("GENETICS",genetics) +
-        field("TYPE",type) +
-        field("THC RANGE",thc) +
-        field("CBD RANGE",cbd) +
-        field("AROMA",aroma) +
-        field("RAW CHAKRA",codex.chakra) +
-        field("RAW PLANET",codex.planet) +
-        field("CODEX FREQUENCY",`${codex.frequency} Hz`) +
-        field("PRIMARY ARCHETYPE",archetype);
+
+        field(
+            "SPECIMEN ID",
+            id
+        ) +
+
+        field(
+            "SPECIMEN IDENTITY",
+            name
+        ) +
+
+        field(
+            "GENETICS",
+            genetics
+        ) +
+
+        field(
+            "TYPE",
+            type
+        ) +
+
+        field(
+            "THC RANGE",
+            thc
+        ) +
+
+        field(
+            "CBD RANGE",
+            cbd
+        ) +
+
+        field(
+            "AROMA",
+            aroma
+        ) +
+
+        field(
+            "RAW CHAKRA",
+            codex.chakra
+        ) +
+
+        field(
+            "RAW PLANET",
+            codex.planet
+        ) +
+
+        field(
+            "CODEX FREQUENCY",
+            `${codex.frequency} Hz`
+        );
 
 
-    renderResonance(record);
+    /* =====================================================
+       RESONANCE
+    ===================================================== */
 
+    renderResonance(
+        record
+    );
+
+
+    /* =====================================================
+       INFORMATION PANELS
+    ===================================================== */
 
     renderInfo(
         record,
@@ -3844,14 +3934,20 @@ renderFlower(
             name,
             breeder,
             pictures,
+            genetics,
             thc,
             cbd,
-            codex,
-            archetype
+            aroma,
+            codex
         }
     );
 
 }
+
+
+/* =========================================================
+   FLOWER LOAD INVALIDATION
+========================================================= */
 
 
 /* =========================================================
@@ -6064,26 +6160,13 @@ function renderInfo(
 
             <section class="info-panel full">
 
-                <div class="info-panel-title">
-                    RECEIPTS / SOURCES
-                </div>
+                           <div class="info-panel-title">
+                RECEIPTS / SOURCES
+            </div>
 
-                ${renderSources(record)}
+            ${renderSources(record)}
 
-            </section>
-
-            <section class="info-panel full">
-
-                <div class="info-panel-title">
-                    COMPLETE LIVE SOURCE RECORD
-                </div>
-
-                <details class="raw-data">
-                    <summary>OPEN FULL SOURCE JSON</summary>
-                    <pre>${escapeHTML(JSON.stringify(record,null,2))}</pre>
-                </details>
-
-            </section>
+        </section>
 
         </div>
 
@@ -7874,11 +7957,6 @@ function resetSpecimen(){
 
         field(
             "CODEX FREQUENCY",
-            ""
-        ) +
-
-        field(
-            "PRIMARY ARCHETYPE",
             ""
         );
 
