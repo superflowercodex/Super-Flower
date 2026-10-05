@@ -5357,16 +5357,28 @@ function extractURLFromPictureObject(
     }
 
 
+    /*
+        Direct string.
+    */
+
     if(
         typeof object === "string"
     ){
 
-        return normalizePictureURL(
-            object
-        );
+        const direct =
+            normalizePictureURL(
+                object
+            );
+
+        return direct || "";
 
     }
 
+
+    /*
+        Only objects can contain nested
+        picture information.
+    */
 
     if(
         typeof object !== "object"
@@ -5376,6 +5388,11 @@ function extractURLFromPictureObject(
 
     }
 
+
+    /*
+        First check all known image URL
+        properties.
+    */
 
     for(
         const key of IMAGE_URL_KEYS
@@ -5394,6 +5411,10 @@ function extractURLFromPictureObject(
 
         }
 
+
+        /*
+            Nested image object.
+        */
 
         if(
             typeof raw === "object"
@@ -5431,11 +5452,8 @@ function extractURLFromPictureObject(
 
 
         /*
-            href is allowed only when it actually
-            looks like an image/media path.
-
-            This stops unrelated links from being
-            mistaken for photographs.
+            href is only accepted when it
+            actually looks like an image.
         */
 
         if(
@@ -5454,6 +5472,68 @@ function extractURLFromPictureObject(
 
     }
 
+
+    /*
+        SECONDARY FALLBACK:
+        Some picture records can use an
+        unexpected property name.
+
+        Scan every primitive value in
+        the picture object and accept it
+        only when it resolves to a URL
+        that looks like image/media content.
+    */
+
+    for(
+        const key of Object.keys(
+            object
+        )
+    ){
+
+        const raw =
+            object[key];
+
+
+        if(
+            typeof raw !== "string"
+        ){
+
+            continue;
+
+        }
+
+
+        const candidate =
+            normalizePictureURL(
+                raw
+            );
+
+
+        if(
+            !candidate
+        ){
+
+            continue;
+
+        }
+
+
+        if(
+            looksLikeImageURL(
+                candidate
+            )
+        ){
+
+            return candidate;
+
+        }
+
+    }
+
+
+    /*
+        No usable picture URL found.
+    */
 
     return "";
 
@@ -6714,4 +6794,3 @@ loadFromHash();
 </body>
 
 </html>
-
