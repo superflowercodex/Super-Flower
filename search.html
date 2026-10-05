@@ -2383,87 +2383,115 @@ function extractSearchResults(
     data
 ){
 
-    if(
-        Array.isArray(
-            data
-        )
-    ){
+    /*
+        CannaLib has used more than one response envelope.
+        Walk only known collection/data containers so a valid
+        live result is not lost merely because it is nested.
+    */
 
-        return data;
-
-    }
-
-
-    if(
-        Array.isArray(
-            data?.items
-        )
-    ){
-
-        return data.items;
-
-    }
+    const collectionKeys = [
+        "items",
+        "results",
+        "strains",
+        "records",
+        "specimens",
+        "entries",
+        "data"
+    ];
 
 
-    if(
-        Array.isArray(
-            data?.results
-        )
-    ){
-
-        return data.results;
-
-    }
+    const seen = new WeakSet();
 
 
-    if(
-        Array.isArray(
-            data?.strains
-        )
-    ){
+    function findCollection(value, depth = 0){
 
-        return data.strains;
+        if(
+            value === null ||
+            value === undefined ||
+            depth > 8
+        ){
 
-    }
+            return [];
 
-
-    if(
-        Array.isArray(
-            data?.data
-        )
-    ){
-
-        return data.data;
-
-    }
-
-
-    if(
-        data?.data &&
-        typeof data.data === "object"
-    ){
-
-        if(Array.isArray(data.data.items)){
-            return data.data.items;
         }
 
-        if(Array.isArray(data.data.results)){
-            return data.data.results;
+
+        if(Array.isArray(value)){
+
+            return value;
+
         }
 
-        if(Array.isArray(data.data.strains)){
-            return data.data.strains;
+
+        if(typeof value !== "object"){
+
+            return [];
+
         }
+
+
+        if(seen.has(value)){
+
+            return [];
+
+        }
+
+
+        seen.add(value);
+
+
+        for(const key of collectionKeys){
+
+            const actualKey =
+                Object.keys(value).find(
+                    candidate =>
+                        normaliseSourceKey(candidate) ===
+                        normaliseSourceKey(key)
+                );
+
+
+            if(!actualKey){
+
+                continue;
+
+            }
+
+
+            const child = value[actualKey];
+
+
+            if(Array.isArray(child)){
+
+                return child;
+
+            }
+
+
+            const nested =
+                findCollection(child, depth + 1);
+
+
+            if(nested.length){
+
+                return nested;
+
+            }
+
+        }
+
+
+        return [];
 
     }
 
 
-    return [];
+    return findCollection(data);
 
 }
 
 
 /* =========================================================
+   FILTER POPULATION/* =========================================================
    FILTER POPULATION
 ========================================================= */
 
@@ -3285,90 +3313,199 @@ function unwrapRecord(
     payload
 ){
 
-    let record =
-        payload;
+    if(
+        !payload ||
+        typeof payload !== "object"
+    ){
+
+        return payload;
+
+    }
 
 
     /*
-        CannaLib records can be returned
-        inside wrapper objects.
+        Do not throw away fields that sit beside a wrapper.
+        Earlier versions selected `data`/`strain` and discarded
+        the surrounding record. That could leave the specimen
+        showing only one resolved field.
 
-        Keep unwrapping known record/data
-        containers until the actual object
-        is reached.
+        Instead, recursively merge known envelopes into one
+        complete source object while retaining the original
+        top-level fields.
     */
+
+    const clone =
+        Array.isArray(payload)
+            ? payload.slice()
+            : {...payload};
+
 
     const wrapperKeys = [
         "record",
         "strain",
+        "specimen",
+        "item",
         "data"
     ];
 
 
-    for(
-        let depth = 0;
-        depth < 10;
-        depth++
-    ){
+    function mergeObjects(base, child){
 
         if(
-            !record ||
-            typeof record !== "object" ||
-            Array.isArray(record)
+            !child ||
+            typeof child !== "object" ||
+            Array.isArray(child)
         ){
 
-            break;
+            return base;
 
         }
 
 
-        let next =
-            null;
+        for(const [key,value] of Object.entries(child)){
+
+            const existingKey =
+                Object.keys(base).find(
+                    candidate =>
+                        normaliseSourceKey(candidate) ===
+                        normaliseSourceKey(key)
+                );
 
 
-        for(
-            const key of wrapperKeys
-        ){
+            if(!existingKey){
 
-            const candidate =
-                record[key];
+                base[key] = value;
+
+                continue;
+
+            }
+
+
+            const existing = base[existingKey];
 
 
             if(
-                candidate &&
-                typeof candidate === "object" &&
-                !Array.isArray(candidate)
+                existing &&
+                value &&
+                typeof existing === "object" &&
+                typeof value === "object" &&
+                !Array.isArray(existing) &&
+                !Array.isArray(value)
             ){
 
-                next =
-                    candidate;
+                mergeObjects(
+                    existing,
+                    value
+                );
 
-                break;
+                continue;
+
+            }
+
+
+            /* Prefer the richer wrapper value when present. */
+            if(
+                !hasUsableValue(existing) ||
+                (
+                    typeof value === "object" &&
+                    value !== null
+                )
+            ){
+
+                base[existingKey] = value;
 
             }
 
         }
 
 
-        if(!next){
+        return base;
+
+    }
+
+
+    let result = clone;
+    let current = clone;
+
+
+    for(let depth = 0; depth < 10; depth++){
+
+        if(
+            !current ||
+            typeof current !== "object" ||
+            Array.isArray(current)
+        ){
 
             break;
 
         }
 
 
-        record =
-            next;
+        let foundWrapper = false;
+
+
+        for(const wrapperKey of wrapperKeys){
+
+            const actualKey =
+                Object.keys(current).find(
+                    candidate =>
+                        normaliseSourceKey(candidate) ===
+                        normaliseSourceKey(wrapperKey)
+                );
+
+
+            if(!actualKey){
+
+                continue;
+
+            }
+
+
+            const child = current[actualKey];
+
+
+            if(
+                !child ||
+                typeof child !== "object" ||
+                Array.isArray(child)
+            ){
+
+                continue;
+
+            }
+
+
+            result =
+                mergeObjects(
+                    result,
+                    child
+                );
+
+
+            current = child;
+            foundWrapper = true;
+
+            break;
+
+        }
+
+
+        if(!foundWrapper){
+
+            break;
+
+        }
 
     }
 
 
-    return record;
+    return result;
 
 }
 
 
 /* =========================================================
+   LOAD RECORD/* =========================================================
    LOAD RECORD
 ========================================================= */
 
@@ -3378,9 +3515,13 @@ async function loadRecord(
 
     const candidateIds = [
 
-        slim.id,
-        slim.name_norm,
-        slim.name
+        slim?.id,
+        slim?.strain_id,
+        slim?.catalog_id,
+        slim?.uuid,
+        slim?.slug,
+        slim?.name_norm,
+        slim?.name
 
     ]
     .map(
@@ -3413,40 +3554,29 @@ async function loadRecord(
         "OPENING COMPLETE LIVE SPECIMEN RECORD..."
     );
 
-
     renderLoadingRecord();
 
 
     try{
 
-        let response =
-            null;
-
-        let record =
-            null;
-
-        let id =
-            candidateIds[0];
-
-        let lastError =
-            null;
+        const successfulRecords = [];
+        let lastError = null;
 
 
-        /* =====================================================
-           PRIMARY LIVE SOURCE — CANNALIB
-        ===================================================== */
+        /*
+            Try every plausible identity rather than trusting the
+            first search-result identifier. Some catalogue results
+            expose a slug/name_norm while the detail endpoint expects
+            the catalogue id (or vice versa).
+        */
 
-        for(
-            const candidateId of candidateIds
-        ){
+        for(const candidateId of candidateIds){
 
             try{
 
-                response =
+                const response =
                     await fetch(
-                        RECORD_ENDPOINT(
-                            candidateId
-                        ),
+                        RECORD_ENDPOINT(candidateId),
                         {
                             method:"GET",
                             headers:getHeaders(),
@@ -3455,71 +3585,52 @@ async function loadRecord(
                     );
 
 
-                let candidateRecord =
-                    null;
+                let payload = null;
 
 
                 try{
 
-                    candidateRecord =
+                    payload =
                         await response.json();
 
                 }catch{
 
-                    candidateRecord =
-                        null;
+                    payload = null;
 
                 }
 
 
-                if(
-                    response.ok
-                ){
+                if(response.ok && payload){
 
-                    record =
-                        candidateRecord;
+                    successfulRecords.push({
+                        id:candidateId,
+                        record:unwrapRecord(payload)
+                    });
 
-                    id =
-                        candidateId;
-
-                    break;
+                    continue;
 
                 }
 
 
                 lastError =
                     new Error(
-                        candidateRecord?.error ||
-                        candidateRecord?.message ||
+                        payload?.error ||
+                        payload?.message ||
                         `HTTP ${response.status}`
                     );
 
-
-                if(
-                    response.status !== 404
-                ){
-
-                    break;
-
-                }
-
             }catch(error){
 
-                lastError =
-                    error;
+                lastError = error;
 
             }
 
         }
 
 
-        if(
-            !response ||
-            !response.ok ||
-            !record
-        ){
+        if(!successfulRecords.length){
 
-            throw (
+            throw(
                 lastError ||
                 new Error(
                     "CANNALIB RECORD COULD NOT BE LOADED."
@@ -3529,40 +3640,53 @@ async function loadRecord(
         }
 
 
-        record =
-            unwrapRecord(
-                record
-            );
+        /*
+            Merge every successful detail response. This keeps useful
+            fields when different aliases return complementary record
+            envelopes instead of silently choosing the first response.
+        */
+
+        let record = {};
+        let resolvedId = candidateIds[0];
 
 
-        if(
-            !record ||
-            typeof record !== "object"
-        ){
+        for(const item of successfulRecords){
 
-            throw new Error(
-                "CANNALIB RETURNED AN INVALID SPECIMEN RECORD."
-            );
+            if(
+                item.record &&
+                typeof item.record === "object" &&
+                !Array.isArray(item.record)
+            ){
+
+                record = mergeRecordObjects(
+                    record,
+                    item.record
+                );
+
+            }
+
+
+            if(
+                item.id === slim?.id ||
+                item.id === slim?.strain_id ||
+                item.id === slim?.catalog_id
+            ){
+
+                resolvedId = item.id;
+
+            }
 
         }
 
 
-        /*
-            IMPORTANT:
-
-            CannaLib is the source record.
-
-            Do not inject invented or hard-coded
-            strain information here.
-
-            renderRecord() is responsible for
-            resolving all information actually
-            present anywhere inside this record.
-        */
+        /* Search result remains a source too; detail data wins. */
+        record = mergeRecordObjects(
+            slim || {},
+            record
+        );
 
 
-        currentRecord =
-            record;
+        currentRecord = record;
 
 
         renderRecord(
@@ -3576,7 +3700,7 @@ async function loadRecord(
             "",
             "#strain=" +
             encodeURIComponent(
-                id
+                resolvedId
             )
         );
 
@@ -3588,14 +3712,20 @@ async function loadRecord(
         );
 
 
-        document
-            .getElementById(
+        const specimen =
+            document.getElementById(
                 "specimen"
-            )
-            .scrollIntoView({
+            );
+
+
+        if(specimen){
+
+            specimen.scrollIntoView({
                 behavior:"smooth",
                 block:"start"
             });
+
+        }
 
 
     }catch(error){
@@ -3606,7 +3736,6 @@ async function loadRecord(
             true
         );
 
-
         resetSpecimen();
 
     }
@@ -3615,6 +3744,90 @@ async function loadRecord(
 
 
 /* =========================================================
+   MERGE COMPLETE SOURCE RECORDS
+========================================================= */
+
+function mergeRecordObjects(
+    base,
+    incoming
+){
+
+    if(
+        !incoming ||
+        typeof incoming !== "object"
+    ){
+
+        return base || {};
+
+    }
+
+
+    const output =
+        base &&
+        typeof base === "object" &&
+        !Array.isArray(base)
+            ? {...base}
+            : {};
+
+
+    for(const [key,value] of Object.entries(incoming)){
+
+        const existingKey =
+            Object.keys(output).find(
+                candidate =>
+                    normaliseSourceKey(candidate) ===
+                    normaliseSourceKey(key)
+            );
+
+
+        if(!existingKey){
+
+            output[key] = value;
+            continue;
+
+        }
+
+
+        const existing = output[existingKey];
+
+
+        if(
+            existing &&
+            value &&
+            typeof existing === "object" &&
+            typeof value === "object" &&
+            !Array.isArray(existing) &&
+            !Array.isArray(value)
+        ){
+
+            output[existingKey] =
+                mergeRecordObjects(
+                    existing,
+                    value
+                );
+
+            continue;
+
+        }
+
+
+        /* A non-empty incoming value is authoritative. */
+        if(hasUsableValue(value)){
+
+            output[existingKey] = value;
+
+        }
+
+    }
+
+
+    return output;
+
+}
+
+
+/* =========================================================
+   LOADING RECORD/* =========================================================
    LOADING RECORD
 ========================================================= */
 
@@ -9374,3 +9587,4 @@ loadFromHash();
 </body>
 
 </html>
+
