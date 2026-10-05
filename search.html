@@ -8522,6 +8522,107 @@ function resolveSourceDisplayValue(
         typeof value === "object"
     ){
 
+        /*
+           FIRST — HUMAN / STRAIN / LINEAGE KEYS
+
+           These are deliberately checked before generic
+           display keys because CannaLib can return structured
+           objects such as:
+
+             {
+                 strain_name: "...",
+                 parent_name: "..."
+             }
+
+           Previously those objects were considered usable
+           but then returned as blank.
+        */
+
+        const semanticKeys = [
+
+            "strain_name",
+            "strain",
+            "strainName",
+
+            "parent_name",
+            "parent_strain",
+            "parentName",
+            "parentStrain",
+
+            "mother",
+            "mother_name",
+            "mother_strain",
+            "motherName",
+            "motherStrain",
+
+            "father",
+            "father_name",
+            "father_strain",
+            "fatherName",
+            "fatherStrain",
+
+            "female_parent",
+            "female_parent_name",
+            "femaleParent",
+
+            "male_parent",
+            "male_parent_name",
+            "maleParent",
+
+            "parent_1",
+            "parent_2",
+            "parent1",
+            "parent2",
+
+            "lineage",
+            "genetics",
+            "genetic_lineage",
+            "geneticLineage",
+            "parentage"
+
+        ];
+
+
+        for(
+            const key of semanticKeys
+        ){
+
+            const actualKey =
+                getObjectKey(
+                    value,
+                    key
+                );
+
+
+            if(
+                actualKey &&
+                hasUsableValue(
+                    value[actualKey]
+                )
+            ){
+
+                const resolved =
+                    resolveSourceDisplayValue(
+                        value[actualKey],
+                        depth + 1
+                    );
+
+
+                if(resolved){
+
+                    return resolved;
+
+                }
+
+            }
+
+        }
+
+
+        /*
+           SECOND — STANDARD DISPLAY KEYS
+        */
+
         const preferred = [
 
             "display_name",
@@ -8620,6 +8721,10 @@ function resolveSourceDisplayValue(
 
         }
 
+
+        /*
+           THIRD — NUMERIC RANGE OBJECTS
+        */
 
         const minKey =
             getObjectKey(
@@ -8785,6 +8890,88 @@ function resolveSourceDisplayValue(
                             : ""
                     )
                 );
+
+            }
+
+        }
+
+
+        /*
+           FOURTH — SAFE GENERIC OBJECT FALLBACK
+
+           Only inspect simple scalar values. This allows
+           structured source records to display useful data
+           without dumping IDs, URLs or metadata.
+        */
+
+        const ignoredKeys = [
+
+            "id",
+            "uuid",
+            "url",
+            "uri",
+            "href",
+            "source",
+            "source_url",
+            "sourceUrl",
+            "image",
+            "image_url",
+            "imageUrl",
+            "created_at",
+            "updated_at"
+
+        ];
+
+
+        for(
+            const objectKey of Object.keys(value)
+        ){
+
+            const normalisedKey =
+                String(
+                    objectKey
+                )
+                .toLowerCase();
+
+
+            if(
+                ignoredKeys.some(
+                    ignored =>
+                        normalisedKey ===
+                        String(
+                            ignored
+                        )
+                        .toLowerCase()
+                )
+            ){
+
+                continue;
+
+            }
+
+
+            const child =
+                value[objectKey];
+
+
+            if(
+                typeof child === "string" ||
+                typeof child === "number" ||
+                typeof child === "boolean"
+            ){
+
+                const resolved =
+                    resolveSourceDisplayValue(
+                        child,
+                        depth + 1
+                    );
+
+
+                if(resolved){
+
+                    return resolved;
+
+                }
 
             }
 
