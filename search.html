@@ -5196,6 +5196,7 @@ const IMAGE_URL_KEYS = [
 
 /* =========================================================
    NORMALIZE PICTURE URL
+   SWAP 2 — CANNALIB MEDIA PATH RESOLVER
 ========================================================= */
 
 function normalizePictureURL(
@@ -5204,8 +5205,7 @@ function normalizePictureURL(
 
     const value =
         String(
-            raw ??
-            ""
+            raw ?? ""
         )
         .trim();
 
@@ -5218,7 +5218,7 @@ function normalizePictureURL(
 
 
     /*
-        Already absolute.
+        Already a complete URL.
     */
 
     if(
@@ -5233,13 +5233,11 @@ function normalizePictureURL(
 
 
     /*
-        Protocol-relative.
+        Protocol-relative URL.
     */
 
     if(
-        value.startsWith(
-            "//"
-        )
+        value.startsWith("//")
     ){
 
         return "https:" +
@@ -5249,13 +5247,29 @@ function normalizePictureURL(
 
 
     /*
-        CannaLib media paths.
+        Remove accidental API-origin duplication.
     */
 
     if(
         value.startsWith(
-            "/media/"
+            API_BASE + "/"
         )
+    ){
+
+        return value;
+
+    }
+
+
+    /*
+        CannaLib media endpoint.
+
+        /media/file.webp
+        media/file.webp
+    */
+
+    if(
+        value.startsWith("/media/")
     ){
 
         return API_BASE +
@@ -5265,9 +5279,7 @@ function normalizePictureURL(
 
 
     if(
-        value.startsWith(
-            "media/"
-        )
+        value.startsWith("media/")
     ){
 
         return API_BASE +
@@ -5278,19 +5290,37 @@ function normalizePictureURL(
 
 
     /*
-        Other likely image paths.
+        Some records may expose the media path
+        without the leading slash.
+    */
+
+    const mediaMatch =
+        value.match(
+            /(?:^|\/)(media\/.+)$/i
+        );
+
+
+    if(
+        mediaMatch &&
+        mediaMatch[1]
+    ){
+
+        return API_BASE +
+            "/" +
+            mediaMatch[1];
+
+    }
+
+
+    /*
+        Other image directories.
     */
 
     if(
-        value.startsWith(
-            "/images/"
-        ) ||
-        value.startsWith(
-            "/photos/"
-        ) ||
-        value.startsWith(
-            "/pictures/"
-        )
+        /^\/(?:images|photos|pictures)\//i
+            .test(
+                value
+            )
     ){
 
         return API_BASE +
@@ -5300,20 +5330,43 @@ function normalizePictureURL(
 
 
     if(
-        value.startsWith(
-            "images/"
-        ) ||
-        value.startsWith(
-            "photos/"
-        ) ||
-        value.startsWith(
-            "pictures/"
-        )
+        /^(?:images|photos|pictures)\//i
+            .test(
+                value
+            )
     ){
 
         return API_BASE +
             "/" +
             value;
+
+    }
+
+
+    /*
+        Bare image filename.
+
+        CannaLib serves catalogue media from /media/.
+    */
+
+    const filename =
+        value
+            .replace(
+                /^\/+/,
+                ""
+            );
+
+
+    if(
+        /\.(?:jpe?g|png|webp|gif|avif)(?:[?#].*)?$/i
+            .test(
+                filename
+            )
+    ){
+
+        return API_BASE +
+            "/media/" +
+            filename;
 
     }
 
@@ -5341,6 +5394,7 @@ function looksLikeImageURL(
 
 /* =========================================================
    EXTRACT URL FROM PICTURE OBJECT
+   SWAP 1 — CANNALIB MEDIA RESOLVER
 ========================================================= */
 
 function extractURLFromPictureObject(
@@ -5357,13 +5411,66 @@ function extractURLFromPictureObject(
     }
 
 
+    /*
+        Direct string.
+
+        CannaLib may give us the actual media path
+        rather than a complete browser URL.
+    */
+
     if(
         typeof object === "string"
     ){
 
-        return normalizePictureURL(
+        const direct =
+            normalizePictureURL(
+                object
+            );
+
+
+        if(
+            direct
+        ){
+
+            return direct;
+
+        }
+
+
+        /*
+            Some CannaLib picture values are media
+            identifiers/paths without the leading
+            /media/ portion.
+
+            Do NOT treat arbitrary strings as images.
+            Only construct a media URL when the
+            value looks like a real image/media file.
+        */
+
+        const cleaned =
             object
-        );
+                .trim()
+                .replace(
+                    /^\/+/,
+                    ""
+                );
+
+
+        if(
+            /\.(?:jpe?g|png|webp|gif|avif)(?:[?#].*)?$/i
+                .test(
+                    cleaned
+                )
+        ){
+
+            return API_BASE +
+                "/media/" +
+                cleaned;
+
+        }
+
+
+        return "";
 
     }
 
@@ -5376,6 +5483,10 @@ function extractURLFromPictureObject(
 
     }
 
+
+    /*
+        First check the known direct URL fields.
+    */
 
     for(
         const key of IMAGE_URL_KEYS
@@ -5405,7 +5516,9 @@ function extractURLFromPictureObject(
                 );
 
 
-            if(nested){
+            if(
+                nested
+            ){
 
                 return nested;
 
@@ -5419,11 +5532,15 @@ function extractURLFromPictureObject(
 
         const candidate =
             normalizePictureURL(
-                raw
+                String(
+                    raw
+                )
             );
 
 
-        if(!candidate){
+        if(
+            !candidate
+        ){
 
             continue;
 
@@ -5431,11 +5548,8 @@ function extractURLFromPictureObject(
 
 
         /*
-            href is allowed only when it actually
-            looks like an image/media path.
-
-            This stops unrelated links from being
-            mistaken for photographs.
+            href is only accepted when it is actually
+            an image/media URL.
         */
 
         if(
@@ -5455,7 +5569,278 @@ function extractURLFromPictureObject(
     }
 
 
-    return "";
+    /*
+        CannaLib-specific nested media fields.
+
+        The existing extractor was looking for:
+
+            image_url
+            image
+            src
+            media_url
+            path
+            file
+            original_url
+            full_url
+            url
+            href
+
+        but it was NOT explicitly walking a picture
+        object's own "media" structure.
+
+        This is the important part of Swap 1.
+    */
+
+    const MEDIA_KEYS = [
+
+        "media",
+        "media_path",
+        "media_file",
+        "media_url",
+        "media_id",
+        "image_path",
+        "image_file",
+        "image_id",
+        "filename",
+        "file_name",
+        "asset",
+        "asset_path",
+        "asset_url",
+        "object_key",
+        "key"
+
+    ];
+
+
+    for(
+        const key of MEDIA_KEYS
+    ){
+
+        const raw =
+            object[key];
+
+
+        if(
+            raw === undefined ||
+            raw === null
+        ){
+
+            continue;
+
+        }
+
+
+        /*
+            Nested media object.
+        */
+
+        if(
+            typeof raw === "object"
+        ){
+
+            const nested =
+                extractURLFromPictureObject(
+                    raw
+                );
+
+
+            if(
+                nested
+            ){
+
+                return nested;
+
+            }
+
+
+            continue;
+
+        }
+
+
+        const value =
+            String(
+                raw
+            ).trim();
+
+
+        if(
+            !value
+        ){
+
+            continue;
+
+        }
+
+
+        /*
+            Let the normal resolver handle a genuine
+            CannaLib /media/ path first.
+        */
+
+        const normal =
+            normalizePictureURL(
+                value
+            );
+
+
+        if(
+            normal
+        ){
+
+            return normal;
+
+        }
+
+
+        /*
+            If CannaLib supplied only the media filename,
+            turn it into the documented CannaLib media
+            endpoint.
+        */
+
+        const cleaned =
+            value
+                .replace(
+                    /^\/+/,
+                    ""
+                );
+
+
+        if(
+            /\.(?:jpe?g|png|webp|gif|avif)(?:[?#].*)?$/i
+                .test(
+                    cleaned
+                )
+        ){
+
+            return API_BASE +
+                "/media/" +
+                cleaned;
+
+        }
+
+    }
+
+
+    /*
+        Last pass:
+
+        Some picture records can contain another nested
+        object whose property name is not one of the
+        expected image-field names.
+
+        Walk that object looking specifically for a
+        value that resolves to an image/media URL.
+
+        This stays inside the picture object only.
+    */
+
+    const visited =
+        new WeakSet();
+
+
+    function deepMediaSearch(
+        value
+    ){
+
+        if(
+            value === null ||
+            value === undefined
+        ){
+
+            return "";
+
+        }
+
+
+        if(
+            typeof value === "string"
+        ){
+
+            const candidate =
+                normalizePictureURL(
+                    value
+                );
+
+
+            if(
+                candidate &&
+                looksLikeImageURL(
+                    candidate
+                )
+            ){
+
+                return candidate;
+
+            }
+
+
+            return "";
+
+        }
+
+
+        if(
+            typeof value !== "object"
+        ){
+
+            return "";
+
+        }
+
+
+        if(
+            visited.has(
+                value
+            )
+        ){
+
+            return "";
+
+        }
+
+
+        visited.add(
+            value
+        );
+
+
+        for(
+            const childKey of Object.keys(
+                value
+            )
+        ){
+
+            const child =
+                value[childKey];
+
+
+            const result =
+                deepMediaSearch(
+                    child
+                );
+
+
+            if(
+                result
+            ){
+
+                return result;
+
+            }
+
+        }
+
+
+        return "";
+
+    }
+
+
+    return deepMediaSearch(
+        object
+    );
 
 }
 
