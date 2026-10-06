@@ -2090,17 +2090,10 @@ searchInput.addEventListener(
 
             resetSpecimen();
 
-            results.classList.remove(
-                "visible"
-            );
-
-            currentResults =
-                [];
-
-            resetSpecimen();
-
-            setStatus(
-                "SEARCH THE LIVING RECORD."
+            loadBrowsePage(
+                browseIndex >= 0
+                    ? browseIndex
+                    : 0
             );
 
             return;
@@ -2263,132 +2256,6 @@ clearFiltersButton.addEventListener(
    or 502/503/504 before giving up with a clear message.
    A new search still cancels the old one immediately.
 ========================================================= */
-
-/* =========================================================
-   V13 REQUEST CACHE / RATE-LIMIT PROTECTION
-   ---------------------------------------------------------
-   CannaLib keyless access is limited server-side to 60
-   requests per hour. This does NOT bypass that limit.
-   It prevents this page from repeatedly spending requests
-   for data already retrieved in this browser.
-========================================================= */
-
-const SF_SEARCH_CACHE_TTL =
-    6 * 60 * 60 * 1000;
-
-const SF_RECORD_CACHE_TTL =
-    24 * 60 * 60 * 1000;
-
-const SF_SEARCH_CACHE_PREFIX =
-    "sf_v13_search_";
-
-const SF_RECORD_CACHE_PREFIX =
-    "sf_v13_record_";
-
-function sfCacheRead(
-    prefix,
-    key,
-    ttl
-){
-
-    try{
-
-        const raw =
-            localStorage.getItem(
-                prefix + key
-            );
-
-        if(!raw){
-
-            return null;
-
-        }
-
-        const item =
-            JSON.parse(raw);
-
-        if(
-            !item ||
-            !Number.isFinite(item.time) ||
-            !("data" in item)
-        ){
-
-            localStorage.removeItem(
-                prefix + key
-            );
-
-            return null;
-
-        }
-
-        if(
-            Date.now() - item.time > ttl
-        ){
-
-            return {
-                stale:true,
-                data:item.data
-            };
-
-        }
-
-        return {
-            stale:false,
-            data:item.data
-        };
-
-    }catch{
-
-        return null;
-
-    }
-
-}
-
-function sfCacheWrite(
-    prefix,
-    key,
-    data
-){
-
-    try{
-
-        localStorage.setItem(
-            prefix + key,
-            JSON.stringify({
-                time:Date.now(),
-                data
-            })
-        );
-
-    }catch{
-
-        /* Storage may be unavailable or full. Live API still works. */
-
-    }
-
-}
-
-function sfSearchCacheKey(query){
-
-    return encodeURIComponent(
-        String(query || "")
-            .trim()
-            .toLowerCase()
-    );
-
-}
-
-function sfRecordCacheKey(id){
-
-    return encodeURIComponent(
-        String(id || "")
-            .trim()
-            .toLowerCase()
-    );
-
-}
-
 
 async function sfFetch(url, options = {}){
 
@@ -2612,41 +2479,11 @@ async function fetchSearchPage(
     signal
 ){
 
-    const cleanQuery =
-        String(query || "").trim();
-
-    const cacheKey =
-        sfSearchCacheKey(
-            cleanQuery
-        );
-
-    const cached =
-        sfCacheRead(
-            SF_SEARCH_CACHE_PREFIX,
-            cacheKey,
-            SF_SEARCH_CACHE_TTL
-        );
-
-    if(
-        cached &&
-        !cached.stale
-    ){
-
-        setStatus(
-            "SEARCH CACHE HIT — NO CANNALIB REQUEST USED.",
-            false,
-            true
-        );
-
-        return cached.data;
-
-    }
-
     const url =
         SEARCH_ENDPOINT +
         "?q=" +
         encodeURIComponent(
-            cleanQuery
+            query
         ) +
         "&limit=" +
         RESULTS_PER_PAGE;
@@ -2690,28 +2527,8 @@ async function fetchSearchPage(
             response.status === 429
         ){
 
-            /*
-                If an older cached copy exists, use it rather than
-                making the page unusable while CannaLib is throttled.
-            */
-
-            if(
-                cached &&
-                cached.data
-            ){
-
-                setStatus(
-                    "CANNALIB RATE LIMITED — SHOWING LAST CACHED RESULT. NO NEW REQUEST USED.",
-                    false,
-                    true
-                );
-
-                return cached.data;
-
-            }
-
             message =
-                "CANNALIB RATE LIMIT REACHED — KEYLESS ACCESS IS 60 REQUESTS PER HOUR. NO RETRIES WERE SENT. TRY AGAIN LATER.";
+                "RATE LIMIT REACHED. KEYLESS ACCESS IS 60 REQUESTS PER HOUR. WAIT A WHILE AND TRY AGAIN.";
 
         }
 
@@ -2721,20 +2538,12 @@ async function fetchSearchPage(
 
     }
 
-    const resultsData =
-        extractSearchResults(
-            data
-        );
-
-    sfCacheWrite(
-        SF_SEARCH_CACHE_PREFIX,
-        cacheKey,
-        resultsData
+    return extractSearchResults(
+        data
     );
 
-    return resultsData;
-
 }
+
 
 /* =========================================================
    A-Z BROWSE PAGE
@@ -2936,17 +2745,10 @@ async function performSearch(
         !query
     ){
 
-        results.classList.remove(
-            "visible"
-        );
-
-        currentResults =
-            [];
-
-        resetSpecimen();
-
-        setStatus(
-            "SEARCH THE LIVING RECORD."
+        loadBrowsePage(
+            browseIndex >= 0
+                ? browseIndex
+                : 0
         );
 
         return;
@@ -4321,7 +4123,8 @@ async function loadRecord(
     const candidateIds = [
 
         slim.id,
-        slim.name_norm
+        slim.name_norm,
+        slim.name
 
     ]
     .map(
@@ -4344,67 +4147,6 @@ async function loadRecord(
             "THIS RESULT HAS NO USABLE RECORD ID.",
             true
         );
-
-        return;
-
-    }
-
-
-    let recordCached =
-        null;
-
-    for(
-        const candidateId of candidateIds
-    ){
-
-        const cached =
-            sfCacheRead(
-                SF_RECORD_CACHE_PREFIX,
-                sfRecordCacheKey(candidateId),
-                SF_RECORD_CACHE_TTL
-            );
-
-        if(
-            cached &&
-            cached.data
-        ){
-
-            recordCached =
-                cached;
-
-            break;
-
-        }
-
-    }
-
-    if(
-        recordCached &&
-        recordCached.data
-    ){
-
-        currentRecord =
-            recordCached.data;
-
-        renderRecord(
-            recordCached.data,
-            slim
-        );
-
-        setStatus(
-            "LIVE SPECIMEN LOADED — LOCAL CACHE. NO CANNALIB REQUEST USED.",
-            false,
-            true
-        );
-
-        document
-            .getElementById(
-                "specimen"
-            )
-            .scrollIntoView({
-                behavior:"smooth",
-                block:"start"
-            });
 
         return;
 
@@ -4570,15 +4312,6 @@ async function loadRecord(
         currentRecord =
             record;
 
-        candidateIds.forEach(
-            candidateId =>
-                sfCacheWrite(
-                    SF_RECORD_CACHE_PREFIX,
-                    sfRecordCacheKey(candidateId),
-                    record
-                )
-        );
-
 
         renderRecord(
             record,
@@ -4612,12 +4345,10 @@ async function loadRecord(
                 block:"start"
             });
 
-        /*
-            V13: Do not automatically search parent records here.
-            The parent cascade can spend up to three additional
-            CannaLib requests for a single specimen. The complete
-            live record above remains the source of truth.
-        */
+        sfDeepen(
+            record,
+            slim
+        );
 
 
     }catch(error){
@@ -11354,8 +11085,13 @@ async function loadFromHash(){
 
     if(!hash){
 
-        /* Page opens empty. A–Z controls remain available and
-           still use the original loadBrowsePage() system. */
+        if(!currentResults.length){
+
+            loadBrowsePage(
+                0
+            );
+
+        }
 
         return;
 
@@ -11375,6 +11111,14 @@ async function loadFromHash(){
 
 
     if(!strain){
+
+        if(!currentResults.length){
+
+            loadBrowsePage(
+                0
+            );
+
+        }
 
         return;
 
@@ -11443,8 +11187,6 @@ resetSpecimen();
 /* =========================================================
    START HASH SEARCH
 ========================================================= */
-
-ensureBrowseControls();
 
 loadFromHash();
 
