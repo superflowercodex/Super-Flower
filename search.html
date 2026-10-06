@@ -4345,6 +4345,11 @@ async function loadRecord(
                 block:"start"
             });
 
+        sfDeepen(
+            record,
+            slim
+        );
+
 
     }catch(error){
 
@@ -5280,6 +5285,286 @@ function sfResonance(record, slim, typeText){
     });
 
     return out;
+
+}
+
+/* =========================================================
+   SUPER FLOWER ENGINE — DEEP SEARCH + QUANTITATIVE GENETICS
+   ---------------------------------------------------------
+   When a strain has empty fields, the engine looks up its
+   parent strains in CannaLib (max 3 requests, cached) and
+   estimates the missing traits from them.
+
+   Method (breeder's equation, additive model):
+     each parent's breeding value  A = mu + h2 * (P - mu)
+     expected offspring value      = mean of parent A values
+   mu = population mean, h2 = narrow-sense heritability.
+   mu and h2 below are ASSUMED round figures, not CannaLib
+   data. Edit SF_POP to match your own references.
+   Terpenes: parent terpene lists combined by rank weight.
+   Type: parent types averaged on an indica-sativa scale.
+   Every estimate is labelled EST. and never shown as data.
+========================================================= */
+
+const SF_POP = {
+    thc:{mu:18,h2:0.6},
+    cbd:{mu:1,h2:0.7},
+    flowering:{mu:63,h2:0.55},
+    height:{mu:130,h2:0.45}
+};
+
+const sfParentCache = new Map();
+
+function sfNumbers(value){
+
+    return (String(value ?? "").match(/\d+(\.\d+)?/g) || [])
+        .map(Number);
+
+}
+
+function sfMean(list){
+
+    return list.length
+        ? list.reduce((a, b) => a + b, 0) / list.length
+        : NaN;
+
+}
+
+function sfBreeder(values, trait){
+
+    const v = values.filter(Number.isFinite);
+
+    if(!v.length){ return null; }
+
+    const {mu, h2} = SF_POP[trait];
+
+    const breeding = v.map(p => mu + h2 * (p - mu));
+
+    const est = sfMean(breeding);
+
+    const half = Math.max(
+        v.length > 1 ? Math.abs(v[0] - v[1]) / 2 * h2 : 0,
+        est * (v.length > 1 ? 0.08 : 0.15)
+    );
+
+    return {
+        est,
+        lo:Math.max(0, est - half),
+        hi:est + half
+    };
+
+}
+
+function sfTypeScore(text){
+
+    const t = String(text || "").toLowerCase();
+
+    if(t.includes("indica")){ return t.includes("dominant") ? -0.5 : -1; }
+
+    if(t.includes("sativa")){ return t.includes("dominant") ? 0.5 : 1; }
+
+    return t.includes("hybrid") ? 0 : NaN;
+
+}
+
+async function sfParentCard(name){
+
+    const key = normaliseKey(name);
+
+    if(sfParentCache.has(key)){
+
+        return sfParentCache.get(key);
+
+    }
+
+    let card = null;
+
+    try{
+
+        const items = await fetchSearchPage(name);
+
+        card = items.find(
+            item => normaliseKey(item.name_norm || item.name) === key
+        ) || null;
+
+    }catch{
+
+        card = null;
+
+    }
+
+    sfParentCache.set(key, card);
+
+    return card;
+
+}
+
+async function sfDeepen(record, slim){
+
+    if(!record || record.__sfDeep){ return; }
+
+    const pick = keys => resolvedFieldValue(record, keys);
+
+    const needs = {
+        type:sfEmpty(pick(["type","strain_type","classification","category"]) || slim?.type),
+        thc:sfEmpty(pick(["thc","thc_percent","thc_range","total_thc"]) || slim?.thc_range),
+        cbd:sfEmpty(pick(["cbd","cbd_percent","cbd_range","total_cbd"]) || slim?.cbd_range),
+        flowering:sfEmpty(pick(["flowering_days","flowering_time","flowering"])),
+        height:sfEmpty(pick(["height_cm","height","height_band"])),
+        terpenes:!sfTerpeneList(record, slim).length
+    };
+
+    if(!Object.values(needs).some(Boolean)){ return; }
+
+    const names = (resolveGeneticsFromParents(record, slim) || "")
+        .split(" × ")
+        .filter(Boolean)
+        .slice(0, 3);
+
+    if(!names.length){ return; }
+
+    setStatus("SUPER FLOWER ENGINE SEARCHING DEEPER INTO PARENT RECORDS...");
+
+    const cards = (
+        await Promise.all(names.map(sfParentCard))
+    ).filter(Boolean);
+
+    if(!cards.length || currentRecord !== record){
+
+        setStatus("LIVE SPECIMEN LOADED.", false, true);
+
+        return;
+
+    }
+
+    const record2 = {...record, __sfDeep:true};
+
+    const slim2 = {...(slim || {})};
+
+    let filled = 0;
+
+    if(needs.type){
+
+        const scores = cards.map(c => sfTypeScore(c.type)).filter(Number.isFinite);
+
+        if(scores.length){
+
+            const s = sfMean(scores);
+
+            record2.type = (
+                s <= -0.66 ? "indica" :
+                s < -0.15 ? "indica dominant hybrid" :
+                s <= 0.15 ? "hybrid" :
+                s < 0.66 ? "sativa dominant hybrid" : "sativa"
+            ) + " (INFERRED FROM PARENT RECORDS)";
+
+            filled++;
+
+        }
+
+    }
+
+    const range = (trait, values, unit, digits = 0) => {
+
+        const r = sfBreeder(values, trait);
+
+        if(!r){ return null; }
+
+        const f = n => (+n.toFixed(digits)).toString();
+
+        return `~${f(r.lo)}–${f(r.hi)}${unit} (EST. FROM PARENTS)`;
+
+    };
+
+    if(needs.thc){
+
+        const text = range("thc", cards.map(c => sfMean(sfNumbers(c.thc_range))), "%", 1);
+
+        if(text){ slim2.thc_range = text; filled++; }
+
+    }
+
+    if(needs.cbd){
+
+        const text = range("cbd", cards.map(c => sfMean(sfNumbers(c.cbd_range))), "%", 2);
+
+        if(text){ slim2.cbd_range = text; filled++; }
+
+    }
+
+    if(needs.flowering){
+
+        const r = sfBreeder(cards.map(c => Number(c.flowering_days)), "flowering");
+
+        if(r){
+
+            record2.flowering_days =
+                `~${Math.round(r.est)} DAYS (≈${Math.round(r.est / 7)} WEEKS) · EST. FROM PARENTS`;
+
+            filled++;
+
+        }
+
+    }
+
+    if(needs.height){
+
+        const text = range("height", cards.map(c => Number(c.height_cm)), " CM");
+
+        if(text){ record2.height_cm = text; filled++; }
+
+    }
+
+    if(needs.terpenes){
+
+        const weight = {};
+
+        cards.forEach(card => {
+
+            (card.top_terpenes || []).forEach((item, rank) => {
+
+                const name = String(resolveSourceDisplayValue(item) || "").trim();
+
+                if(name){ weight[name] = (weight[name] || 0) + 1 / (rank + 1); }
+
+            });
+
+        });
+
+        const predicted = Object.entries(weight)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5)
+            .map(entry => entry[0]);
+
+        if(predicted.length){
+
+            record2.top_terpenes = predicted;
+
+            record2.__sfTerpenes = true;
+
+            filled++;
+
+        }
+
+    }
+
+    if(!filled){
+
+        setStatus("LIVE SPECIMEN LOADED.", false, true);
+
+        return;
+
+    }
+
+    currentRecord = record2;
+
+    renderRecord(record2, slim2);
+
+    setStatus(
+        `LIVE SPECIMEN LOADED. ENGINE ESTIMATED ${filled} EMPTY FIELD${filled === 1 ? "" : "S"} FROM PARENT RECORDS.`,
+        false,
+        true
+    );
 
 }
 
@@ -7932,7 +8217,7 @@ function renderInfo(
                     TERPENE PROFILE
                 </div>
 
-                ${renderChips(terpenes.map(sfPrettyTerpene))}
+                ${renderChips(terpenes.map(sfPrettyTerpene))}${record.__sfTerpenes ? sfNote("ESTIMATED FROM PARENT STRAINS' TERPENE PROFILES") : ""}
 
             </section>
 
