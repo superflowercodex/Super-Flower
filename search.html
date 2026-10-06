@@ -419,6 +419,86 @@ body::before{
 
 
 /* =========================================================
+   CANNALIB PAGINATION
+   10 LIVE STRAINS PER PAGE
+========================================================= */
+
+.results-pagination{
+    display:none;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    margin-top:10px;
+    padding:10px 0 2px;
+}
+
+.results-pagination.visible{
+    display:flex;
+}
+
+.results-page-button{
+    flex:0 0 auto;
+    min-width:92px;
+    padding:9px 12px;
+    background:#000;
+    border:1px solid rgba(255,210,26,.45);
+    color:var(--gold);
+    font-family:inherit;
+    font-size:.58rem;
+    font-weight:bold;
+    letter-spacing:.08em;
+    cursor:pointer;
+}
+
+.results-page-button:hover:not(:disabled){
+    background:rgba(255,210,26,.08);
+    border-color:rgba(255,210,26,.8);
+}
+
+.results-page-button:disabled{
+    opacity:.25;
+    cursor:not-allowed;
+}
+
+.results-page-status{
+    flex:1;
+    text-align:center;
+    color:rgba(255,255,255,.5);
+    font-size:.56rem;
+    letter-spacing:.06em;
+    line-height:1.4;
+}
+
+.results-page-status strong{
+    color:var(--gold);
+    font-weight:bold;
+}
+
+
+/* =========================================================
+   MOBILE PAGINATION
+========================================================= */
+
+@media (max-width:600px){
+
+    .results-pagination{
+        gap:7px;
+    }
+
+    .results-page-button{
+        min-width:78px;
+        padding:8px 8px;
+        font-size:.52rem;
+    }
+
+    .results-page-status{
+        font-size:.5rem;
+    }
+
+}
+
+
+/* =========================================================
    LOADING
 ========================================================= */
 
@@ -1496,20 +1576,34 @@ const RECORD_ENDPOINT =
         encodeURIComponent(id);
 
 
-/*
-    PUBLIC CANNALIB ACCESS ONLY.
-
-    This page requests up to 10 live search results.
-
-    No API key is stored.
-
-    No API key is sent.
-
-    No keyed/public quota system is used.
-*/
+/* =========================================================
+   CANNALIB LIVE PAGINATION
+   10 STRAINS PER PAGE
+========================================================= */
 
 const RESULTS_PER_PAGE =
     10;
+
+
+/*
+    PAGINATION STATE
+
+    Page 1 = first 10 live results.
+    NEXT    = next 10.
+    PREVIOUS = previous 10.
+
+    The browser only holds the current
+    10 search results.
+*/
+
+let currentSearchQuery =
+    "";
+
+let currentSearchPage =
+    1;
+
+let totalSearchPages =
+    null;
 
 
 /* =========================================================
@@ -2130,16 +2224,16 @@ clearFiltersButton.addEventListener(
 
 
 /* =========================================================
-   SEARCH
+   LIVE PAGINATED SEARCH
+   CANNALIB — 10 STRAINS PER PAGE
 ========================================================= */
 
 async function performSearch(
-    query
+    query,
+    page = 1
 ){
 
-    if(
-        searchController
-    ){
+    if(searchController){
 
         searchController.abort();
 
@@ -2154,8 +2248,15 @@ async function performSearch(
         searchController;
 
 
+    currentSearchQuery =
+        query.trim();
+
+    currentSearchPage =
+        page;
+
+
     setStatus(
-        "SEARCHING THE LIVING SUPER FLOWER RECORD..."
+        `SEARCHING THE LIVING SUPER FLOWER RECORD — PAGE ${page}...`
     );
 
 
@@ -2172,40 +2273,29 @@ async function performSearch(
 
             <br><br>
 
-            SEARCHING THE LIVING RECORD...
+            LOADING 10 LIVE STRAINS...
 
         </div>
 
     `;
 
 
-    resetFilters();
+    if(page === 1){
+
+        resetFilters();
+
+    }
 
 
     try{
 
-        /*
-            PUBLIC ACCESS:
-
-            Always one live search page.
-
-            No API key.
-            No keyed paging.
-            No fake claim of 30 results.
-        */
-
         const pageResults =
             await fetchSearchPage(
-                query,
-                1,
+                currentSearchQuery,
+                page,
                 controller.signal
             );
 
-
-        /*
-            If another search has started,
-            ignore this result.
-        */
 
         if(
             controller !== searchController
@@ -2218,16 +2308,43 @@ async function performSearch(
 
         currentResults =
             uniqueBy(
+
                 pageResults
+
                     .map(
                         resolveSearchRecord
                     )
+
                     .filter(Boolean),
+
                 item =>
                     item.id ||
                     item.name_norm ||
                     item.name
+
             );
+
+
+        /*
+            A-Z ordering for the current
+            live CannaLib page.
+        */
+
+        currentResults.sort(
+            (a,b) =>
+                String(
+                    a.name || ""
+                )
+                .localeCompare(
+                    String(
+                        b.name || ""
+                    ),
+                    undefined,
+                    {
+                        sensitivity:"base"
+                    }
+                )
+        );
 
 
         populateFilters(
@@ -2240,10 +2357,17 @@ async function performSearch(
         );
 
 
+        renderPagination();
+
+
         setStatus(
+
             currentResults.length
-                ? `${currentResults.length} LIVE MATCHES RETURNED`
+
+                ? `${currentResults.length} LIVE STRAINS — PAGE ${currentSearchPage}`
+
                 : "NO MATCHING STRAIN RECORD FOUND."
+
         );
 
 
@@ -2287,7 +2411,7 @@ async function performSearch(
 
 
 /* =========================================================
-   SEARCH PAGE
+   CANNALIB PAGE REQUEST
 ========================================================= */
 
 async function fetchSearchPage(
@@ -2303,24 +2427,9 @@ async function fetchSearchPage(
             query
         ) +
         "&limit=" +
-        RESULTS_PER_PAGE;
-
-
-    /*
-        The function retains the page argument
-        for compatibility with the endpoint,
-        but public search only requests page 1.
-    */
-
-    if(
-        page > 1
-    ){
-
-        url +=
-            "&page=" +
-            page;
-
-    }
+        RESULTS_PER_PAGE +
+        "&page=" +
+        page;
 
 
     const response =
@@ -2369,12 +2478,167 @@ async function fetchSearchPage(
     }
 
 
+    /*
+        Keep any pagination information
+        supplied by CannaLib.
+    */
+
+    totalSearchPages =
+
+        Number(
+            data?.total_pages ||
+            data?.pagination?.total_pages ||
+            data?.meta?.total_pages ||
+            0
+        ) || null;
+
+
     return extractSearchResults(
         data
     );
 
 }
 
+/* =========================================================
+   PAGINATION CONTROLS
+========================================================= */
+
+function renderPagination(){
+
+    let pagination =
+        document.getElementById(
+            "searchPagination"
+        );
+
+
+    if(!pagination){
+
+        pagination =
+            document.createElement(
+                "div"
+            );
+
+        pagination.id =
+            "searchPagination";
+
+        pagination.className =
+            "search-pagination";
+
+        results.parentNode.insertBefore(
+            pagination,
+            results.nextSibling
+        );
+
+    }
+
+
+    pagination.innerHTML = `
+
+        <button
+            type="button"
+            class="pagination-button"
+            id="previousPageButton"
+            ${currentSearchPage <= 1 ? "disabled" : ""}
+        >
+            ‹ PREVIOUS
+        </button>
+
+
+        <div class="pagination-page">
+
+            PAGE
+            ${currentSearchPage}
+
+        </div>
+
+
+        <button
+            type="button"
+            class="pagination-button"
+            id="nextPageButton"
+            ${currentResults.length < RESULTS_PER_PAGE ? "disabled" : ""}
+        >
+            NEXT ›
+        </button>
+
+    `;
+
+
+    const previous =
+        document.getElementById(
+            "previousPageButton"
+        );
+
+
+    const next =
+        document.getElementById(
+            "nextPageButton"
+        );
+
+
+    previous.addEventListener(
+        "click",
+        () => {
+
+            if(
+                currentSearchPage <= 1
+            ){
+
+                return;
+
+            }
+
+
+            performSearch(
+                currentSearchQuery,
+                currentSearchPage - 1
+            );
+
+        }
+    );
+
+
+    next.addEventListener(
+        "click",
+        () => {
+
+            /*
+                If CannaLib supplies a known
+                page count, respect it.
+            */
+
+            if(
+                totalSearchPages &&
+                currentSearchPage >=
+                    totalSearchPages
+            ){
+
+                return;
+
+            }
+
+
+            /*
+                A full page means another
+                page may exist.
+            */
+
+            if(
+                currentResults.length ===
+                RESULTS_PER_PAGE
+            ){
+
+                performSearch(
+                    currentSearchQuery,
+                    currentSearchPage + 1
+                );
+
+            }
+
+        }
+    );
+
+}
 
 /* =========================================================
    SEARCH RESULT EXTRACTION
