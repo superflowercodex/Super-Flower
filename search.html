@@ -5383,13 +5383,9 @@ async function sfParentCard(name){
 
         const items = await fetchSearchPage(name);
 
-        const keyOf = item => normaliseKey(item.name_norm || item.name);
-
-        card = items.find(item => keyOf(item) === key) ||
-            items
-                .filter(item => keyOf(item).startsWith(key))
-                .sort((a, b) => keyOf(a).length - keyOf(b).length)[0] ||
-            null;
+        card = items.find(
+            item => normaliseKey(item.name_norm || item.name) === key
+        ) || null;
 
     }catch{
 
@@ -11038,40 +11034,13 @@ async function loadFromHash(){
     }
 
 
-    /*
-        A link such as #strain=strain_ac_dosi carries a record ID,
-        not a search phrase. Try it as an ID first (plain, with
-        the "strain_" prefix removed, and hyphenated), then fall
-        back to a normal search on the cleaned-up name.
-    */
-
-    const cleaned =
-        strain.replace(/^strain[_-]/i, "");
-
-    const spaced =
-        cleaned.replace(/[_-]+/g, " ").trim();
-
     searchInput.value =
-        spaced;
+        strain;
 
-    const before =
-        currentRecord;
 
-    await loadRecord({
-        id:strain,
-        name_norm:cleaned.replace(/_/g, "-"),
-        name:spaced
-    });
-
-    if(
-        currentRecord === before
-    ){
-
-        await performSearch(
-            spaced
-        );
-
-    }
+    await performSearch(
+        strain
+    );
 
 }
 
