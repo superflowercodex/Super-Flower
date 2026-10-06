@@ -1605,6 +1605,8 @@ body::before{
 const API_BASE =
     "https://api.cannalib.org";
 
+/* SUPER FLOWER SEARCH V13 — REQUEST-SAFE CLIENT */
+
 const SEARCH_ENDPOINT =
     API_BASE +
     "/v1/catalogs/strains";
@@ -1975,6 +1977,64 @@ let currentResults =
 let currentRecord =
     null;
 
+/* =========================================================
+   REQUEST-SAVING CACHE — V13
+   ---------------------------------------------------------
+   CannaLib keyless access is limited to 60 requests/hour.
+   Do not repeatedly ask CannaLib for the same search or
+   specimen during normal use. Cache successful responses
+   locally in this browser.
+========================================================= */
+
+const SF_SEARCH_CACHE_TTL = 6 * 60 * 60 * 1000;
+const SF_RECORD_CACHE_TTL = 24 * 60 * 60 * 1000;
+const SF_SEARCH_CACHE_PREFIX = "sf_v13_search_";
+const SF_RECORD_CACHE_PREFIX = "sf_v13_record_";
+
+function sfCacheRead(prefix, key, ttl){
+
+    try{
+
+        const raw = localStorage.getItem(
+            prefix + encodeURIComponent(key)
+        );
+
+        if(!raw){ return null; }
+
+        const item = JSON.parse(raw);
+
+        if(!item || !item.time){ return null; }
+
+        if(Date.now() - item.time > ttl){
+            localStorage.removeItem(prefix + encodeURIComponent(key));
+            return null;
+        }
+
+        return item.data ?? null;
+
+    }catch{
+
+        return null;
+
+    }
+
+}
+
+function sfCacheWrite(prefix, key, data){
+
+    try{
+
+        localStorage.setItem(
+            prefix + encodeURIComponent(key),
+            JSON.stringify({time:Date.now(), data})
+        );
+
+    }catch{
+        /* Storage can be unavailable or full. Live search still works. */
+    }
+
+}
+
 
 /*
     Photo loading has its own token so an old
@@ -2073,28 +2133,19 @@ searchInput.addEventListener(
 
         if(!query){
 
-            if(
-                searchController
-            ){
-
+            if(searchController){
                 searchController.abort();
-
-                searchController =
-                    null;
-
+                searchController = null;
             }
 
-
-            currentRecord =
-                null;
-
+            currentResults = [];
+            currentRecord = null;
             resetSpecimen();
 
-            loadBrowsePage(
-                browseIndex >= 0
-                    ? browseIndex
-                    : 0
-            );
+            results.innerHTML = "";
+            results.classList.remove("visible");
+
+            setStatus("SEARCH THE LIVING RECORD.");
 
             return;
 
@@ -2144,12 +2195,8 @@ searchButton.addEventListener(
 
         if(!query){
 
-            loadBrowsePage(
-                browseIndex >= 0
-                    ? browseIndex
-                    : 0
-            );
-
+            searchInput.focus();
+            setStatus("ENTER A STRAIN NAME TO SEARCH.");
             return;
 
         }
@@ -2333,7 +2380,8 @@ let retryAction = null;
 
 
 /* =========================================================
-   A-Z BROWSE + LIVE SEARCH (10 STRAINS AT A TIME)
+   LEGACY A-Z BROWSE — NOT AUTO-RUN IN V13
+   LIVE SEARCH (10 STRAINS AT A TIME)
    ---------------------------------------------------------
    The keyless CannaLib API returns the 10 best matches for
    a query and has no "next page". So A-Z browsing walks an
@@ -2479,12 +2527,26 @@ async function fetchSearchPage(
     signal
 ){
 
+    const cacheKey = String(query || "").trim().toLowerCase();
+
+    const cached = sfCacheRead(
+        SF_SEARCH_CACHE_PREFIX,
+        cacheKey,
+        SF_SEARCH_CACHE_TTL
+    );
+
+    if(cached){
+
+        setStatus("SEARCH CACHE HIT — NO CANNALIB REQUEST USED.", false, true);
+
+        return cached;
+
+    }
+
     const url =
         SEARCH_ENDPOINT +
         "?q=" +
-        encodeURIComponent(
-            query
-        ) +
+        encodeURIComponent(cacheKey) +
         "&limit=" +
         RESULTS_PER_PAGE;
 
@@ -2499,48 +2561,39 @@ async function fetchSearchPage(
             }
         );
 
-    let data =
-        null;
+    let data = null;
 
     try{
-
-        data =
-            await response.json();
-
+        data = await response.json();
     }catch{
-
-        data =
-            null;
-
+        data = null;
     }
 
-    if(
-        !response.ok
-    ){
+    if(!response.ok){
 
         let message =
             data?.error ||
             data?.message ||
             `HTTP ${response.status}`;
 
-        if(
-            response.status === 429
-        ){
-
+        if(response.status === 429){
             message =
-                "RATE LIMIT REACHED. KEYLESS ACCESS IS 60 REQUESTS PER HOUR. WAIT A WHILE AND TRY AGAIN.";
-
+                "CANNALIB RATE LIMIT REACHED — 60 KEYLESS REQUESTS PER HOUR. NO RETRIES WERE SENT. TRY AGAIN LATER.";
         }
 
-        throw new Error(
-            message
-        );
+        throw new Error(message);
 
     }
 
-    return extractSearchResults(
-        data
+    const parsed = extractSearchResults(data);
+
+    sfCacheWrite(
+        SF_SEARCH_CACHE_PREFIX,
+        cacheKey,
+        parsed
     );
+
+    return parsed;
 
 }
 
@@ -4121,24 +4174,12 @@ async function loadRecord(
 ){
 
     const candidateIds = [
-
         slim.id,
-        slim.name_norm,
-        slim.name
-
+        slim.name_norm
     ]
-    .map(
-        value =>
-            String(
-                value ??
-                ""
-            ).trim()
-    )
+    .map(value => String(value ?? "").trim())
     .filter(Boolean)
-    .filter(
-        (value,index,array) =>
-            array.indexOf(value) === index
-    );
+    .filter((value,index,array) => array.indexOf(value) === index);
 
 
     if(!candidateIds.length){
@@ -4162,6 +4203,35 @@ async function loadRecord(
 
 
     try{
+
+        const recordCacheKey = candidateIds[0];
+        const cachedRecord = sfCacheRead(
+            SF_RECORD_CACHE_PREFIX,
+            recordCacheKey,
+            SF_RECORD_CACHE_TTL
+        );
+
+        if(cachedRecord){
+
+            currentRecord = cachedRecord;
+            renderRecord(cachedRecord, slim);
+
+            history.replaceState(
+                null,
+                "",
+                "#strain=" + encodeURIComponent(recordCacheKey)
+            );
+
+            setStatus("LIVE SPECIMEN LOADED — LOCAL CACHE.", false, true);
+
+            document.getElementById("specimen").scrollIntoView({
+                behavior:"smooth",
+                block:"start"
+            });
+
+            return;
+
+        }
 
         let response =
             null;
@@ -4220,11 +4290,14 @@ async function loadRecord(
                     response.ok
                 ){
 
-                    record =
-                        candidateRecord;
+                    record = candidateRecord;
+                    id = candidateId;
 
-                    id =
-                        candidateId;
+                    sfCacheWrite(
+                        SF_RECORD_CACHE_PREFIX,
+                        candidateId,
+                        record
+                    );
 
                     break;
 
@@ -4345,10 +4418,9 @@ async function loadRecord(
                 block:"start"
             });
 
-        sfDeepen(
-            record,
-            slim
-        );
+        /* V13: do not automatically search parent records.
+           Parent lookups were an unnecessary source of extra
+           CannaLib requests and could consume the keyless quota. */
 
 
     }catch(error){
@@ -5201,7 +5273,11 @@ function sfInfoDerive(record, summary){
 
     const grow = SF_TYPE_GROW[key];
 
+    const cannabinoids = sfMinorCannabinoids(summary, key);
+
     return {
+        minor:cannabinoids.minor,
+        chemotype:cannabinoids.chemotype,
         effects:effects.slice(0,6),
         flavours,
         flowering:grow ? "TYPICAL " + grow.flowering + " (INFERRED FROM TYPE)" : "",
@@ -5383,9 +5459,13 @@ async function sfParentCard(name){
 
         const items = await fetchSearchPage(name);
 
-        card = items.find(
-            item => normaliseKey(item.name_norm || item.name) === key
-        ) || null;
+        const keyOf = item => normaliseKey(item.name_norm || item.name);
+
+        card = items.find(item => keyOf(item) === key) ||
+            items
+                .filter(item => keyOf(item).startsWith(key))
+                .sort((a, b) => keyOf(a).length - keyOf(b).length)[0] ||
+            null;
 
     }catch{
 
@@ -5421,15 +5501,17 @@ async function sfDeepen(record, slim){
         .filter(Boolean)
         .slice(0, 3);
 
-    if(!names.length){ return; }
+    if(names.length){
 
-    setStatus("SUPER FLOWER ENGINE SEARCHING DEEPER INTO PARENT RECORDS...");
+        setStatus("SUPER FLOWER ENGINE SEARCHING DEEPER INTO PARENT RECORDS...");
+
+    }
 
     const cards = (
         await Promise.all(names.map(sfParentCard))
     ).filter(Boolean);
 
-    if(!cards.length || currentRecord !== record){
+    if(currentRecord !== record){
 
         setStatus("LIVE SPECIMEN LOADED.", false, true);
 
@@ -5548,6 +5630,27 @@ async function sfDeepen(record, slim){
 
     }
 
+    /*
+        Last level: no source value and no usable parent value.
+        Show the typical commercial-flower range, clearly labelled.
+    */
+
+    if(needs.thc && !slim2.thc_range){
+
+        slim2.thc_range = "~14–22% (TYPICAL · NO STRAIN DATA)";
+
+        filled++;
+
+    }
+
+    if(needs.cbd && !slim2.cbd_range){
+
+        slim2.cbd_range = "~0–1% (TYPICAL · NO STRAIN DATA)";
+
+        filled++;
+
+    }
+
     if(!filled){
 
         setStatus("LIVE SPECIMEN LOADED.", false, true);
@@ -5565,6 +5668,65 @@ async function sfDeepen(record, slim){
         false,
         true
     );
+
+}
+
+/* =========================================================
+   SUPER FLOWER ENGINE — CANNABINOID PROFILE
+   ---------------------------------------------------------
+   THC and CBD come from the source, else from the parents
+   (breeder's equation), else a typical commercial-flower
+   range. The minor cannabinoids are never measured here:
+   they are typical ranges for the strain's CHEMOTYPE, set
+   by the THC:CBD ratio.
+     Type I   THC-dominant   (ratio >= 5)
+     Type II  balanced       (0.2 < ratio < 5)
+     Type III CBD-dominant   (ratio <= 0.2)
+   CBN is a breakdown product of THC, so it is shown as a
+   trace that grows as flower ages. Ranges are approximate
+   literature-typical figures: edit SF_MINOR to tune them.
+========================================================= */
+
+const SF_MINOR = {
+    I:{cbg:"0.1–1",cbc:"0.05–0.5",thcv:"0–0.3"},
+    II:{cbg:"0.1–1",cbc:"0.1–0.6",thcv:"0–0.2"},
+    III:{cbg:"0.2–1.5",cbc:"0.1–0.5",thcv:"0–0.1"}
+};
+
+function sfMinorCannabinoids(summary, typeKey){
+
+    const thc = sfMean(sfNumbers(summary.thc));
+
+    const cbd = sfMean(sfNumbers(summary.cbd));
+
+    const t = Number.isFinite(thc) ? thc : SF_POP.thc.mu;
+
+    const c = Number.isFinite(cbd) ? cbd : 0.5;
+
+    const ratio = t / Math.max(c, 0.01);
+
+    const chemotype = ratio >= 5 ? "I" : ratio > 0.2 ? "II" : "III";
+
+    const row = {...SF_MINOR[chemotype]};
+
+    if(typeKey === "sativa" && chemotype === "I"){
+
+        row.thcv = "0–0.8";
+
+    }
+
+    const label = ` (EST. · TYPICAL FOR TYPE ${chemotype} CHEMOTYPE)`;
+
+    return {
+        minor:{
+            cbg:`~${row.cbg}%${label}`,
+            cbc:`~${row.cbc}%${label}`,
+            thcv:`~${row.thcv}%${label}`,
+            cbn:"~0–0.2% (EST. · FORMS AS FLOWER AGES)"
+        },
+        chemotype:
+            `TYPE ${chemotype} · THC:CBD ${ratio >= 100 ? ">100" : "≈ " + Math.round(ratio * 10) / 10}:1 (EST.)`
+    };
 
 }
 
@@ -8202,10 +8364,11 @@ function renderInfo(
 
                     ${dataItem("THC",sfPct(summary.thc))}
                     ${dataItem("CBD",sfPct(summary.cbd))}
-                    ${dataItem("CBG",cbg)}
-                    ${dataItem("CBN",cbn)}
-                    ${dataItem("CBC",cbc)}
-                    ${dataItem("THCV",thcv)}
+                    ${dataItem("CBG",sfFill(cbg,sfD.minor.cbg))}
+                    ${dataItem("CBN",sfFill(cbn,sfD.minor.cbn))}
+                    ${dataItem("CBC",sfFill(cbc,sfD.minor.cbc))}
+                    ${dataItem("THCV",sfFill(thcv,sfD.minor.thcv))}
+                    ${dataItem("CHEMOTYPE",sfD.chemotype)}
 
                 </div>
 
@@ -10993,17 +11156,7 @@ async function loadFromHash(){
 
 
     if(!hash){
-
-        if(!currentResults.length){
-
-            loadBrowsePage(
-                0
-            );
-
-        }
-
         return;
-
     }
 
 
@@ -11020,27 +11173,44 @@ async function loadFromHash(){
 
 
     if(!strain){
-
-        if(!currentResults.length){
-
-            loadBrowsePage(
-                0
-            );
-
-        }
-
         return;
-
     }
 
 
+    /*
+        A link such as #strain=strain_ac_dosi carries a record ID,
+        not a search phrase. Try it as an ID first (plain, with
+        the "strain_" prefix removed, and hyphenated), then fall
+        back to a normal search on the cleaned-up name.
+    */
+
+    const cleaned =
+        strain.replace(/^strain[_-]/i, "");
+
+    const spaced =
+        cleaned.replace(/[_-]+/g, " ").trim();
+
     searchInput.value =
-        strain;
+        spaced;
 
+    const before =
+        currentRecord;
 
-    await performSearch(
-        strain
-    );
+    await loadRecord({
+        id:strain,
+        name_norm:cleaned.replace(/_/g, "-"),
+        name:spaced
+    });
+
+    if(
+        currentRecord === before
+    ){
+
+        await performSearch(
+            spaced
+        );
+
+    }
 
 }
 
