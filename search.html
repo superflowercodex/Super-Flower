@@ -2501,6 +2501,7 @@ async function fetchSearchPage(
 
 /* =========================================================
    PAGINATION CONTROLS
+   CANNALIB — PREVIOUS / NEXT
 ========================================================= */
 
 function renderPagination(){
@@ -2510,6 +2511,11 @@ function renderPagination(){
             "searchPagination"
         );
 
+
+    /*
+        Create the pagination container
+        once, directly underneath the results.
+    */
 
     if(!pagination){
 
@@ -2522,7 +2528,7 @@ function renderPagination(){
             "searchPagination";
 
         pagination.className =
-            "search-pagination";
+            "results-pagination";
 
         results.parentNode.insertBefore(
             pagination,
@@ -2532,31 +2538,85 @@ function renderPagination(){
     }
 
 
+    /*
+        If there are no results, hide pagination.
+    */
+
+    if(!currentResults.length){
+
+        pagination.classList.remove(
+            "visible"
+        );
+
+        pagination.innerHTML =
+            "";
+
+        return;
+
+    }
+
+
+    /*
+        PREVIOUS is disabled on page 1.
+
+        NEXT is disabled when:
+
+        1. CannaLib tells us we are on the
+           final known page.
+
+        OR
+
+        2. The current page contains fewer
+           than 10 results.
+    */
+
+    const previousDisabled =
+        currentSearchPage <= 1;
+
+
+    const nextDisabled =
+        (
+            totalSearchPages &&
+            currentSearchPage >=
+                totalSearchPages
+        )
+        ||
+        currentResults.length <
+            RESULTS_PER_PAGE;
+
+
     pagination.innerHTML = `
 
         <button
             type="button"
-            class="pagination-button"
+            class="results-page-button"
             id="previousPageButton"
-            ${currentSearchPage <= 1 ? "disabled" : ""}
+            ${previousDisabled ? "disabled" : ""}
         >
             ‹ PREVIOUS
         </button>
 
 
-        <div class="pagination-page">
-
+        <div
+            class="results-page-status"
+        >
             PAGE
-            ${currentSearchPage}
-
+            <strong>
+                ${currentSearchPage}
+            </strong>
+            ${
+                totalSearchPages
+                    ? ` OF ${totalSearchPages}`
+                    : ""
+            }
         </div>
 
 
         <button
             type="button"
-            class="pagination-button"
+            class="results-page-button"
             id="nextPageButton"
-            ${currentResults.length < RESULTS_PER_PAGE ? "disabled" : ""}
+            ${nextDisabled ? "disabled" : ""}
         >
             NEXT ›
         </button>
@@ -2564,11 +2624,50 @@ function renderPagination(){
     `;
 
 
+    pagination.classList.add(
+        "visible"
+    );
+
+
+    /*
+        PREVIOUS
+    */
+
     const previous =
         document.getElementById(
             "previousPageButton"
         );
 
+
+    if(previous){
+
+        previous.addEventListener(
+            "click",
+            () => {
+
+                if(
+                    currentSearchPage <= 1
+                ){
+
+                    return;
+
+                }
+
+
+                performSearch(
+                    currentSearchQuery,
+                    currentSearchPage - 1
+                );
+
+            }
+        );
+
+    }
+
+
+    /*
+        NEXT
+    */
 
     const next =
         document.getElementById(
@@ -2576,67 +2675,39 @@ function renderPagination(){
         );
 
 
-    previous.addEventListener(
-        "click",
-        () => {
+    if(next){
 
-            if(
-                currentSearchPage <= 1
-            ){
+        next.addEventListener(
+            "click",
+            () => {
 
-                return;
+                if(
+                    totalSearchPages &&
+                    currentSearchPage >=
+                        totalSearchPages
+                ){
 
-            }
+                    return;
 
-
-            performSearch(
-                currentSearchQuery,
-                currentSearchPage - 1
-            );
-
-        }
-    );
+                }
 
 
-    next.addEventListener(
-        "click",
-        () => {
+                if(
+                    currentResults.length ===
+                        RESULTS_PER_PAGE
+                ){
 
-            /*
-                If CannaLib supplies a known
-                page count, respect it.
-            */
+                    performSearch(
+                        currentSearchQuery,
+                        currentSearchPage + 1
+                    );
 
-            if(
-                totalSearchPages &&
-                currentSearchPage >=
-                    totalSearchPages
-            ){
-
-                return;
+                }
 
             }
+        );
 
-
-            /*
-                A full page means another
-                page may exist.
-            */
-
-            if(
-                currentResults.length ===
-                RESULTS_PER_PAGE
-            ){
-
-                performSearch(
-                    currentSearchQuery,
-                    currentSearchPage + 1
-                );
-
-            }
-
-        }
-    );
+    }
 
 }
 
