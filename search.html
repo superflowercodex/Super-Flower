@@ -7377,8 +7377,24 @@ function renderResonance(
 
     values.forEach(item => {
 
+        const raw = item[1];
+
+        const asNumber =
+            raw === null ||
+            raw === undefined ||
+            typeof raw === "object" ||
+            String(raw).trim() === ""
+                ? NaN
+                : Number(raw);
+
+        /*
+            Only a real number is a source value. Text, objects
+            or blanks (a stray "focus" field, for example) must
+            not block the engine estimate.
+        */
+
         if(
-            !hasUsableValue(item[1]) &&
+            !Number.isFinite(asNumber) &&
             derived &&
             derived[item[0]] !== undefined
         ){
