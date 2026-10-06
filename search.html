@@ -2248,6 +2248,91 @@ clearFiltersButton.addEventListener(
 );
 
 /* =========================================================
+   RESILIENT FETCH
+   ---------------------------------------------------------
+   Phones on mobile data often drop a request (for example
+   ERR_QUIC_PROTOCOL_ERROR / idle timeout). This waits up to
+   12 seconds per try and retries twice on network failures
+   or 502/503/504 before giving up with a clear message.
+   A new search still cancels the old one immediately.
+========================================================= */
+
+async function sfFetch(url, options = {}){
+
+    const parent = options.signal;
+
+    for(let attempt = 0; attempt < 3; attempt++){
+
+        if(parent && parent.aborted){
+
+            throw new DOMException("Aborted","AbortError");
+
+        }
+
+        const local = new AbortController();
+
+        const onAbort = () => local.abort();
+
+        if(parent){
+
+            parent.addEventListener("abort", onAbort, {once:true});
+
+        }
+
+        const timer = setTimeout(() => local.abort(), 12000);
+
+        try{
+
+            const response = await fetch(
+                url,
+                {...options, signal:local.signal}
+            );
+
+            if(
+                ![502,503,504].includes(response.status) ||
+                attempt === 2
+            ){
+
+                return response;
+
+            }
+
+        }catch(error){
+
+            if(parent && parent.aborted){
+
+                throw error;
+
+            }
+
+        }finally{
+
+            clearTimeout(timer);
+
+            if(parent){
+
+                parent.removeEventListener("abort", onAbort);
+
+            }
+
+        }
+
+        await new Promise(
+            resolve => setTimeout(resolve, 600 * (attempt + 1))
+        );
+
+    }
+
+    throw new Error(
+        "COULD NOT REACH CANNALIB. CHECK YOUR CONNECTION AND TRY AGAIN."
+    );
+
+}
+
+let retryAction = null;
+
+
+/* =========================================================
    A-Z BROWSE + LIVE SEARCH (10 STRAINS AT A TIME)
    ---------------------------------------------------------
    The keyless CannaLib API returns the 10 best matches for
@@ -2404,7 +2489,7 @@ async function fetchSearchPage(
         RESULTS_PER_PAGE;
 
     const response =
-        await fetch(
+        await sfFetch(
             url,
             {
                 method:"GET",
@@ -2528,6 +2613,9 @@ async function loadBrowsePage(
 
     browseMode =
         true;
+
+    retryAction =
+        () => loadBrowsePage(index, direction);
 
     const controller =
         startController();
@@ -2670,6 +2758,9 @@ async function performSearch(
     browseMode =
         false;
 
+    retryAction =
+        () => performSearch(query);
+
     const controller =
         startController();
 
@@ -2753,6 +2844,14 @@ function showError(error){
             LIVE SEARCH ERROR
             <br><br>
             ${escapeHTML(error.message)}
+            <br><br>
+            <button
+                type="button"
+                class="results-page-button"
+                id="retrySearchButton"
+            >
+                ↻ TRY AGAIN
+            </button>
         </div>
     `;
 
@@ -2845,6 +2944,22 @@ function ensureBrowseControls(){
         results.parentNode.insertBefore(
             pagination,
             results.nextSibling
+        );
+
+        results.addEventListener(
+            "click",
+            event => {
+
+                if(
+                    event.target.closest("#retrySearchButton") &&
+                    retryAction
+                ){
+
+                    retryAction();
+
+                }
+
+            }
         );
 
         pagination.addEventListener(
@@ -4072,7 +4187,7 @@ async function loadRecord(
             try{
 
                 response =
-                    await fetch(
+                    await sfFetch(
                         RECORD_ENDPOINT(
                             candidateId
                         ),
