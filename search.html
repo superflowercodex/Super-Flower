@@ -5097,6 +5097,78 @@ function sfNote(text){
 }
 
 /* =========================================================
+   SUPER FLOWER ENGINE — RESONANCE PROFILE
+   ---------------------------------------------------------
+   Inputs per strain: ranked terpenes + type.
+   Start from a type baseline, then add each terpene's
+   contribution (earlier terpenes count more).
+   Output is an ESTIMATE (10-90), never a measurement.
+   Order: RELAXATION, FOCUS, CREATIVITY, MEDITATION, RECOVERY
+========================================================= */
+
+const SF_RES_NAMES = ["RELAXATION","FOCUS","CREATIVITY","MEDITATION","RECOVERY"];
+
+const SF_RES_BASE = {
+    indica:[65,30,35,55,60],
+    sativa:[35,65,65,45,35],
+    hybrid:[50,50,50,50,48]
+};
+
+const SF_RES_TERPENES = {
+    myrcene:[12,-4,0,4,6],
+    limonene:[0,5,8,0,0],
+    caryophyllene:[6,0,0,4,8],
+    linalool:[10,0,0,8,6],
+    humulene:[0,3,0,0,4],
+    pinene:[-4,12,3,0,0],
+    bisabolol:[4,0,0,3,8],
+    terpinolene:[0,5,10,0,0],
+    ocimene:[0,3,5,0,0],
+    nerolidol:[8,0,0,6,0],
+    camphene:[0,0,0,2,2]
+};
+
+function sfResonance(record, slim, typeText){
+
+    const terpenes = sfTerpeneList(record, slim);
+
+    const key = ["indica","sativa","hybrid"].find(
+        k => String(typeText || "").toLowerCase().includes(k)
+    );
+
+    if(!key && !terpenes.length){
+        return null;
+    }
+
+    const score = [...(SF_RES_BASE[key] || [45,45,45,45,45])];
+
+    terpenes.forEach((t, i) => {
+
+        const weight = Math.max(0.3, 1 - i * 0.15);
+
+        (SF_RES_TERPENES[t] || []).forEach((delta, n) => {
+
+            score[n] += delta * weight;
+
+        });
+
+    });
+
+    const out = {};
+
+    SF_RES_NAMES.forEach((name, n) => {
+
+        out[name] = Math.round(
+            Math.max(10, Math.min(90, score[n]))
+        );
+
+    });
+
+    return out;
+
+}
+
+/* =========================================================
    RENDER RECORD — W2 MULTI-SOURCE FIELD RESOLUTION
 ========================================================= */
 
@@ -5607,7 +5679,8 @@ genetics =
     ===================================================== */
 
     renderResonance(
-        record
+        record,
+        sfResonance(record, slim, type)
     );
 
 
@@ -7236,7 +7309,8 @@ function field(
 ========================================================= */
 
 function renderResonance(
-    record
+    record,
+    derived
 ){
 
     const values = [
@@ -7299,6 +7373,35 @@ function renderResonance(
     ];
 
 
+    let estimated = false;
+
+    values.forEach(item => {
+
+        if(
+            !hasUsableValue(item[1]) &&
+            derived &&
+            derived[item[0]] !== undefined
+        ){
+
+            item[1] = derived[item[0]];
+
+            estimated = true;
+
+        }
+
+    });
+
+    const resonanceNote =
+        document.querySelector(".resonance-note");
+
+    if(resonanceNote){
+
+        resonanceNote.textContent = estimated
+            ? "SUPER FLOWER ENGINE ESTIMATE FROM TERPENES + TYPE. NOT A SOURCE MEASUREMENT."
+            : "SUPER FLOWER CODEX RESONANCE VALUES ARE SHOWN ONLY WHEN AN ACTUAL SOURCE VALUE IS AVAILABLE.";
+
+    }
+
     resonanceGrid.innerHTML =
         values
             .map(
@@ -7323,9 +7426,13 @@ function resonanceBox(
 ){
 
     const number =
-        Number(
-            value
-        );
+        value === null ||
+        value === undefined ||
+        String(value).trim() === ""
+            ? NaN
+            : Number(
+                value
+            );
 
 
     const valid =
