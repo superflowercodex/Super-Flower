@@ -5201,11 +5201,7 @@ function sfInfoDerive(record, summary){
 
     const grow = SF_TYPE_GROW[key];
 
-    const cannabinoids = sfMinorCannabinoids(summary, key);
-
     return {
-        minor:cannabinoids.minor,
-        chemotype:cannabinoids.chemotype,
         effects:effects.slice(0,6),
         flavours,
         flowering:grow ? "TYPICAL " + grow.flowering + " (INFERRED FROM TYPE)" : "",
@@ -5429,17 +5425,15 @@ async function sfDeepen(record, slim){
         .filter(Boolean)
         .slice(0, 3);
 
-    if(names.length){
+    if(!names.length){ return; }
 
-        setStatus("SUPER FLOWER ENGINE SEARCHING DEEPER INTO PARENT RECORDS...");
-
-    }
+    setStatus("SUPER FLOWER ENGINE SEARCHING DEEPER INTO PARENT RECORDS...");
 
     const cards = (
         await Promise.all(names.map(sfParentCard))
     ).filter(Boolean);
 
-    if(currentRecord !== record){
+    if(!cards.length || currentRecord !== record){
 
         setStatus("LIVE SPECIMEN LOADED.", false, true);
 
@@ -5558,27 +5552,6 @@ async function sfDeepen(record, slim){
 
     }
 
-    /*
-        Last level: no source value and no usable parent value.
-        Show the typical commercial-flower range, clearly labelled.
-    */
-
-    if(needs.thc && !slim2.thc_range){
-
-        slim2.thc_range = "~14–22% (TYPICAL · NO STRAIN DATA)";
-
-        filled++;
-
-    }
-
-    if(needs.cbd && !slim2.cbd_range){
-
-        slim2.cbd_range = "~0–1% (TYPICAL · NO STRAIN DATA)";
-
-        filled++;
-
-    }
-
     if(!filled){
 
         setStatus("LIVE SPECIMEN LOADED.", false, true);
@@ -5596,65 +5569,6 @@ async function sfDeepen(record, slim){
         false,
         true
     );
-
-}
-
-/* =========================================================
-   SUPER FLOWER ENGINE — CANNABINOID PROFILE
-   ---------------------------------------------------------
-   THC and CBD come from the source, else from the parents
-   (breeder's equation), else a typical commercial-flower
-   range. The minor cannabinoids are never measured here:
-   they are typical ranges for the strain's CHEMOTYPE, set
-   by the THC:CBD ratio.
-     Type I   THC-dominant   (ratio >= 5)
-     Type II  balanced       (0.2 < ratio < 5)
-     Type III CBD-dominant   (ratio <= 0.2)
-   CBN is a breakdown product of THC, so it is shown as a
-   trace that grows as flower ages. Ranges are approximate
-   literature-typical figures: edit SF_MINOR to tune them.
-========================================================= */
-
-const SF_MINOR = {
-    I:{cbg:"0.1–1",cbc:"0.05–0.5",thcv:"0–0.3"},
-    II:{cbg:"0.1–1",cbc:"0.1–0.6",thcv:"0–0.2"},
-    III:{cbg:"0.2–1.5",cbc:"0.1–0.5",thcv:"0–0.1"}
-};
-
-function sfMinorCannabinoids(summary, typeKey){
-
-    const thc = sfMean(sfNumbers(summary.thc));
-
-    const cbd = sfMean(sfNumbers(summary.cbd));
-
-    const t = Number.isFinite(thc) ? thc : SF_POP.thc.mu;
-
-    const c = Number.isFinite(cbd) ? cbd : 0.5;
-
-    const ratio = t / Math.max(c, 0.01);
-
-    const chemotype = ratio >= 5 ? "I" : ratio > 0.2 ? "II" : "III";
-
-    const row = {...SF_MINOR[chemotype]};
-
-    if(typeKey === "sativa" && chemotype === "I"){
-
-        row.thcv = "0–0.8";
-
-    }
-
-    const label = ` (EST. · TYPICAL FOR TYPE ${chemotype} CHEMOTYPE)`;
-
-    return {
-        minor:{
-            cbg:`~${row.cbg}%${label}`,
-            cbc:`~${row.cbc}%${label}`,
-            thcv:`~${row.thcv}%${label}`,
-            cbn:"~0–0.2% (EST. · FORMS AS FLOWER AGES)"
-        },
-        chemotype:
-            `TYPE ${chemotype} · THC:CBD ${ratio >= 100 ? ">100" : "≈ " + Math.round(ratio * 10) / 10}:1 (EST.)`
-    };
 
 }
 
@@ -8292,11 +8206,10 @@ function renderInfo(
 
                     ${dataItem("THC",sfPct(summary.thc))}
                     ${dataItem("CBD",sfPct(summary.cbd))}
-                    ${dataItem("CBG",sfFill(cbg,sfD.minor.cbg))}
-                    ${dataItem("CBN",sfFill(cbn,sfD.minor.cbn))}
-                    ${dataItem("CBC",sfFill(cbc,sfD.minor.cbc))}
-                    ${dataItem("THCV",sfFill(thcv,sfD.minor.thcv))}
-                    ${dataItem("CHEMOTYPE",sfD.chemotype)}
+                    ${dataItem("CBG",cbg)}
+                    ${dataItem("CBN",cbn)}
+                    ${dataItem("CBC",cbc)}
+                    ${dataItem("THCV",thcv)}
 
                 </div>
 
