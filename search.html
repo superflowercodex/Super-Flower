@@ -4292,471 +4292,6 @@ function renderLoadingRecord(){
 
 
 /* =========================================================
-   GENETICS — PARENT NAME EXTRACTOR
-   ---------------------------------------------------------
-   Returns the NAMES of the strains used to create this
-   strain (its recorded parents).
-
-   Rules:
-   - numbers are never names (parent counts, source counts)
-   - children / descendants / legacy are never parents
-   - family-tree diagram data is ignored
-   - parents are ordered by how many sources state them
-   - several parents are joined with " × "
-========================================================= */
-
-const GENETIC_NAME_KEYS = [
-    "name",
-    "parent_name",
-    "parentName",
-    "parent_strain",
-    "parent",
-    "strain_name",
-    "strain",
-    "display_name",
-    "label",
-    "title",
-    "slug",
-    "id"
-];
-
-const GENETIC_SKIP_KEYS =
-    /^(sources?|source_ids?|evidence|evidence_ids?|claims?|count|counts|n|total|num|number|url|urls|link|links|credit|diagram|tree|graph|svg|layout|nodes|edges|children|child|descendants?|descendant_count|offspring|progeny|legacy|crosses_into|used_in|bred_into|siblings?|notes?|confidence|rank|score|weight|year|date)$/i;
-
-const GENETIC_PARENT_KEYS =
-    /^(parents?|parent_strains?|parentage|lineage|genetics?|genetic_lineage|genetic_background|breeding_lineage|mother|father|mother_strain|father_strain|female_parent|male_parent|dam|sire|cross|crosses|cross_of)$/i;
-
-
-function isNumericText(value){
-
-    return /^[\s\d.,%\-+×x/]+$/i.test(
-        String(value ?? "")
-    );
-
-}
-
-
-function geneticSourceWeight(node){
-
-    if(
-        !node ||
-        typeof node !== "object"
-    ){
-
-        return 0;
-
-    }
-
-    if(
-        Array.isArray(node.sources)
-    ){
-
-        return node.sources.length;
-
-    }
-
-    for(
-        const key of [
-            "independent_sources",
-            "source_count",
-            "n_sources",
-            "sources_count",
-            "support",
-            "count"
-        ]
-    ){
-
-        const number =
-            Number(node[key]);
-
-        if(
-            Number.isFinite(number)
-        ){
-
-            return number;
-
-        }
-
-    }
-
-    return 0;
-
-}
-
-
-function collectGeneticNames(
-    node,
-    depth = 0
-){
-
-    if(
-        depth > 8 ||
-        node === null ||
-        node === undefined
-    ){
-
-        return [];
-
-    }
-
-    if(
-        typeof node === "number" ||
-        typeof node === "boolean"
-    ){
-
-        return [];
-
-    }
-
-    if(
-        typeof node === "string"
-    ){
-
-        const text =
-            node.trim();
-
-        if(
-            !text ||
-            text.length > 120 ||
-            isNumericText(text)
-        ){
-
-            return [];
-
-        }
-
-        return [
-            {
-                name:text,
-                weight:0
-            }
-        ];
-
-    }
-
-    if(
-        Array.isArray(node)
-    ){
-
-        return node.flatMap(
-            item =>
-                collectGeneticNames(
-                    item,
-                    depth + 1
-                )
-        );
-
-    }
-
-    if(
-        typeof node !== "object"
-    ){
-
-        return [];
-
-    }
-
-    /*
-        An object with a usable name key IS one parent.
-    */
-
-    for(
-        const key of GENETIC_NAME_KEYS
-    ){
-
-        const value =
-            node[key];
-
-        if(
-            typeof value === "string" &&
-            value.trim() &&
-            !isNumericText(value) &&
-            value.length <= 120
-        ){
-
-            return [
-                {
-                    name:value.trim(),
-                    weight:geneticSourceWeight(
-                        node
-                    )
-                }
-            ];
-
-        }
-
-        if(
-            value &&
-            typeof value === "object"
-        ){
-
-            const inner =
-                collectGeneticNames(
-                    value,
-                    depth + 1
-                );
-
-            if(
-                inner.length
-            ){
-
-                const weight =
-                    geneticSourceWeight(
-                        node
-                    );
-
-                return inner.map(
-                    item => ({
-                        name:item.name,
-                        weight:item.weight || weight
-                    })
-                );
-
-            }
-
-        }
-
-    }
-
-    /*
-        Otherwise it is a container: look inside it,
-        skipping counts, sources, children and diagrams.
-    */
-
-    return Object.entries(
-        node
-    )
-    .filter(
-        ([key]) =>
-            !GENETIC_SKIP_KEYS.test(
-                key
-            )
-    )
-    .flatMap(
-        ([, child]) =>
-            collectGeneticNames(
-                child,
-                depth + 1
-            )
-    );
-
-}
-
-
-function findGeneticContainers(
-    node,
-    depth = 0,
-    found = [],
-    seen = new WeakSet()
-){
-
-    if(
-        depth > 6 ||
-        !node ||
-        typeof node !== "object" ||
-        seen.has(node)
-    ){
-
-        return found;
-
-    }
-
-    seen.add(
-        node
-    );
-
-    if(
-        Array.isArray(node)
-    ){
-
-        node.forEach(
-            item =>
-                findGeneticContainers(
-                    item,
-                    depth + 1,
-                    found,
-                    seen
-                )
-        );
-
-        return found;
-
-    }
-
-    Object.entries(
-        node
-    )
-    .forEach(
-        ([key, child]) => {
-
-            if(
-                key !== "evidence" &&
-                GENETIC_SKIP_KEYS.test(
-                    key
-                )
-            ){
-
-                return;
-
-            }
-
-            if(
-                GENETIC_PARENT_KEYS.test(
-                    key
-                ) &&
-                child &&
-                typeof child !== "number" &&
-                typeof child !== "boolean"
-            ){
-
-                found.push(
-                    child
-                );
-
-                return;
-
-            }
-
-            if(
-                child &&
-                typeof child === "object"
-            ){
-
-                findGeneticContainers(
-                    child,
-                    depth + 1,
-                    found,
-                    seen
-                );
-
-            }
-
-        }
-    );
-
-    return found;
-
-}
-
-
-function resolveGeneticsFromParents(
-    record,
-    slim
-){
-
-    const sources = [
-        record,
-        slim
-    ];
-
-    for(
-        const source of sources
-    ){
-
-        if(
-            !source ||
-            typeof source !== "object"
-        ){
-
-            continue;
-
-        }
-
-        const containers =
-            findGeneticContainers(
-                source
-            );
-
-        const entries = [];
-
-        containers.forEach(
-            container => {
-
-                collectGeneticNames(
-                    container
-                )
-                .forEach(
-                    item =>
-                        entries.push(
-                            item
-                        )
-                );
-
-            }
-        );
-
-        const seenNames =
-            new Set();
-
-        const unique =
-            entries.filter(
-                item => {
-
-                    const key =
-                        item.name.toLowerCase();
-
-                    if(
-                        seenNames.has(key)
-                    ){
-
-                        return false;
-
-                    }
-
-                    seenNames.add(
-                        key
-                    );
-
-                    return true;
-
-                }
-            );
-
-        unique.sort(
-            (a, b) =>
-                b.weight - a.weight
-        );
-
-        const own =
-            String(
-                source.name || ""
-            )
-            .trim()
-            .toLowerCase();
-
-        const parents =
-            unique
-                .filter(
-                    item =>
-                        item.name.toLowerCase() !== own
-                )
-                .slice(
-                    0,
-                    6
-                )
-                .map(
-                    item =>
-                        item.name
-                );
-
-        if(
-            parents.length
-        ){
-
-            return parents.join(
-                " × "
-            );
-
-        }
-
-    }
-
-    return "";
-
-}
-
-
-/* =========================================================
    RENDER RECORD — W2 MULTI-SOURCE FIELD RESOLUTION
 ========================================================= */
 
@@ -4822,11 +4357,378 @@ function renderRecord(
    nested mother/father/parent objects.
 ===================================================== */
 
-let genetics =
-    resolveGeneticsFromParents(
+let genetics = "";
+
+
+/* =====================================================
+   PASS 1 — DIRECT GENETICS / LINEAGE FIELDS
+===================================================== */
+
+genetics =
+    resolvedFieldValue(
         record,
-        slim
+        [
+            "genetics",
+            "genetic_lineage",
+            "genetic",
+            "lineage",
+            "lineage_summary",
+            "parentage",
+            "breeding_lineage",
+            "genetic_background",
+
+            "genetics.lineage",
+            "genetics.parentage",
+            "genetics.parents",
+            "genetics.parent_strains",
+
+            "lineage.parents",
+            "lineage.parentage",
+            "lineage.lineage",
+
+            "evidence.lineage",
+            "evidence.genetics",
+            "evidence.parentage",
+
+            "reported.lineage",
+            "reported.genetics",
+            "reported.parentage"
+        ],
+        ""
     );
+
+
+/* =====================================================
+   PASS 2 — EXPLICIT PARENT LISTS
+===================================================== */
+
+if(
+    !genetics
+){
+
+    const parents =
+        findList(
+            record,
+            [
+                "parents",
+                "parent_strains",
+                "parent",
+                "parentage",
+
+                "genetics.parents",
+                "genetics.parent_strains",
+
+                "lineage.parents",
+                "lineage.parentage",
+
+                "evidence.parents",
+                "evidence.parent_strains",
+                "evidence.parentage",
+
+                "reported.parents",
+                "reported.parent_strains"
+            ]
+        );
+
+
+    if(
+        parents.length
+    ){
+
+        genetics =
+            parents
+                .filter(Boolean)
+                .join(
+                    " × "
+                );
+
+    }
+
+}
+
+
+/* =====================================================
+   PASS 3 — MOTHER / FATHER
+===================================================== */
+
+if(
+    !genetics
+){
+
+    const mother =
+        resolvedFieldValue(
+            record,
+            [
+                "mother",
+                "mother_strain",
+                "mother_parent",
+                "female_parent",
+
+                "genetics.mother",
+                "genetics.mother_strain",
+
+                "lineage.mother",
+                "lineage.mother_strain",
+
+                "parentage.mother",
+                "parentage.female",
+
+                "parents.mother",
+                "parents.female"
+            ],
+            ""
+        );
+
+
+    const father =
+        resolvedFieldValue(
+            record,
+            [
+                "father",
+                "father_strain",
+                "father_parent",
+                "male_parent",
+
+                "genetics.father",
+                "genetics.father_strain",
+
+                "lineage.father",
+                "lineage.father_strain",
+
+                "parentage.father",
+                "parentage.male",
+
+                "parents.father",
+                "parents.male"
+            ],
+            ""
+        );
+
+
+    const parentParts = [];
+
+
+    if(
+        mother
+    ){
+
+        parentParts.push(
+            mother
+        );
+
+    }
+
+
+    if(
+        father
+    ){
+
+        parentParts.push(
+            father
+        );
+
+    }
+
+
+    if(
+        parentParts.length
+    ){
+
+        genetics =
+            parentParts.join(
+                " × "
+            );
+
+    }
+
+}
+
+
+/* =====================================================
+   PASS 4 — DEEP SEARCH FOR PARENT OBJECTS
+   -----------------------------------------------------
+   Used only when the named fields above did not resolve.
+===================================================== */
+
+if(
+    !genetics
+){
+
+    const discoveredParents = [];
+
+
+    function collectGeneticParents(
+        value,
+        depth = 0,
+        seen = new WeakSet()
+    ){
+
+        if(
+            depth > 10 ||
+            value === null ||
+            value === undefined ||
+            typeof value !== "object"
+        ){
+
+            return;
+
+        }
+
+
+        if(
+            seen.has(value)
+        ){
+
+            return;
+
+        }
+
+
+        seen.add(value);
+
+
+        if(
+            Array.isArray(value)
+        ){
+
+            value.forEach(
+                item =>
+                    collectGeneticParents(
+                        item,
+                        depth + 1,
+                        seen
+                    )
+            );
+
+            return;
+
+        }
+
+
+        Object.entries(
+            value
+        )
+        .forEach(
+            (
+                [
+                    key,
+                    child
+                ]
+            ) => {
+
+                const cleanKey =
+                    String(
+                        key
+                    )
+                    .trim()
+                    .toLowerCase();
+
+
+                const isParentKey =
+                    [
+                        "mother",
+                        "father",
+                        "female_parent",
+                        "male_parent",
+                        "mother_strain",
+                        "father_strain",
+                        "parent_strain",
+                        "parent_strains"
+                    ]
+                    .includes(
+                        cleanKey
+                    );
+
+
+                if(
+                    isParentKey
+                ){
+
+                    const display =
+                        resolveSourceDisplayValue(
+                            child
+                        );
+
+
+                    if(
+                        display &&
+                        !discoveredParents.includes(
+                            display
+                        )
+                    ){
+
+                        discoveredParents.push(
+                            display
+                        );
+
+                    }
+
+                }
+
+
+                if(
+                    child &&
+                    typeof child === "object"
+                ){
+
+                    collectGeneticParents(
+                        child,
+                        depth + 1,
+                        seen
+                    );
+
+                }
+
+            }
+        );
+
+    }
+
+
+    collectGeneticParents(
+        record
+    );
+
+
+    if(
+        discoveredParents.length
+    ){
+
+        genetics =
+            discoveredParents.join(
+                " × "
+            );
+
+    }
+
+}
+
+
+/* =====================================================
+   PASS 5 — SLIM SEARCH RESULT FALLBACK
+===================================================== */
+
+if(
+    !genetics
+){
+
+    genetics =
+        resolvedFieldValue(
+            slim,
+            [
+                "genetics",
+                "genetic_lineage",
+                "genetic",
+                "lineage",
+                "lineage_summary",
+                "parentage",
+                "parents",
+                "parent_strains"
+            ],
+            ""
+        );
+
+}
 
 
 /* =====================================================
