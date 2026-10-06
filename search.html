@@ -4301,6 +4301,8 @@ function renderLoadingRecord(){
 
 const GENETIC_NAME_KEYS = [
     "name",
+    "name_literal",
+    "canonical_name",
     "parent_name",
     "parentName",
     "parent_strain",
@@ -4323,9 +4325,10 @@ const GENETIC_PARENT_KEYS =
 
 function isNumericText(value){
 
-    return /^[\s\d.,%\-+×x/]+$/i.test(
-        String(value ?? "")
-    );
+    const text = String(value ?? "").trim();
+
+    return /^[\s\d.,%\-+×x/]+$/i.test(text) ||
+        /^[a-z0-9]+(_[a-z0-9]+)+$/.test(text);
 
 }
 
@@ -4939,6 +4942,161 @@ function superFlowerEngine(record, slim, known){
 
 
 /* =========================================================
+   SUPER FLOWER ENGINE — PANEL DERIVATIONS
+   Fills Effects, Aroma, Flowering and Height from the
+   terpenes and type CannaLib does supply. Always labelled
+   as inferred. Edit these tables to tune the Codex.
+========================================================= */
+
+const SF_EFFECTS = {
+    myrcene:["RELAXING","SEDATING"],
+    limonene:["UPLIFTING","MOOD LIFTING"],
+    caryophyllene:["CALMING","STRESS RELIEF"],
+    linalool:["CALMING","SOOTHING"],
+    humulene:["APPETITE SUPPRESSING"],
+    pinene:["ALERT","FOCUSED"],
+    bisabolol:["SOOTHING"],
+    terpinolene:["UPLIFTING","CEREBRAL"],
+    ocimene:["UPLIFTING"],
+    nerolidol:["SEDATING"]
+};
+
+const SF_TYPE_EFFECTS = {
+    indica:["BODY RELAXATION"],
+    sativa:["CEREBRAL","ENERGISING"],
+    hybrid:["BALANCED"]
+};
+
+const SF_TYPE_GROW = {
+    indica:{flowering:"7–9 WEEKS",height:"80–130 CM"},
+    sativa:{flowering:"10–14 WEEKS",height:"150–250 CM"},
+    hybrid:{flowering:"8–10 WEEKS",height:"100–160 CM"}
+};
+
+const SF_MACHINE_TOKENS = {
+    no_auto_marker:"NO AUTOFLOWER MARKER FOUND",
+    auto_marker:"AUTOFLOWER MARKER FOUND"
+};
+
+function sfMachine(value){
+
+    const text = String(value ?? "").trim();
+
+    return SF_MACHINE_TOKENS[text.toLowerCase()] ||
+        (/^[a-z0-9]+(_[a-z0-9]+)+$/.test(text)
+            ? text.replace(/_/g," ").toUpperCase()
+            : value);
+
+}
+
+function sfClean(list){
+
+    return (list || []).filter(
+        item => item && !isNumericText(item)
+    );
+
+}
+
+function sfFill(value, derived){
+
+    return sfEmpty(value) && derived ? derived : value;
+
+}
+
+function sfPrettyTerpene(value){
+
+    return String(value)
+        .replace(/^b_/i,"β-")
+        .replace(/^a_/i,"α-")
+        .replace(/^d_/i,"δ-")
+        .replace(/_/g," ");
+
+}
+
+function sfPct(value){
+
+    const text = String(value ?? "").trim();
+
+    if(!/^[\d.\s·–-]+$/.test(text) || !/\d/.test(text)){
+        return value;
+    }
+
+    const nums = text.match(/\d+(\.\d+)?/g).map(Number);
+
+    const fmt = n => +(n >= 1 ? n.toFixed(1) : n.toFixed(2));
+
+    const lo = Math.min(...nums);
+
+    const hi = Math.max(...nums);
+
+    return (lo === hi ? fmt(lo) : fmt(lo) + "–" + fmt(hi)) + "%";
+
+}
+
+function sfParentsFor(record){
+
+    const names = resolveGeneticsFromParents(record, null);
+
+    if(names){
+        return names.split(" × ");
+    }
+
+    return sfClean(
+        findList(record,["parents","parent_strains","parent","parentage"])
+    );
+
+}
+
+function sfInfoDerive(record, summary){
+
+    const terpenes = sfTerpeneList(record, null);
+
+    const typeText = String(summary.type || "").toLowerCase();
+
+    const key = ["indica","sativa","hybrid"].find(
+        k => typeText.includes(k)
+    );
+
+    const effects = [];
+
+    terpenes.slice(0,3).forEach(t => {
+
+        (SF_EFFECTS[t] || []).forEach(e => {
+
+            if(!effects.includes(e)){ effects.push(e); }
+
+        });
+
+    });
+
+    (SF_TYPE_EFFECTS[key] || []).forEach(e => {
+
+        if(!effects.includes(e)){ effects.push(e); }
+
+    });
+
+    const flavours = [...new Set(
+        terpenes.flatMap(t => SF_TERPENES[t].aroma.split(", "))
+    )];
+
+    const grow = SF_TYPE_GROW[key];
+
+    return {
+        effects:effects.slice(0,6),
+        flavours,
+        flowering:grow ? "TYPICAL " + grow.flowering + " (INFERRED FROM TYPE)" : "",
+        height:grow ? "TYPICAL " + grow.height + " (INFERRED FROM TYPE)" : ""
+    };
+
+}
+
+function sfNote(text){
+
+    return `<div class="info-panel-note">${escapeHTML(text)}</div>`;
+
+}
+
+/* =========================================================
    RENDER RECORD — W2 MULTI-SOURCE FIELD RESOLUTION
 ========================================================= */
 
@@ -5355,6 +5513,8 @@ genetics =
 
     if(engine.aroma){ aroma = engine.aroma; }
 
+    aroma = String(aroma).split(" · ").map(sfPrettyTerpene).join(" · ");
+
     const codex =
         engine.codex ||
         {
@@ -5413,12 +5573,12 @@ genetics =
 
         field(
             "THC RANGE",
-            thc
+            sfPct(thc)
         ) +
 
         field(
             "CBD RANGE",
-            cbd
+            sfPct(cbd)
         ) +
 
         field(
@@ -7308,18 +7468,10 @@ function renderInfo(
 
 
     const parents =
-        findList(
-            record,
-            [
-                "parents",
-                "parent_strains",
-                "parent",
-                "parentage"
-            ]
-        );
+        sfParentsFor(record);
 
 
-    const children =
+    let children =
         findList(
             record,
             [
@@ -7461,6 +7613,10 @@ function renderInfo(
         );
 
 
+    children = sfClean(children);
+
+    const sfD = sfInfoDerive(record, summary);
+
     infoContent.innerHTML = `
 
         <div class="info-grid">
@@ -7521,8 +7677,8 @@ function renderInfo(
 
                 <div class="info-data-grid">
 
-                    ${dataItem("THC",summary.thc)}
-                    ${dataItem("CBD",summary.cbd)}
+                    ${dataItem("THC",sfPct(summary.thc))}
+                    ${dataItem("CBD",sfPct(summary.cbd))}
                     ${dataItem("CBG",cbg)}
                     ${dataItem("CBN",cbn)}
                     ${dataItem("CBC",cbc)}
@@ -7538,7 +7694,7 @@ function renderInfo(
                     TERPENE PROFILE
                 </div>
 
-                ${renderChips(terpenes)}
+                ${renderChips(terpenes.map(sfPrettyTerpene))}
 
             </section>
 
@@ -7548,7 +7704,7 @@ function renderInfo(
                     EFFECTS / REPORTED CHARACTER
                 </div>
 
-                ${renderChips(effects)}
+                ${renderChips(effects.length ? effects : sfD.effects)}${effects.length || !sfD.effects.length ? "" : sfNote("INFERRED FROM TERPENES + TYPE · INDICATIVE ONLY · NOT MEDICAL ADVICE")}
 
             </section>
 
@@ -7558,7 +7714,7 @@ function renderInfo(
                     FLAVOUR / AROMA
                 </div>
 
-                ${renderChips(flavours)}
+                ${renderChips(flavours.length ? flavours : sfD.flavours)}${flavours.length || !sfD.flavours.length ? "" : sfNote("INFERRED FROM TERPENES")}
 
             </section>
 
@@ -7609,12 +7765,12 @@ function renderInfo(
 
                 <div class="info-data-grid">
 
-                    ${dataItem("FLOWERING",flowering)}
-                    ${dataItem("HEIGHT",height)}
-                    ${dataItem("PHOTOPERIOD",photoperiod)}
-                    ${dataItem("AUTOFLOWER",autoflower)}
+                    ${dataItem("FLOWERING",sfFill(flowering,sfD.flowering))}
+                    ${dataItem("HEIGHT",sfFill(height,sfD.height))}
+                    ${dataItem("PHOTOPERIOD",sfMachine(photoperiod))}
+                    ${dataItem("AUTOFLOWER",sfMachine(autoflower))}
                     ${dataItem("YIELD",yieldValue)}
-                    ${dataItem("ORIGIN",origin)}
+                    ${dataItem("ORIGIN",sfFill(origin,summary.origin))}
 
                 </div>
 
