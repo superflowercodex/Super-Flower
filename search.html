@@ -476,6 +476,46 @@ body::before{
 
 
 /* =========================================================
+   A-Z BAR
+========================================================= */
+
+.az-bar{
+    display:none;
+    flex-wrap:wrap;
+    gap:4px;
+    margin:10px 0;
+}
+
+.az-bar.visible{
+    display:flex;
+}
+
+.az-letter{
+    flex:1 0 28px;
+    min-width:28px;
+    padding:6px 0;
+    background:#000;
+    border:1px solid rgba(255,210,26,.3);
+    color:rgba(255,255,255,.6);
+    font-family:inherit;
+    font-size:.55rem;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+.az-letter:hover{
+    border-color:rgba(255,210,26,.8);
+    color:var(--gold);
+}
+
+.az-letter.active{
+    background:var(--gold);
+    border-color:var(--gold);
+    color:#000;
+}
+
+
+/* =========================================================
    MOBILE PAGINATION
 ========================================================= */
 
@@ -1596,14 +1636,6 @@ const RESULTS_PER_PAGE =
     10 search results.
 */
 
-let currentSearchQuery =
-    "";
-
-let currentSearchPage =
-    1;
-
-let totalSearchPages =
-    null;
 
 
 /* =========================================================
@@ -2053,22 +2085,15 @@ searchInput.addEventListener(
             }
 
 
-            results.classList.remove(
-                "visible"
-            );
-
-            currentResults =
-                [];
-
             currentRecord =
                 null;
 
-            resetFilters();
-
             resetSpecimen();
 
-            setStatus(
-                "SEARCH THE LIVING RECORD."
+            loadBrowsePage(
+                browseIndex >= 0
+                    ? browseIndex
+                    : 0
             );
 
             return;
@@ -2119,11 +2144,11 @@ searchButton.addEventListener(
 
         if(!query){
 
-            setStatus(
-                "ENTER A STRAIN NAME TO SEARCH."
+            loadBrowsePage(
+                browseIndex >= 0
+                    ? browseIndex
+                    : 0
             );
-
-            searchInput.focus();
 
             return;
 
@@ -2222,16 +2247,108 @@ clearFiltersButton.addEventListener(
     }
 );
 
-
 /* =========================================================
-   LIVE PAGINATED SEARCH
-   CANNALIB — 10 STRAINS PER PAGE
+   A-Z BROWSE + LIVE SEARCH (10 STRAINS AT A TIME)
+   ---------------------------------------------------------
+   The keyless CannaLib API returns the 10 best matches for
+   a query and has no "next page". So A-Z browsing walks an
+   ordered list of two-letter prefixes (aa, ab, ac ... zz).
+   Each page is ONE request for ONE prefix, showing up to
+   10 strains sorted A-Z. Empty prefixes are skipped.
+   Pages are cached, so PREVIOUS costs no extra requests.
 ========================================================= */
 
-async function performSearch(
-    query,
-    page = 1
-){
+const BROWSE_LETTERS =
+    "abcdefghijklmnopqrstuvwxyz".split("");
+
+const BROWSE_PREFIXES = [];
+
+BROWSE_LETTERS.forEach(
+    first => {
+
+        BROWSE_LETTERS.forEach(
+            second => {
+
+                BROWSE_PREFIXES.push(
+                    first + second
+                );
+
+            }
+        );
+
+    }
+);
+
+const BROWSE_MAX_SKIP =
+    6;
+
+let browseMode =
+    true;
+
+let browseIndex =
+    -1;
+
+const browseCache =
+    new Map();
+
+
+function sortAZ(items){
+
+    return items.sort(
+        (a,b) =>
+            String(
+                a.name || ""
+            )
+            .localeCompare(
+                String(
+                    b.name || ""
+                ),
+                undefined,
+                {
+                    sensitivity:"base"
+                }
+            )
+    );
+
+}
+
+
+function normaliseKey(value){
+
+    return String(
+        value || ""
+    )
+    .toLowerCase()
+    .replace(
+        /[^a-z0-9]/g,
+        ""
+    );
+
+}
+
+
+function prepareResults(raw){
+
+    return sortAZ(
+        uniqueBy(
+            raw
+                .map(
+                    resolveSearchRecord
+                )
+                .filter(
+                    Boolean
+                ),
+            item =>
+                item.id ||
+                item.name_norm ||
+                item.name
+        )
+    );
+
+}
+
+
+function startController(){
 
     if(searchController){
 
@@ -2239,171 +2356,29 @@ async function performSearch(
 
     }
 
-
     searchController =
         new AbortController();
 
+    return searchController;
 
-    const controller =
-        searchController;
-
-
-    currentSearchQuery =
-        query.trim();
-
-    currentSearchPage =
-        page;
+}
 
 
-    setStatus(
-        `SEARCHING THE LIVING SUPER FLOWER RECORD — PAGE ${page}...`
-    );
-
+function showLoading(text){
 
     results.classList.add(
         "visible"
     );
 
-
-    results.innerHTML = `
-
-        <div class="loading">
-
-            <span class="spinner"></span>
-
-            <br><br>
-
-            LOADING 10 LIVE STRAINS...
-
-        </div>
-
-    `;
-
-
-    if(page === 1){
-
-        resetFilters();
-
-    }
-
-
-    try{
-
-        const pageResults =
-            await fetchSearchPage(
-                currentSearchQuery,
-                page,
-                controller.signal
-            );
-
-
-        if(
-            controller !== searchController
-        ){
-
-            return;
-
-        }
-
-
-        currentResults =
-            uniqueBy(
-
-                pageResults
-
-                    .map(
-                        resolveSearchRecord
-                    )
-
-                    .filter(Boolean),
-
-                item =>
-                    item.id ||
-                    item.name_norm ||
-                    item.name
-
-            );
-
-
-        /*
-            A-Z ordering for the current
-            live CannaLib page.
-        */
-
-        currentResults.sort(
-            (a,b) =>
-                String(
-                    a.name || ""
-                )
-                .localeCompare(
-                    String(
-                        b.name || ""
-                    ),
-                    undefined,
-                    {
-                        sensitivity:"base"
-                    }
-                )
-        );
-
-
-        populateFilters(
-            currentResults
-        );
-
-
-        renderResults(
-            currentResults
-        );
-
-
-        renderPagination();
-
-
-        setStatus(
-
-            currentResults.length
-
-                ? `${currentResults.length} LIVE STRAINS — PAGE ${currentSearchPage}`
-
-                : "NO MATCHING STRAIN RECORD FOUND."
-
-        );
-
-
-    }catch(error){
-
-        if(
-            error.name === "AbortError"
-        ){
-
-            return;
-
-        }
-
+    if(!currentResults.length){
 
         results.innerHTML = `
-
-            <div class="no-results">
-
-                LIVE SEARCH ERROR
-
+            <div class="loading">
+                <span class="spinner"></span>
                 <br><br>
-
-                ${escapeHTML(
-                    error.message
-                )}
-
+                ${escapeHTML(text)}
             </div>
-
         `;
-
-
-        setStatus(
-            "LIVE SEARCH ERROR: " +
-            error.message,
-            true
-        );
 
     }
 
@@ -2411,26 +2386,22 @@ async function performSearch(
 
 
 /* =========================================================
-   CANNALIB PAGE REQUEST
+   CANNALIB REQUEST (no page parameter: keyless API has none)
 ========================================================= */
 
 async function fetchSearchPage(
     query,
-    page,
     signal
 ){
 
-    let url =
+    const url =
         SEARCH_ENDPOINT +
         "?q=" +
         encodeURIComponent(
             query
         ) +
         "&limit=" +
-        RESULTS_PER_PAGE +
-        "&page=" +
-        page;
-
+        RESULTS_PER_PAGE;
 
     const response =
         await fetch(
@@ -2443,10 +2414,8 @@ async function fetchSearchPage(
             }
         );
 
-
     let data =
         null;
-
 
     try{
 
@@ -2460,16 +2429,23 @@ async function fetchSearchPage(
 
     }
 
-
     if(
         !response.ok
     ){
 
-        const message =
+        let message =
             data?.error ||
             data?.message ||
             `HTTP ${response.status}`;
 
+        if(
+            response.status === 429
+        ){
+
+            message =
+                "RATE LIMIT REACHED. KEYLESS ACCESS IS 60 REQUESTS PER HOUR. WAIT A WHILE AND TRY AGAIN.";
+
+        }
 
         throw new Error(
             message
@@ -2477,45 +2453,381 @@ async function fetchSearchPage(
 
     }
 
-
-    /*
-        Keep any pagination information
-        supplied by CannaLib.
-    */
-
-    totalSearchPages =
-
-        Number(
-            data?.total_pages ||
-            data?.pagination?.total_pages ||
-            data?.meta?.total_pages ||
-            0
-        ) || null;
-
-
     return extractSearchResults(
         data
     );
 
 }
 
+
 /* =========================================================
-   PAGINATION CONTROLS
-   CANNALIB — PREVIOUS / NEXT
+   A-Z BROWSE PAGE
 ========================================================= */
 
-function renderPagination(){
+async function fetchBrowsePrefix(
+    index,
+    signal
+){
+
+    if(
+        browseCache.has(
+            index
+        )
+    ){
+
+        return browseCache.get(
+            index
+        );
+
+    }
+
+    const prefix =
+        BROWSE_PREFIXES[index];
+
+    const raw =
+        await fetchSearchPage(
+            prefix,
+            signal
+        );
+
+    /*
+        Typeahead may also match inside names or aliases.
+        Browse pages keep only names that START with the
+        prefix so the list really reads A to Z.
+    */
+
+    const items =
+        prepareResults(
+            raw
+        )
+        .filter(
+            item =>
+                normaliseKey(
+                    item.name_norm ||
+                    item.name
+                )
+                .startsWith(
+                    prefix
+                )
+        );
+
+    browseCache.set(
+        index,
+        items
+    );
+
+    return items;
+
+}
+
+
+async function loadBrowsePage(
+    index,
+    direction = 1
+){
+
+    browseMode =
+        true;
+
+    const controller =
+        startController();
+
+    setStatus(
+        "LOADING 10 LIVE STRAINS A TO Z..."
+    );
+
+    showLoading(
+        "LOADING 10 LIVE STRAINS..."
+    );
+
+    renderPagination();
+
+    try{
+
+        let i =
+            index;
+
+        let found =
+            null;
+
+        let tries =
+            0;
+
+        while(
+            i >= 0 &&
+            i < BROWSE_PREFIXES.length &&
+            tries <= BROWSE_MAX_SKIP
+        ){
+
+            const items =
+                await fetchBrowsePrefix(
+                    i,
+                    controller.signal
+                );
+
+            if(
+                controller !== searchController
+            ){
+
+                return;
+
+            }
+
+            if(
+                items.length
+            ){
+
+                found =
+                    items;
+
+                break;
+
+            }
+
+            i +=
+                direction;
+
+            tries++;
+
+        }
+
+        if(
+            !found
+        ){
+
+            setStatus(
+                direction > 0
+                    ? "NO FURTHER STRAINS FOUND. END OF A TO Z."
+                    : "START OF A TO Z."
+            );
+
+            renderPagination();
+
+            return;
+
+        }
+
+        browseIndex =
+            i;
+
+        currentResults =
+            found;
+
+        resetFilters();
+
+        populateFilters(
+            currentResults
+        );
+
+        renderResults(
+            currentResults
+        );
+
+        renderPagination();
+
+        setStatus(
+            `${currentResults.length} LIVE STRAINS — A TO Z — ${BROWSE_PREFIXES[browseIndex].toUpperCase()}`
+        );
+
+    }catch(error){
+
+        showError(
+            error
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   TYPED SEARCH (10 BEST MATCHES)
+========================================================= */
+
+async function performSearch(
+    query
+){
+
+    query =
+        String(
+            query || ""
+        ).trim();
+
+    if(
+        !query
+    ){
+
+        loadBrowsePage(
+            browseIndex >= 0
+                ? browseIndex
+                : 0
+        );
+
+        return;
+
+    }
+
+    browseMode =
+        false;
+
+    const controller =
+        startController();
+
+    setStatus(
+        "SEARCHING THE LIVING SUPER FLOWER RECORD..."
+    );
+
+    currentResults =
+        [];
+
+    showLoading(
+        "LOADING 10 LIVE STRAINS..."
+    );
+
+    resetFilters();
+
+    try{
+
+        const raw =
+            await fetchSearchPage(
+                query,
+                controller.signal
+            );
+
+        if(
+            controller !== searchController
+        ){
+
+            return;
+
+        }
+
+        currentResults =
+            prepareResults(
+                raw
+            );
+
+        populateFilters(
+            currentResults
+        );
+
+        renderResults(
+            currentResults
+        );
+
+        renderPagination();
+
+        setStatus(
+            currentResults.length
+                ? `${currentResults.length} LIVE MATCHES RETURNED`
+                : "NO MATCHING STRAIN RECORD FOUND."
+        );
+
+    }catch(error){
+
+        showError(
+            error
+        );
+
+    }
+
+}
+
+
+function showError(error){
+
+    if(
+        error.name === "AbortError"
+    ){
+
+        return;
+
+    }
+
+    results.classList.add(
+        "visible"
+    );
+
+    results.innerHTML = `
+        <div class="no-results">
+            LIVE SEARCH ERROR
+            <br><br>
+            ${escapeHTML(error.message)}
+        </div>
+    `;
+
+    setStatus(
+        "LIVE SEARCH ERROR: " +
+        error.message,
+        true
+    );
+
+}
+
+
+/* =========================================================
+   A-Z BAR + PREVIOUS / NEXT CONTROLS
+========================================================= */
+
+function ensureBrowseControls(){
+
+    let bar =
+        document.getElementById(
+            "azBar"
+        );
+
+    if(!bar){
+
+        bar =
+            document.createElement(
+                "div"
+            );
+
+        bar.id =
+            "azBar";
+
+        bar.className =
+            "az-bar";
+
+        results.parentNode.insertBefore(
+            bar,
+            results
+        );
+
+        bar.addEventListener(
+            "click",
+            event => {
+
+                const button =
+                    event.target.closest(
+                        "[data-letter]"
+                    );
+
+                if(!button){
+
+                    return;
+
+                }
+
+                searchInput.value =
+                    "";
+
+                loadBrowsePage(
+                    BROWSE_PREFIXES.indexOf(
+                        button.dataset.letter + "a"
+                    ),
+                    1
+                );
+
+            }
+        );
+
+    }
 
     let pagination =
         document.getElementById(
             "searchPagination"
         );
-
-
-    /*
-        Create the pagination container
-        once, directly underneath the results.
-    */
 
     if(!pagination){
 
@@ -2535,171 +2847,53 @@ function renderPagination(){
             results.nextSibling
         );
 
-    }
-
-
-    /*
-        If there are no results, hide pagination.
-    */
-
-    if(!currentResults.length){
-
-        pagination.classList.remove(
-            "visible"
-        );
-
-        pagination.innerHTML =
-            "";
-
-        return;
-
-    }
-
-
-    /*
-        PREVIOUS is disabled on page 1.
-
-        NEXT is disabled when:
-
-        1. CannaLib tells us we are on the
-           final known page.
-
-        OR
-
-        2. The current page contains fewer
-           than 10 results.
-    */
-
-    const previousDisabled =
-        currentSearchPage <= 1;
-
-
-    const nextDisabled =
-        (
-            totalSearchPages &&
-            currentSearchPage >=
-                totalSearchPages
-        )
-        ||
-        currentResults.length <
-            RESULTS_PER_PAGE;
-
-
-    pagination.innerHTML = `
-
-        <button
-            type="button"
-            class="results-page-button"
-            id="previousPageButton"
-            ${previousDisabled ? "disabled" : ""}
-        >
-            ‹ PREVIOUS
-        </button>
-
-
-        <div
-            class="results-page-status"
-        >
-            PAGE
-            <strong>
-                ${currentSearchPage}
-            </strong>
-            ${
-                totalSearchPages
-                    ? ` OF ${totalSearchPages}`
-                    : ""
-            }
-        </div>
-
-
-        <button
-            type="button"
-            class="results-page-button"
-            id="nextPageButton"
-            ${nextDisabled ? "disabled" : ""}
-        >
-            NEXT ›
-        </button>
-
-    `;
-
-
-    pagination.classList.add(
-        "visible"
-    );
-
-
-    /*
-        PREVIOUS
-    */
-
-    const previous =
-        document.getElementById(
-            "previousPageButton"
-        );
-
-
-    if(previous){
-
-        previous.addEventListener(
+        pagination.addEventListener(
             "click",
-            () => {
+            event => {
+
+                const button =
+                    event.target.closest(
+                        "button"
+                    );
 
                 if(
-                    currentSearchPage <= 1
+                    !button ||
+                    button.disabled
                 ){
 
                     return;
 
                 }
 
-
-                performSearch(
-                    currentSearchQuery,
-                    currentSearchPage - 1
-                );
-
-            }
-        );
-
-    }
-
-
-    /*
-        NEXT
-    */
-
-    const next =
-        document.getElementById(
-            "nextPageButton"
-        );
-
-
-    if(next){
-
-        next.addEventListener(
-            "click",
-            () => {
-
                 if(
-                    totalSearchPages &&
-                    currentSearchPage >=
-                        totalSearchPages
+                    button.id === "previousPageButton"
                 ){
 
-                    return;
+                    loadBrowsePage(
+                        browseIndex - 1,
+                        -1
+                    );
 
-                }
-
-
-                if(
-                    currentResults.length ===
-                        RESULTS_PER_PAGE
+                }else if(
+                    button.id === "nextPageButton"
                 ){
 
-                    performSearch(
-                        currentSearchQuery,
-                        currentSearchPage + 1
+                    loadBrowsePage(
+                        browseIndex + 1,
+                        1
+                    );
+
+                }else if(
+                    button.id === "backToAzButton"
+                ){
+
+                    searchInput.value =
+                        "";
+
+                    loadBrowsePage(
+                        browseIndex >= 0
+                            ? browseIndex
+                            : 0
                     );
 
                 }
@@ -2709,7 +2903,112 @@ function renderPagination(){
 
     }
 
+    return {
+        bar,
+        pagination
+    };
+
 }
+
+
+function renderPagination(){
+
+    const {
+        bar,
+        pagination
+    } =
+        ensureBrowseControls();
+
+    const activeLetter =
+        browseMode && browseIndex >= 0
+            ? BROWSE_PREFIXES[browseIndex][0]
+            : "";
+
+    bar.innerHTML =
+        BROWSE_LETTERS
+            .map(
+                letter => `
+                    <button
+                        type="button"
+                        class="az-letter${letter === activeLetter ? " active" : ""}"
+                        data-letter="${letter}"
+                        aria-label="Browse strains starting with ${letter.toUpperCase()}"
+                    >${letter.toUpperCase()}</button>
+                `
+            )
+            .join("");
+
+    bar.classList.add(
+        "visible"
+    );
+
+    if(!browseMode){
+
+        pagination.innerHTML = `
+            <button
+                type="button"
+                class="results-page-button"
+                id="backToAzButton"
+            >
+                ‹ BROWSE A TO Z
+            </button>
+
+            <div class="results-page-status">
+                10 BEST MATCHES.
+                <br>
+                REFINE THE SEARCH FOR OTHERS.
+            </div>
+        `;
+
+        pagination.classList.add(
+            "visible"
+        );
+
+        return;
+
+    }
+
+    const label =
+        browseIndex >= 0
+            ? BROWSE_PREFIXES[browseIndex].toUpperCase()
+            : "—";
+
+    pagination.innerHTML = `
+        <button
+            type="button"
+            class="results-page-button"
+            id="previousPageButton"
+            ${browseIndex <= 0 ? "disabled" : ""}
+        >
+            ‹ PREVIOUS
+        </button>
+
+        <div class="results-page-status">
+            A TO Z
+            <strong>${label}</strong>
+        </div>
+
+        <button
+            type="button"
+            class="results-page-button"
+            id="nextPageButton"
+            ${
+                browseIndex < 0 ||
+                browseIndex >= BROWSE_PREFIXES.length - 1
+                    ? "disabled"
+                    : ""
+            }
+        >
+            NEXT ›
+        </button>
+    `;
+
+    pagination.classList.add(
+        "visible"
+    );
+
+}
+
 
 /* =========================================================
    SEARCH RESULT EXTRACTION
@@ -9719,6 +10018,14 @@ async function loadFromHash(){
 
     if(!hash){
 
+        if(!currentResults.length){
+
+            loadBrowsePage(
+                0
+            );
+
+        }
+
         return;
 
     }
@@ -9737,6 +10044,14 @@ async function loadFromHash(){
 
 
     if(!strain){
+
+        if(!currentResults.length){
+
+            loadBrowsePage(
+                0
+            );
+
+        }
 
         return;
 
@@ -9790,4 +10105,5 @@ loadFromHash();
 </body>
 
 </html>
+
 
