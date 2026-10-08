@@ -419,6 +419,126 @@ body::before{
 
 
 /* =========================================================
+   CANNALIB PAGINATION
+   10 LIVE STRAINS PER PAGE
+========================================================= */
+
+.results-pagination{
+    display:none;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    margin-top:10px;
+    padding:10px 0 2px;
+}
+
+.results-pagination.visible{
+    display:flex;
+}
+
+.results-page-button{
+    flex:0 0 auto;
+    min-width:92px;
+    padding:9px 12px;
+    background:#000;
+    border:1px solid rgba(255,210,26,.45);
+    color:var(--gold);
+    font-family:inherit;
+    font-size:.58rem;
+    font-weight:bold;
+    letter-spacing:.08em;
+    cursor:pointer;
+}
+
+.results-page-button:hover:not(:disabled){
+    background:rgba(255,210,26,.08);
+    border-color:rgba(255,210,26,.8);
+}
+
+.results-page-button:disabled{
+    opacity:.25;
+    cursor:not-allowed;
+}
+
+.results-page-status{
+    flex:1;
+    text-align:center;
+    color:rgba(255,255,255,.5);
+    font-size:.56rem;
+    letter-spacing:.06em;
+    line-height:1.4;
+}
+
+.results-page-status strong{
+    color:var(--gold);
+    font-weight:bold;
+}
+
+
+/* =========================================================
+   A-Z BAR
+========================================================= */
+
+.az-bar{
+    display:none;
+    flex-wrap:wrap;
+    gap:4px;
+    margin:10px 0;
+}
+
+.az-bar.visible{
+    display:flex;
+}
+
+.az-letter{
+    flex:1 0 28px;
+    min-width:28px;
+    padding:6px 0;
+    background:#000;
+    border:1px solid rgba(255,210,26,.3);
+    color:rgba(255,255,255,.6);
+    font-family:inherit;
+    font-size:.55rem;
+    font-weight:bold;
+    cursor:pointer;
+}
+
+.az-letter:hover{
+    border-color:rgba(255,210,26,.8);
+    color:var(--gold);
+}
+
+.az-letter.active{
+    background:var(--gold);
+    border-color:var(--gold);
+    color:#000;
+}
+
+
+/* =========================================================
+   MOBILE PAGINATION
+========================================================= */
+
+@media (max-width:600px){
+
+    .results-pagination{
+        gap:7px;
+    }
+
+    .results-page-button{
+        min-width:78px;
+        padding:8px 8px;
+        font-size:.52rem;
+    }
+
+    .results-page-status{
+        font-size:.5rem;
+    }
+
+}
+
+
+/* =========================================================
    LOADING
 ========================================================= */
 
@@ -1496,20 +1616,26 @@ const RECORD_ENDPOINT =
         encodeURIComponent(id);
 
 
-/*
-    PUBLIC CANNALIB ACCESS ONLY.
-
-    This page requests up to 10 live search results.
-
-    No API key is stored.
-
-    No API key is sent.
-
-    No keyed/public quota system is used.
-*/
+/* =========================================================
+   CANNALIB LIVE PAGINATION
+   10 STRAINS PER PAGE
+========================================================= */
 
 const RESULTS_PER_PAGE =
     10;
+
+
+/*
+    PAGINATION STATE
+
+    Page 1 = first 10 live results.
+    NEXT    = next 10.
+    PREVIOUS = previous 10.
+
+    The browser only holds the current
+    10 search results.
+*/
+
 
 
 /* =========================================================
@@ -1959,22 +2085,15 @@ searchInput.addEventListener(
             }
 
 
-            results.classList.remove(
-                "visible"
-            );
-
-            currentResults =
-                [];
-
             currentRecord =
                 null;
 
-            resetFilters();
-
             resetSpecimen();
 
-            setStatus(
-                "SEARCH THE LIVING RECORD."
+            loadBrowsePage(
+                browseIndex >= 0
+                    ? browseIndex
+                    : 0
             );
 
             return;
@@ -2025,11 +2144,11 @@ searchButton.addEventListener(
 
         if(!query){
 
-            setStatus(
-                "ENTER A STRAIN NAME TO SEARCH."
+            loadBrowsePage(
+                browseIndex >= 0
+                    ? browseIndex
+                    : 0
             );
-
-            searchInput.focus();
 
             return;
 
@@ -2128,158 +2247,223 @@ clearFiltersButton.addEventListener(
     }
 );
 
-
 /* =========================================================
-   SEARCH
+   RESILIENT FETCH
+   ---------------------------------------------------------
+   Phones on mobile data often drop a request (for example
+   ERR_QUIC_PROTOCOL_ERROR / idle timeout). This waits up to
+   12 seconds per try and retries twice on network failures
+   or 502/503/504 before giving up with a clear message.
+   A new search still cancels the old one immediately.
 ========================================================= */
 
-async function performSearch(
-    query
-){
+async function sfFetch(url, options = {}){
 
-    if(
-        searchController
-    ){
+    const parent = options.signal;
+
+    for(let attempt = 0; attempt < 3; attempt++){
+
+        if(parent && parent.aborted){
+
+            throw new DOMException("Aborted","AbortError");
+
+        }
+
+        const local = new AbortController();
+
+        const onAbort = () => local.abort();
+
+        if(parent){
+
+            parent.addEventListener("abort", onAbort, {once:true});
+
+        }
+
+        const timer = setTimeout(() => local.abort(), 12000);
+
+        try{
+
+            const response = await fetch(
+                url,
+                {...options, signal:local.signal}
+            );
+
+            if(
+                ![502,503,504].includes(response.status) ||
+                attempt === 2
+            ){
+
+                return response;
+
+            }
+
+        }catch(error){
+
+            if(parent && parent.aborted){
+
+                throw error;
+
+            }
+
+        }finally{
+
+            clearTimeout(timer);
+
+            if(parent){
+
+                parent.removeEventListener("abort", onAbort);
+
+            }
+
+        }
+
+        await new Promise(
+            resolve => setTimeout(resolve, 600 * (attempt + 1))
+        );
+
+    }
+
+    throw new Error(
+        "COULD NOT REACH CANNALIB. CHECK YOUR CONNECTION AND TRY AGAIN."
+    );
+
+}
+
+let retryAction = null;
+
+
+/* =========================================================
+   A-Z BROWSE + LIVE SEARCH (10 STRAINS AT A TIME)
+   ---------------------------------------------------------
+   The keyless CannaLib API returns the 10 best matches for
+   a query and has no "next page". So A-Z browsing walks an
+   ordered list of two-letter prefixes (aa, ab, ac ... zz).
+   Each page is ONE request for ONE prefix, showing up to
+   10 strains sorted A-Z. Empty prefixes are skipped.
+   Pages are cached, so PREVIOUS costs no extra requests.
+========================================================= */
+
+const BROWSE_LETTERS =
+    "abcdefghijklmnopqrstuvwxyz".split("");
+
+const BROWSE_PREFIXES = [];
+
+BROWSE_LETTERS.forEach(
+    first => {
+
+        BROWSE_LETTERS.forEach(
+            second => {
+
+                BROWSE_PREFIXES.push(
+                    first + second
+                );
+
+            }
+        );
+
+    }
+);
+
+const BROWSE_MAX_SKIP =
+    6;
+
+let browseMode =
+    true;
+
+let browseIndex =
+    -1;
+
+const browseCache =
+    new Map();
+
+
+function sortAZ(items){
+
+    return items.sort(
+        (a,b) =>
+            String(
+                a.name || ""
+            )
+            .localeCompare(
+                String(
+                    b.name || ""
+                ),
+                undefined,
+                {
+                    sensitivity:"base"
+                }
+            )
+    );
+
+}
+
+
+function normaliseKey(value){
+
+    return String(
+        value || ""
+    )
+    .toLowerCase()
+    .replace(
+        /[^a-z0-9]/g,
+        ""
+    );
+
+}
+
+
+function prepareResults(raw){
+
+    return sortAZ(
+        uniqueBy(
+            raw
+                .map(
+                    resolveSearchRecord
+                )
+                .filter(
+                    Boolean
+                ),
+            item =>
+                item.id ||
+                item.name_norm ||
+                item.name
+        )
+    );
+
+}
+
+
+function startController(){
+
+    if(searchController){
 
         searchController.abort();
 
     }
 
-
     searchController =
         new AbortController();
 
+    return searchController;
 
-    const controller =
-        searchController;
+}
 
 
-    setStatus(
-        "SEARCHING THE LIVING SUPER FLOWER RECORD..."
-    );
-
+function showLoading(text){
 
     results.classList.add(
         "visible"
     );
 
-
-    results.innerHTML = `
-
-        <div class="loading">
-
-            <span class="spinner"></span>
-
-            <br><br>
-
-            SEARCHING THE LIVING RECORD...
-
-        </div>
-
-    `;
-
-
-    resetFilters();
-
-
-    try{
-
-        /*
-            PUBLIC ACCESS:
-
-            Always one live search page.
-
-            No API key.
-            No keyed paging.
-            No fake claim of 30 results.
-        */
-
-        const pageResults =
-            await fetchSearchPage(
-                query,
-                1,
-                controller.signal
-            );
-
-
-        /*
-            If another search has started,
-            ignore this result.
-        */
-
-        if(
-            controller !== searchController
-        ){
-
-            return;
-
-        }
-
-
-        currentResults =
-            uniqueBy(
-                pageResults
-                    .map(
-                        resolveSearchRecord
-                    )
-                    .filter(Boolean),
-                item =>
-                    item.id ||
-                    item.name_norm ||
-                    item.name
-            );
-
-
-        populateFilters(
-            currentResults
-        );
-
-
-        renderResults(
-            currentResults
-        );
-
-
-        setStatus(
-            currentResults.length
-                ? `${currentResults.length} LIVE MATCHES RETURNED`
-                : "NO MATCHING STRAIN RECORD FOUND."
-        );
-
-
-    }catch(error){
-
-        if(
-            error.name === "AbortError"
-        ){
-
-            return;
-
-        }
-
+    if(!currentResults.length){
 
         results.innerHTML = `
-
-            <div class="no-results">
-
-                LIVE SEARCH ERROR
-
+            <div class="loading">
+                <span class="spinner"></span>
                 <br><br>
-
-                ${escapeHTML(
-                    error.message
-                )}
-
+                ${escapeHTML(text)}
             </div>
-
         `;
-
-
-        setStatus(
-            "LIVE SEARCH ERROR: " +
-            error.message,
-            true
-        );
 
     }
 
@@ -2287,16 +2471,15 @@ async function performSearch(
 
 
 /* =========================================================
-   SEARCH PAGE
+   CANNALIB REQUEST (no page parameter: keyless API has none)
 ========================================================= */
 
 async function fetchSearchPage(
     query,
-    page,
     signal
 ){
 
-    let url =
+    const url =
         SEARCH_ENDPOINT +
         "?q=" +
         encodeURIComponent(
@@ -2305,26 +2488,8 @@ async function fetchSearchPage(
         "&limit=" +
         RESULTS_PER_PAGE;
 
-
-    /*
-        The function retains the page argument
-        for compatibility with the endpoint,
-        but public search only requests page 1.
-    */
-
-    if(
-        page > 1
-    ){
-
-        url +=
-            "&page=" +
-            page;
-
-    }
-
-
     const response =
-        await fetch(
+        await sfFetch(
             url,
             {
                 method:"GET",
@@ -2334,10 +2499,8 @@ async function fetchSearchPage(
             }
         );
 
-
     let data =
         null;
-
 
     try{
 
@@ -2351,16 +2514,23 @@ async function fetchSearchPage(
 
     }
 
-
     if(
         !response.ok
     ){
 
-        const message =
+        let message =
             data?.error ||
             data?.message ||
             `HTTP ${response.status}`;
 
+        if(
+            response.status === 429
+        ){
+
+            message =
+                "RATE LIMIT REACHED. KEYLESS ACCESS IS 60 REQUESTS PER HOUR. WAIT A WHILE AND TRY AGAIN.";
+
+        }
 
         throw new Error(
             message
@@ -2368,9 +2538,588 @@ async function fetchSearchPage(
 
     }
 
-
     return extractSearchResults(
         data
+    );
+
+}
+
+
+/* =========================================================
+   A-Z BROWSE PAGE
+========================================================= */
+
+async function fetchBrowsePrefix(
+    index,
+    signal
+){
+
+    if(
+        browseCache.has(
+            index
+        )
+    ){
+
+        return browseCache.get(
+            index
+        );
+
+    }
+
+    const prefix =
+        BROWSE_PREFIXES[index];
+
+    const raw =
+        await fetchSearchPage(
+            prefix,
+            signal
+        );
+
+    /*
+        Typeahead may also match inside names or aliases.
+        Browse pages keep only names that START with the
+        prefix so the list really reads A to Z.
+    */
+
+    const items =
+        prepareResults(
+            raw
+        )
+        .filter(
+            item =>
+                normaliseKey(
+                    item.name_norm ||
+                    item.name
+                )
+                .startsWith(
+                    prefix
+                )
+        );
+
+    browseCache.set(
+        index,
+        items
+    );
+
+    return items;
+
+}
+
+
+async function loadBrowsePage(
+    index,
+    direction = 1
+){
+
+    browseMode =
+        true;
+
+    retryAction =
+        () => loadBrowsePage(index, direction);
+
+    const controller =
+        startController();
+
+    setStatus(
+        "LOADING 10 LIVE STRAINS A TO Z..."
+    );
+
+    showLoading(
+        "LOADING 10 LIVE STRAINS..."
+    );
+
+    renderPagination();
+
+    try{
+
+        let i =
+            index;
+
+        let found =
+            null;
+
+        let tries =
+            0;
+
+        while(
+            i >= 0 &&
+            i < BROWSE_PREFIXES.length &&
+            tries <= BROWSE_MAX_SKIP
+        ){
+
+            const items =
+                await fetchBrowsePrefix(
+                    i,
+                    controller.signal
+                );
+
+            if(
+                controller !== searchController
+            ){
+
+                return;
+
+            }
+
+            if(
+                items.length
+            ){
+
+                found =
+                    items;
+
+                break;
+
+            }
+
+            i +=
+                direction;
+
+            tries++;
+
+        }
+
+        if(
+            !found
+        ){
+
+            setStatus(
+                direction > 0
+                    ? "NO FURTHER STRAINS FOUND. END OF A TO Z."
+                    : "START OF A TO Z."
+            );
+
+            renderPagination();
+
+            return;
+
+        }
+
+        browseIndex =
+            i;
+
+        currentResults =
+            found;
+
+        resetFilters();
+
+        populateFilters(
+            currentResults
+        );
+
+        renderResults(
+            currentResults
+        );
+
+        renderPagination();
+
+        setStatus(
+            `${currentResults.length} LIVE STRAINS — A TO Z — ${BROWSE_PREFIXES[browseIndex].toUpperCase()}`
+        );
+
+    }catch(error){
+
+        showError(
+            error
+        );
+
+    }
+
+}
+
+
+/* =========================================================
+   TYPED SEARCH (10 BEST MATCHES)
+========================================================= */
+
+async function performSearch(
+    query
+){
+
+    query =
+        String(
+            query || ""
+        ).trim();
+
+    if(
+        !query
+    ){
+
+        loadBrowsePage(
+            browseIndex >= 0
+                ? browseIndex
+                : 0
+        );
+
+        return;
+
+    }
+
+    browseMode =
+        false;
+
+    retryAction =
+        () => performSearch(query);
+
+    const controller =
+        startController();
+
+    setStatus(
+        "SEARCHING THE LIVING SUPER FLOWER RECORD..."
+    );
+
+    currentResults =
+        [];
+
+    showLoading(
+        "LOADING 10 LIVE STRAINS..."
+    );
+
+    resetFilters();
+
+    try{
+
+        const raw =
+            await fetchSearchPage(
+                query,
+                controller.signal
+            );
+
+        if(
+            controller !== searchController
+        ){
+
+            return;
+
+        }
+
+        currentResults =
+            prepareResults(
+                raw
+            );
+
+        populateFilters(
+            currentResults
+        );
+
+        renderResults(
+            currentResults
+        );
+
+        renderPagination();
+
+        setStatus(
+            currentResults.length
+                ? `${currentResults.length} LIVE MATCHES RETURNED`
+                : "NO MATCHING STRAIN RECORD FOUND."
+        );
+
+    }catch(error){
+
+        showError(
+            error
+        );
+
+    }
+
+}
+
+
+function showError(error){
+
+    if(
+        error.name === "AbortError"
+    ){
+
+        return;
+
+    }
+
+    results.classList.add(
+        "visible"
+    );
+
+    results.innerHTML = `
+        <div class="no-results">
+            LIVE SEARCH ERROR
+            <br><br>
+            ${escapeHTML(error.message)}
+            <br><br>
+            <button
+                type="button"
+                class="results-page-button"
+                id="retrySearchButton"
+            >
+                ↻ TRY AGAIN
+            </button>
+        </div>
+    `;
+
+    setStatus(
+        "LIVE SEARCH ERROR: " +
+        error.message,
+        true
+    );
+
+}
+
+
+/* =========================================================
+   A-Z BAR + PREVIOUS / NEXT CONTROLS
+========================================================= */
+
+function ensureBrowseControls(){
+
+    let bar =
+        document.getElementById(
+            "azBar"
+        );
+
+    if(!bar){
+
+        bar =
+            document.createElement(
+                "div"
+            );
+
+        bar.id =
+            "azBar";
+
+        bar.className =
+            "az-bar";
+
+        results.parentNode.insertBefore(
+            bar,
+            results
+        );
+
+        bar.addEventListener(
+            "click",
+            event => {
+
+                const button =
+                    event.target.closest(
+                        "[data-letter]"
+                    );
+
+                if(!button){
+
+                    return;
+
+                }
+
+                searchInput.value =
+                    "";
+
+                loadBrowsePage(
+                    BROWSE_PREFIXES.indexOf(
+                        button.dataset.letter + "a"
+                    ),
+                    1
+                );
+
+            }
+        );
+
+    }
+
+    let pagination =
+        document.getElementById(
+            "searchPagination"
+        );
+
+    if(!pagination){
+
+        pagination =
+            document.createElement(
+                "div"
+            );
+
+        pagination.id =
+            "searchPagination";
+
+        pagination.className =
+            "results-pagination";
+
+        results.parentNode.insertBefore(
+            pagination,
+            results.nextSibling
+        );
+
+        results.addEventListener(
+            "click",
+            event => {
+
+                if(
+                    event.target.closest("#retrySearchButton") &&
+                    retryAction
+                ){
+
+                    retryAction();
+
+                }
+
+            }
+        );
+
+        pagination.addEventListener(
+            "click",
+            event => {
+
+                const button =
+                    event.target.closest(
+                        "button"
+                    );
+
+                if(
+                    !button ||
+                    button.disabled
+                ){
+
+                    return;
+
+                }
+
+                if(
+                    button.id === "previousPageButton"
+                ){
+
+                    loadBrowsePage(
+                        browseIndex - 1,
+                        -1
+                    );
+
+                }else if(
+                    button.id === "nextPageButton"
+                ){
+
+                    loadBrowsePage(
+                        browseIndex + 1,
+                        1
+                    );
+
+                }else if(
+                    button.id === "backToAzButton"
+                ){
+
+                    searchInput.value =
+                        "";
+
+                    loadBrowsePage(
+                        browseIndex >= 0
+                            ? browseIndex
+                            : 0
+                    );
+
+                }
+
+            }
+        );
+
+    }
+
+    return {
+        bar,
+        pagination
+    };
+
+}
+
+
+function renderPagination(){
+
+    const {
+        bar,
+        pagination
+    } =
+        ensureBrowseControls();
+
+    const activeLetter =
+        browseMode && browseIndex >= 0
+            ? BROWSE_PREFIXES[browseIndex][0]
+            : "";
+
+    bar.innerHTML =
+        BROWSE_LETTERS
+            .map(
+                letter => `
+                    <button
+                        type="button"
+                        class="az-letter${letter === activeLetter ? " active" : ""}"
+                        data-letter="${letter}"
+                        aria-label="Browse strains starting with ${letter.toUpperCase()}"
+                    >${letter.toUpperCase()}</button>
+                `
+            )
+            .join("");
+
+    bar.classList.add(
+        "visible"
+    );
+
+    if(!browseMode){
+
+        pagination.innerHTML = `
+            <button
+                type="button"
+                class="results-page-button"
+                id="backToAzButton"
+            >
+                ‹ BROWSE A TO Z
+            </button>
+
+            <div class="results-page-status">
+                10 BEST MATCHES.
+                <br>
+                REFINE THE SEARCH FOR OTHERS.
+            </div>
+        `;
+
+        pagination.classList.add(
+            "visible"
+        );
+
+        return;
+
+    }
+
+    const label =
+        browseIndex >= 0
+            ? BROWSE_PREFIXES[browseIndex].toUpperCase()
+            : "—";
+
+    pagination.innerHTML = `
+        <button
+            type="button"
+            class="results-page-button"
+            id="previousPageButton"
+            ${browseIndex <= 0 ? "disabled" : ""}
+        >
+            ‹ PREVIOUS
+        </button>
+
+        <div class="results-page-status">
+            A TO Z
+            <strong>${label}</strong>
+        </div>
+
+        <button
+            type="button"
+            class="results-page-button"
+            id="nextPageButton"
+            ${
+                browseIndex < 0 ||
+                browseIndex >= BROWSE_PREFIXES.length - 1
+                    ? "disabled"
+                    : ""
+            }
+        >
+            NEXT ›
+        </button>
+    `;
+
+    pagination.classList.add(
+        "visible"
     );
 
 }
@@ -3042,17 +3791,11 @@ function resolveSearchRecord(
 
 
     const genetics =
-        resolvedFieldValue(
+        resolveGeneticsFromParents(
             record,
-            [
-                "genetics",
-                "genetic_lineage",
-                "lineage",
-                "parentage",
-                "parents"
-            ],
-            "NOT REPORTED"
-        );
+            null
+        ) ||
+        "NOT REPORTED";
 
 
     const topTerpenes =
@@ -3444,7 +4187,7 @@ async function loadRecord(
             try{
 
                 response =
-                    await fetch(
+                    await sfFetch(
                         RECORD_ENDPOINT(
                             candidateId
                         ),
@@ -3658,6 +4401,889 @@ function renderLoadingRecord(){
 
 
 /* =========================================================
+   GENETICS — PARENT NAME EXTRACTOR
+   ---------------------------------------------------------
+   Returns the NAMES of the strains used to create this
+   strain (its recorded parents).
+
+   Rules:
+   - numbers are never names (parent counts, source counts)
+   - children / descendants / legacy are never parents
+   - family-tree diagram data is ignored
+   - parents are ordered by how many sources state them
+   - several parents are joined with " × "
+========================================================= */
+
+const GENETIC_NAME_KEYS = [
+    "name",
+    "name_literal",
+    "canonical_name",
+    "parent_name",
+    "parentName",
+    "parent_strain",
+    "parent",
+    "strain_name",
+    "strain",
+    "display_name",
+    "label",
+    "title",
+    "slug",
+    "id"
+];
+
+const GENETIC_SKIP_KEYS =
+    /^(sources?|source_ids?|evidence|evidence_ids?|claims?|count|counts|n|total|num|number|url|urls|link|links|credit|diagram|tree|graph|svg|layout|nodes|edges|children|child|descendants?|descendant_count|offspring|progeny|legacy|crosses_into|used_in|bred_into|siblings?|notes?|confidence|rank|score|weight|year|date)$/i;
+
+const GENETIC_PARENT_KEYS =
+    /^(parents?|parent_strains?|parentage|lineage|genetics?|genetic_lineage|genetic_background|breeding_lineage|mother|father|mother_strain|father_strain|female_parent|male_parent|dam|sire|cross|crosses|cross_of)$/i;
+
+
+function isNumericText(value){
+
+    const text = String(value ?? "").trim();
+
+    return /^[\s\d.,%\-+×x/]+$/i.test(text) ||
+        /^[a-z0-9]+(_[a-z0-9]+)+$/.test(text);
+
+}
+
+
+function geneticSourceWeight(node){
+
+    if(
+        !node ||
+        typeof node !== "object"
+    ){
+
+        return 0;
+
+    }
+
+    if(
+        Array.isArray(node.sources)
+    ){
+
+        return node.sources.length;
+
+    }
+
+    for(
+        const key of [
+            "independent_sources",
+            "source_count",
+            "n_sources",
+            "sources_count",
+            "support",
+            "count"
+        ]
+    ){
+
+        const number =
+            Number(node[key]);
+
+        if(
+            Number.isFinite(number)
+        ){
+
+            return number;
+
+        }
+
+    }
+
+    return 0;
+
+}
+
+
+function collectGeneticNames(
+    node,
+    depth = 0
+){
+
+    if(
+        depth > 8 ||
+        node === null ||
+        node === undefined
+    ){
+
+        return [];
+
+    }
+
+    if(
+        typeof node === "number" ||
+        typeof node === "boolean"
+    ){
+
+        return [];
+
+    }
+
+    if(
+        typeof node === "string"
+    ){
+
+        const text =
+            node.trim();
+
+        if(
+            !text ||
+            text.length > 120 ||
+            isNumericText(text) ||
+            /^(not reported|unknown|n\/a|none|null|undefined)$/i.test(text)
+        ){
+
+            return [];
+
+        }
+
+        return [
+            {
+                name:text,
+                weight:0
+            }
+        ];
+
+    }
+
+    if(
+        Array.isArray(node)
+    ){
+
+        return node.flatMap(
+            item =>
+                collectGeneticNames(
+                    item,
+                    depth + 1
+                )
+        );
+
+    }
+
+    if(
+        typeof node !== "object"
+    ){
+
+        return [];
+
+    }
+
+    /*
+        An object with a usable name key IS one parent.
+    */
+
+    for(
+        const key of GENETIC_NAME_KEYS
+    ){
+
+        const value =
+            node[key];
+
+        if(
+            typeof value === "string" &&
+            value.trim() &&
+            !isNumericText(value) &&
+            value.length <= 120
+        ){
+
+            return [
+                {
+                    name:value.trim(),
+                    weight:geneticSourceWeight(
+                        node
+                    )
+                }
+            ];
+
+        }
+
+        if(
+            value &&
+            typeof value === "object"
+        ){
+
+            const inner =
+                collectGeneticNames(
+                    value,
+                    depth + 1
+                );
+
+            if(
+                inner.length
+            ){
+
+                const weight =
+                    geneticSourceWeight(
+                        node
+                    );
+
+                return inner.map(
+                    item => ({
+                        name:item.name,
+                        weight:item.weight || weight
+                    })
+                );
+
+            }
+
+        }
+
+    }
+
+    /*
+        Otherwise it is a container: look inside it,
+        skipping counts, sources, children and diagrams.
+    */
+
+    return Object.entries(
+        node
+    )
+    .filter(
+        ([key]) =>
+            !GENETIC_SKIP_KEYS.test(
+                key
+            )
+    )
+    .flatMap(
+        ([, child]) =>
+            collectGeneticNames(
+                child,
+                depth + 1
+            )
+    );
+
+}
+
+
+function findGeneticContainers(
+    node,
+    depth = 0,
+    found = [],
+    seen = new WeakSet()
+){
+
+    if(
+        depth > 6 ||
+        !node ||
+        typeof node !== "object" ||
+        seen.has(node)
+    ){
+
+        return found;
+
+    }
+
+    seen.add(
+        node
+    );
+
+    if(
+        Array.isArray(node)
+    ){
+
+        node.forEach(
+            item =>
+                findGeneticContainers(
+                    item,
+                    depth + 1,
+                    found,
+                    seen
+                )
+        );
+
+        return found;
+
+    }
+
+    Object.entries(
+        node
+    )
+    .forEach(
+        ([key, child]) => {
+
+            if(
+                key !== "evidence" &&
+                GENETIC_SKIP_KEYS.test(
+                    key
+                )
+            ){
+
+                return;
+
+            }
+
+            if(
+                GENETIC_PARENT_KEYS.test(
+                    key
+                ) &&
+                child &&
+                typeof child !== "number" &&
+                typeof child !== "boolean"
+            ){
+
+                found.push(
+                    child
+                );
+
+                return;
+
+            }
+
+            if(
+                child &&
+                typeof child === "object"
+            ){
+
+                findGeneticContainers(
+                    child,
+                    depth + 1,
+                    found,
+                    seen
+                );
+
+            }
+
+        }
+    );
+
+    return found;
+
+}
+
+
+function resolveGeneticsFromParents(
+    record,
+    slim
+){
+
+    const sources = [
+        record,
+        slim
+    ];
+
+    for(
+        const source of sources
+    ){
+
+        if(
+            !source ||
+            typeof source !== "object"
+        ){
+
+            continue;
+
+        }
+
+        const containers =
+            findGeneticContainers(
+                source
+            );
+
+        const entries = [];
+
+        containers.forEach(
+            container => {
+
+                collectGeneticNames(
+                    container
+                )
+                .forEach(
+                    item =>
+                        entries.push(
+                            item
+                        )
+                );
+
+            }
+        );
+
+        const seenNames =
+            new Set();
+
+        const unique =
+            entries.filter(
+                item => {
+
+                    const key =
+                        item.name.toLowerCase();
+
+                    if(
+                        seenNames.has(key)
+                    ){
+
+                        return false;
+
+                    }
+
+                    seenNames.add(
+                        key
+                    );
+
+                    return true;
+
+                }
+            );
+
+        unique.sort(
+            (a, b) =>
+                b.weight - a.weight
+        );
+
+        const own =
+            String(
+                source.name || ""
+            )
+            .trim()
+            .toLowerCase();
+
+        const parents =
+            unique
+                .filter(
+                    item =>
+                        item.name.toLowerCase() !== own
+                )
+                .slice(
+                    0,
+                    6
+                )
+                .map(
+                    item =>
+                        item.name
+                );
+
+        if(
+            parents.length
+        ){
+
+            return parents.join(
+                " × "
+            );
+
+        }
+
+    }
+
+    return "";
+
+}
+
+
+/* =========================================================
+   SUPER FLOWER ENGINE
+   ---------------------------------------------------------
+   Derives fields CannaLib does not supply from the data it
+   DOES supply (parents, terpenes, type). Derived values are
+   always labelled and are never shown as measured data.
+   Edit the tables below to tune the Codex.
+========================================================= */
+
+const SF_TERPENES = {
+    myrcene:{aroma:"EARTHY, MUSKY",chakra:"ROOT"},
+    nerolidol:{aroma:"WOODY, FLORAL",chakra:"ROOT"},
+    caryophyllene:{aroma:"PEPPER, SPICE",chakra:"SACRAL"},
+    humulene:{aroma:"HOPPY, WOODY",chakra:"SACRAL"},
+    limonene:{aroma:"CITRUS",chakra:"SOLAR PLEXUS"},
+    ocimene:{aroma:"SWEET, HERBAL",chakra:"SOLAR PLEXUS"},
+    linalool:{aroma:"FLORAL, LAVENDER",chakra:"HEART"},
+    bisabolol:{aroma:"FLORAL, CHAMOMILE",chakra:"HEART"},
+    terpinolene:{aroma:"FRESH, HERBAL",chakra:"THROAT"},
+    pinene:{aroma:"PINE",chakra:"THIRD EYE"},
+    camphene:{aroma:"DAMP WOODS",chakra:"THIRD EYE"},
+    geraniol:{aroma:"ROSE, FRUIT",chakra:"CROWN"}
+};
+
+const SF_TYPE_CHAKRA = {
+    indica:{ROOT:2,SACRAL:1,HEART:1},
+    sativa:{THROAT:1,"THIRD EYE":2,CROWN:2},
+    hybrid:{"SOLAR PLEXUS":2,HEART:2}
+};
+
+const SF_LANDRACES = [
+    {re:/afghan|hindu kush|kush|indica/i,type:"indica",origin:"AFGHANISTAN / HINDU KUSH"},
+    {re:/thai|haze|sativa/i,type:"sativa",origin:"THAILAND / SOUTH-EAST ASIA"},
+    {re:/colombian/i,type:"sativa",origin:"COLOMBIA"},
+    {re:/mexican|acapulco/i,type:"sativa",origin:"MEXICO"},
+    {re:/jamaican/i,type:"sativa",origin:"JAMAICA"},
+    {re:/durban/i,type:"sativa",origin:"SOUTH AFRICA"}
+];
+
+function sfEmpty(value){
+
+    return !value ||
+        /^(not reported|not assigned|—)$/i.test(
+            String(value).trim()
+        );
+
+}
+
+function sfTerpeneList(record, slim){
+
+    const raw = [
+        ...findList(record,["top_terpenes","terpenes","terpene_profile","dominant_terpenes"]),
+        ...(Array.isArray(slim?.top_terpenes) ? slim.top_terpenes : [])
+    ];
+
+    const names = [];
+
+    raw.forEach(item => {
+
+        const text = String(
+            resolveSourceDisplayValue(item) || ""
+        ).toLowerCase();
+
+        Object.keys(SF_TERPENES).forEach(key => {
+
+            if(
+                text.includes(key.slice(0,6)) &&
+                !names.includes(key)
+            ){
+                names.push(key);
+            }
+
+        });
+
+    });
+
+    return names;
+
+}
+
+function superFlowerEngine(record, slim, known){
+
+    const out = {};
+
+    const terpenes = sfTerpeneList(record, slim);
+
+    const parents = String(known.genetics || "");
+
+    const matches = SF_LANDRACES.filter(
+        item => item.re.test(parents)
+    );
+
+    /* TYPE — from parents, only when CannaLib gave none */
+
+    if(sfEmpty(known.type) && matches.length){
+
+        const types = [...new Set(matches.map(m => m.type))];
+
+        out.type = (
+            types.length === 1
+                ? types[0]
+                : "hybrid"
+        ) + " (INFERRED FROM PARENTS)";
+
+    }
+
+    /* ORIGIN — from landrace parents */
+
+    if(matches.length){
+
+        out.origin = [...new Set(matches.map(m => m.origin))]
+            .join(" / ") + " (INFERRED FROM PARENTS)";
+
+    }
+
+    /* AROMA — from terpenes, only when none was reported */
+
+    if(sfEmpty(known.aroma) && terpenes.length){
+
+        out.aroma = [...new Set(
+            terpenes.flatMap(
+                t => SF_TERPENES[t].aroma.split(", ")
+            )
+        )].join(" · ") + " (FROM TERPENES)";
+
+    }
+
+    /* CODEX — scored from type + terpenes, hash only as last resort */
+
+    const baseType = String(
+        (sfEmpty(known.type) ? out.type : known.type) || ""
+    ).toLowerCase();
+
+    const typeKey = ["indica","sativa","hybrid"].find(
+        k => baseType.includes(k)
+    );
+
+    const scores = {};
+
+    GLCTC1_CODEX_FREQUENCIES.forEach(
+        row => { scores[row.chakra] = 0; }
+    );
+
+    Object.entries(SF_TYPE_CHAKRA[typeKey] || {}).forEach(
+        ([chakra, weight]) => { scores[chakra] += weight; }
+    );
+
+    terpenes.slice(0,3).forEach((t, i) => {
+
+        scores[SF_TERPENES[t].chakra] += 3 - i;
+
+    });
+
+    const best = Math.max(...Object.values(scores));
+
+    if(best > 0){
+
+        const identity = getStableStrainIdentity(
+            record, slim, known.name
+        );
+
+        const tied = GLCTC1_CODEX_FREQUENCIES.filter(
+            row => scores[row.chakra] === best
+        );
+
+        const row = tied[stableHash(identity) % tied.length];
+
+        const reasons = [];
+
+        if(typeKey){ reasons.push(typeKey.toUpperCase()); }
+
+        terpenes.slice(0,3).forEach(
+            t => reasons.push(t.toUpperCase())
+        );
+
+        out.codex = {
+            ...row,
+            basis:"DERIVED FROM " + reasons.join(" + ")
+        };
+
+    }
+
+    return out;
+
+}
+
+
+/* =========================================================
+   SUPER FLOWER ENGINE — PANEL DERIVATIONS
+   Fills Effects, Aroma, Flowering and Height from the
+   terpenes and type CannaLib does supply. Always labelled
+   as inferred. Edit these tables to tune the Codex.
+========================================================= */
+
+const SF_EFFECTS = {
+    myrcene:["RELAXING","SEDATING"],
+    limonene:["UPLIFTING","MOOD LIFTING"],
+    caryophyllene:["CALMING","STRESS RELIEF"],
+    linalool:["CALMING","SOOTHING"],
+    humulene:["APPETITE SUPPRESSING"],
+    pinene:["ALERT","FOCUSED"],
+    bisabolol:["SOOTHING"],
+    terpinolene:["UPLIFTING","CEREBRAL"],
+    ocimene:["UPLIFTING"],
+    nerolidol:["SEDATING"]
+};
+
+const SF_TYPE_EFFECTS = {
+    indica:["BODY RELAXATION"],
+    sativa:["CEREBRAL","ENERGISING"],
+    hybrid:["BALANCED"]
+};
+
+const SF_TYPE_GROW = {
+    indica:{flowering:"7–9 WEEKS",height:"80–130 CM"},
+    sativa:{flowering:"10–14 WEEKS",height:"150–250 CM"},
+    hybrid:{flowering:"8–10 WEEKS",height:"100–160 CM"}
+};
+
+const SF_MACHINE_TOKENS = {
+    no_auto_marker:"NO AUTOFLOWER MARKER FOUND",
+    auto_marker:"AUTOFLOWER MARKER FOUND"
+};
+
+function sfMachine(value){
+
+    const text = String(value ?? "").trim();
+
+    return SF_MACHINE_TOKENS[text.toLowerCase()] ||
+        (/^[a-z0-9]+(_[a-z0-9]+)+$/.test(text)
+            ? text.replace(/_/g," ").toUpperCase()
+            : value);
+
+}
+
+function sfClean(list){
+
+    return (list || []).filter(
+        item => item && !isNumericText(item)
+    );
+
+}
+
+function sfFill(value, derived){
+
+    return sfEmpty(value) && derived ? derived : value;
+
+}
+
+function sfPrettyTerpene(value){
+
+    return String(value)
+        .replace(/^b_/i,"β-")
+        .replace(/^a_/i,"α-")
+        .replace(/^d_/i,"δ-")
+        .replace(/_/g," ");
+
+}
+
+function sfPct(value){
+
+    const text = String(value ?? "").trim();
+
+    if(!/^[\d.\s·–-]+$/.test(text) || !/\d/.test(text)){
+        return value;
+    }
+
+    const nums = text.match(/\d+(\.\d+)?/g).map(Number);
+
+    const fmt = n => +(n >= 1 ? n.toFixed(1) : n.toFixed(2));
+
+    const lo = Math.min(...nums);
+
+    const hi = Math.max(...nums);
+
+    return (lo === hi ? fmt(lo) : fmt(lo) + "–" + fmt(hi)) + "%";
+
+}
+
+function sfParentsFor(record){
+
+    const names = resolveGeneticsFromParents(record, null);
+
+    if(names){
+        return names.split(" × ");
+    }
+
+    return sfClean(
+        findList(record,["parents","parent_strains","parent","parentage"])
+    );
+
+}
+
+function sfInfoDerive(record, summary){
+
+    const terpenes = sfTerpeneList(record, null);
+
+    const typeText = String(summary.type || "").toLowerCase();
+
+    const key = ["indica","sativa","hybrid"].find(
+        k => typeText.includes(k)
+    );
+
+    const effects = [];
+
+    terpenes.slice(0,3).forEach(t => {
+
+        (SF_EFFECTS[t] || []).forEach(e => {
+
+            if(!effects.includes(e)){ effects.push(e); }
+
+        });
+
+    });
+
+    (SF_TYPE_EFFECTS[key] || []).forEach(e => {
+
+        if(!effects.includes(e)){ effects.push(e); }
+
+    });
+
+    const flavours = [...new Set(
+        terpenes.flatMap(t => SF_TERPENES[t].aroma.split(", "))
+    )];
+
+    const grow = SF_TYPE_GROW[key];
+
+    return {
+        effects:effects.slice(0,6),
+        flavours,
+        flowering:grow ? "TYPICAL " + grow.flowering + " (INFERRED FROM TYPE)" : "",
+        height:grow ? "TYPICAL " + grow.height + " (INFERRED FROM TYPE)" : ""
+    };
+
+}
+
+function sfNote(text){
+
+    return `<div class="info-panel-note">${escapeHTML(text)}</div>`;
+
+}
+
+/* =========================================================
+   SUPER FLOWER ENGINE — RESONANCE PROFILE
+   ---------------------------------------------------------
+   Inputs per strain: ranked terpenes + type.
+   Start from a type baseline, then add each terpene's
+   contribution (earlier terpenes count more).
+   Output is an ESTIMATE (10-90), never a measurement.
+   Order: RELAXATION, FOCUS, CREATIVITY, MEDITATION, RECOVERY
+========================================================= */
+
+const SF_RES_NAMES = ["RELAXATION","FOCUS","CREATIVITY","MEDITATION","RECOVERY"];
+
+const SF_RES_BASE = {
+    indica:[65,30,35,55,60],
+    sativa:[35,65,65,45,35],
+    hybrid:[50,50,50,50,48]
+};
+
+const SF_RES_TERPENES = {
+    myrcene:[12,-4,0,4,6],
+    limonene:[0,5,8,0,0],
+    caryophyllene:[6,0,0,4,8],
+    linalool:[10,0,0,8,6],
+    humulene:[0,3,0,0,4],
+    pinene:[-4,12,3,0,0],
+    bisabolol:[4,0,0,3,8],
+    terpinolene:[0,5,10,0,0],
+    ocimene:[0,3,5,0,0],
+    nerolidol:[8,0,0,6,0],
+    camphene:[0,0,0,2,2]
+};
+
+function sfResonance(record, slim, typeText){
+
+    const terpenes = sfTerpeneList(record, slim);
+
+    const key = ["indica","sativa","hybrid"].find(
+        k => String(typeText || "").toLowerCase().includes(k)
+    );
+
+    if(!key && !terpenes.length){
+        return null;
+    }
+
+    const score = [...(SF_RES_BASE[key] || [45,45,45,45,45])];
+
+    terpenes.forEach((t, i) => {
+
+        const weight = Math.max(0.3, 1 - i * 0.15);
+
+        (SF_RES_TERPENES[t] || []).forEach((delta, n) => {
+
+            score[n] += delta * weight;
+
+        });
+
+    });
+
+    const out = {};
+
+    SF_RES_NAMES.forEach((name, n) => {
+
+        out[name] = Math.round(
+            Math.max(10, Math.min(90, score[n]))
+        );
+
+    });
+
+    return out;
+
+}
+
+/* =========================================================
    RENDER RECORD — W2 MULTI-SOURCE FIELD RESOLUTION
 ========================================================= */
 
@@ -3723,378 +5349,11 @@ function renderRecord(
    nested mother/father/parent objects.
 ===================================================== */
 
-let genetics = "";
-
-
-/* =====================================================
-   PASS 1 — DIRECT GENETICS / LINEAGE FIELDS
-===================================================== */
-
-genetics =
-    resolvedFieldValue(
+let genetics =
+    resolveGeneticsFromParents(
         record,
-        [
-            "genetics",
-            "genetic_lineage",
-            "genetic",
-            "lineage",
-            "lineage_summary",
-            "parentage",
-            "breeding_lineage",
-            "genetic_background",
-
-            "genetics.lineage",
-            "genetics.parentage",
-            "genetics.parents",
-            "genetics.parent_strains",
-
-            "lineage.parents",
-            "lineage.parentage",
-            "lineage.lineage",
-
-            "evidence.lineage",
-            "evidence.genetics",
-            "evidence.parentage",
-
-            "reported.lineage",
-            "reported.genetics",
-            "reported.parentage"
-        ],
-        ""
+        slim
     );
-
-
-/* =====================================================
-   PASS 2 — EXPLICIT PARENT LISTS
-===================================================== */
-
-if(
-    !genetics
-){
-
-    const parents =
-        findList(
-            record,
-            [
-                "parents",
-                "parent_strains",
-                "parent",
-                "parentage",
-
-                "genetics.parents",
-                "genetics.parent_strains",
-
-                "lineage.parents",
-                "lineage.parentage",
-
-                "evidence.parents",
-                "evidence.parent_strains",
-                "evidence.parentage",
-
-                "reported.parents",
-                "reported.parent_strains"
-            ]
-        );
-
-
-    if(
-        parents.length
-    ){
-
-        genetics =
-            parents
-                .filter(Boolean)
-                .join(
-                    " × "
-                );
-
-    }
-
-}
-
-
-/* =====================================================
-   PASS 3 — MOTHER / FATHER
-===================================================== */
-
-if(
-    !genetics
-){
-
-    const mother =
-        resolvedFieldValue(
-            record,
-            [
-                "mother",
-                "mother_strain",
-                "mother_parent",
-                "female_parent",
-
-                "genetics.mother",
-                "genetics.mother_strain",
-
-                "lineage.mother",
-                "lineage.mother_strain",
-
-                "parentage.mother",
-                "parentage.female",
-
-                "parents.mother",
-                "parents.female"
-            ],
-            ""
-        );
-
-
-    const father =
-        resolvedFieldValue(
-            record,
-            [
-                "father",
-                "father_strain",
-                "father_parent",
-                "male_parent",
-
-                "genetics.father",
-                "genetics.father_strain",
-
-                "lineage.father",
-                "lineage.father_strain",
-
-                "parentage.father",
-                "parentage.male",
-
-                "parents.father",
-                "parents.male"
-            ],
-            ""
-        );
-
-
-    const parentParts = [];
-
-
-    if(
-        mother
-    ){
-
-        parentParts.push(
-            mother
-        );
-
-    }
-
-
-    if(
-        father
-    ){
-
-        parentParts.push(
-            father
-        );
-
-    }
-
-
-    if(
-        parentParts.length
-    ){
-
-        genetics =
-            parentParts.join(
-                " × "
-            );
-
-    }
-
-}
-
-
-/* =====================================================
-   PASS 4 — DEEP SEARCH FOR PARENT OBJECTS
-   -----------------------------------------------------
-   Used only when the named fields above did not resolve.
-===================================================== */
-
-if(
-    !genetics
-){
-
-    const discoveredParents = [];
-
-
-    function collectGeneticParents(
-        value,
-        depth = 0,
-        seen = new WeakSet()
-    ){
-
-        if(
-            depth > 10 ||
-            value === null ||
-            value === undefined ||
-            typeof value !== "object"
-        ){
-
-            return;
-
-        }
-
-
-        if(
-            seen.has(value)
-        ){
-
-            return;
-
-        }
-
-
-        seen.add(value);
-
-
-        if(
-            Array.isArray(value)
-        ){
-
-            value.forEach(
-                item =>
-                    collectGeneticParents(
-                        item,
-                        depth + 1,
-                        seen
-                    )
-            );
-
-            return;
-
-        }
-
-
-        Object.entries(
-            value
-        )
-        .forEach(
-            (
-                [
-                    key,
-                    child
-                ]
-            ) => {
-
-                const cleanKey =
-                    String(
-                        key
-                    )
-                    .trim()
-                    .toLowerCase();
-
-
-                const isParentKey =
-                    [
-                        "mother",
-                        "father",
-                        "female_parent",
-                        "male_parent",
-                        "mother_strain",
-                        "father_strain",
-                        "parent_strain",
-                        "parent_strains"
-                    ]
-                    .includes(
-                        cleanKey
-                    );
-
-
-                if(
-                    isParentKey
-                ){
-
-                    const display =
-                        resolveSourceDisplayValue(
-                            child
-                        );
-
-
-                    if(
-                        display &&
-                        !discoveredParents.includes(
-                            display
-                        )
-                    ){
-
-                        discoveredParents.push(
-                            display
-                        );
-
-                    }
-
-                }
-
-
-                if(
-                    child &&
-                    typeof child === "object"
-                ){
-
-                    collectGeneticParents(
-                        child,
-                        depth + 1,
-                        seen
-                    );
-
-                }
-
-            }
-        );
-
-    }
-
-
-    collectGeneticParents(
-        record
-    );
-
-
-    if(
-        discoveredParents.length
-    ){
-
-        genetics =
-            discoveredParents.join(
-                " × "
-            );
-
-    }
-
-}
-
-
-/* =====================================================
-   PASS 5 — SLIM SEARCH RESULT FALLBACK
-===================================================== */
-
-if(
-    !genetics
-){
-
-    genetics =
-        resolvedFieldValue(
-            slim,
-            [
-                "genetics",
-                "genetic_lineage",
-                "genetic",
-                "lineage",
-                "lineage_summary",
-                "parentage",
-                "parents",
-                "parent_strains"
-            ],
-            ""
-        );
-
-}
 
 
 /* =====================================================
@@ -4110,7 +5369,7 @@ genetics =
        TYPE
     ===================================================== */
 
-    const type =
+    let type =
         resolvedFieldValue(
             record,
             [
@@ -4430,12 +5689,29 @@ genetics =
        CODEX ALIGNMENT
     ===================================================== */
 
-    const codex =
-        resolveCodexAlignment(
+    const engine =
+        superFlowerEngine(
             record,
             slim,
-            name
+            {name, type, genetics, aroma}
         );
+
+    if(engine.type){ type = engine.type; }
+
+    if(engine.aroma){ aroma = engine.aroma; }
+
+    aroma = String(aroma).split(" · ").map(sfPrettyTerpene).join(" · ");
+
+    const codex =
+        engine.codex ||
+        {
+            ...resolveCodexAlignment(
+                record,
+                slim,
+                name
+            ),
+            basis:"NO TERPENE OR TYPE DATA — REFERENCE ALIGNMENT"
+        };
 
 
     /* =====================================================
@@ -4484,12 +5760,12 @@ genetics =
 
         field(
             "THC RANGE",
-            thc
+            sfPct(thc)
         ) +
 
         field(
             "CBD RANGE",
-            cbd
+            sfPct(cbd)
         ) +
 
         field(
@@ -4518,7 +5794,8 @@ genetics =
     ===================================================== */
 
     renderResonance(
-        record
+        record,
+        sfResonance(record, slim, type)
     );
 
 
@@ -4536,7 +5813,9 @@ genetics =
             thc,
             cbd,
             aroma,
-            codex
+            codex,
+            type,
+            origin:engine.origin
         }
     );
 
@@ -6145,7 +7424,8 @@ function field(
 ========================================================= */
 
 function renderResonance(
-    record
+    record,
+    derived
 ){
 
     const values = [
@@ -6208,6 +7488,51 @@ function renderResonance(
     ];
 
 
+    let estimated = false;
+
+    values.forEach(item => {
+
+        const raw = item[1];
+
+        const asNumber =
+            raw === null ||
+            raw === undefined ||
+            typeof raw === "object" ||
+            String(raw).trim() === ""
+                ? NaN
+                : Number(raw);
+
+        /*
+            Only a real number is a source value. Text, objects
+            or blanks (a stray "focus" field, for example) must
+            not block the engine estimate.
+        */
+
+        if(
+            !Number.isFinite(asNumber) &&
+            derived &&
+            derived[item[0]] !== undefined
+        ){
+
+            item[1] = derived[item[0]];
+
+            estimated = true;
+
+        }
+
+    });
+
+    const resonanceNote =
+        document.querySelector(".resonance-note");
+
+    if(resonanceNote){
+
+        resonanceNote.textContent = estimated
+            ? "SUPER FLOWER ENGINE ESTIMATE FROM TERPENES + TYPE. NOT A SOURCE MEASUREMENT."
+            : "SUPER FLOWER CODEX RESONANCE VALUES ARE SHOWN ONLY WHEN AN ACTUAL SOURCE VALUE IS AVAILABLE.";
+
+    }
+
     resonanceGrid.innerHTML =
         values
             .map(
@@ -6232,9 +7557,13 @@ function resonanceBox(
 ){
 
     const number =
-        Number(
-            value
-        );
+        value === null ||
+        value === undefined ||
+        String(value).trim() === ""
+            ? NaN
+            : Number(
+                value
+            );
 
 
     const valid =
@@ -6377,18 +7706,10 @@ function renderInfo(
 
 
     const parents =
-        findList(
-            record,
-            [
-                "parents",
-                "parent_strains",
-                "parent",
-                "parentage"
-            ]
-        );
+        sfParentsFor(record);
 
 
-    const children =
+    let children =
         findList(
             record,
             [
@@ -6530,6 +7851,10 @@ function renderInfo(
         );
 
 
+    children = sfClean(children);
+
+    const sfD = sfInfoDerive(record, summary);
+
     infoContent.innerHTML = `
 
         <div class="info-grid">
@@ -6551,7 +7876,7 @@ function renderInfo(
 
                     ${dataItem(
                         "TYPE",
-                        resolvedFieldValue(
+                        summary.type || resolvedFieldValue(
                             record,
                             [
                                 "type",
@@ -6564,7 +7889,7 @@ function renderInfo(
 
                     ${dataItem(
                         "ORIGIN",
-                        origin
+                        sfEmpty(origin) ? (summary.origin || origin) : origin
                     )}
 
                 </div>
@@ -6590,8 +7915,8 @@ function renderInfo(
 
                 <div class="info-data-grid">
 
-                    ${dataItem("THC",summary.thc)}
-                    ${dataItem("CBD",summary.cbd)}
+                    ${dataItem("THC",sfPct(summary.thc))}
+                    ${dataItem("CBD",sfPct(summary.cbd))}
                     ${dataItem("CBG",cbg)}
                     ${dataItem("CBN",cbn)}
                     ${dataItem("CBC",cbc)}
@@ -6607,7 +7932,7 @@ function renderInfo(
                     TERPENE PROFILE
                 </div>
 
-                ${renderChips(terpenes)}
+                ${renderChips(terpenes.map(sfPrettyTerpene))}
 
             </section>
 
@@ -6617,7 +7942,7 @@ function renderInfo(
                     EFFECTS / REPORTED CHARACTER
                 </div>
 
-                ${renderChips(effects)}
+                ${renderChips(effects.length ? effects : sfD.effects)}${effects.length || !sfD.effects.length ? "" : sfNote("INFERRED FROM TERPENES + TYPE · INDICATIVE ONLY · NOT MEDICAL ADVICE")}
 
             </section>
 
@@ -6627,7 +7952,7 @@ function renderInfo(
                     FLAVOUR / AROMA
                 </div>
 
-                ${renderChips(flavours)}
+                ${renderChips(flavours.length ? flavours : sfD.flavours)}${flavours.length || !sfD.flavours.length ? "" : sfNote("INFERRED FROM TERPENES")}
 
             </section>
 
@@ -6678,12 +8003,12 @@ function renderInfo(
 
                 <div class="info-data-grid">
 
-                    ${dataItem("FLOWERING",flowering)}
-                    ${dataItem("HEIGHT",height)}
-                    ${dataItem("PHOTOPERIOD",photoperiod)}
-                    ${dataItem("AUTOFLOWER",autoflower)}
+                    ${dataItem("FLOWERING",sfFill(flowering,sfD.flowering))}
+                    ${dataItem("HEIGHT",sfFill(height,sfD.height))}
+                    ${dataItem("PHOTOPERIOD",sfMachine(photoperiod))}
+                    ${dataItem("AUTOFLOWER",sfMachine(autoflower))}
                     ${dataItem("YIELD",yieldValue)}
-                    ${dataItem("ORIGIN",origin)}
+                    ${dataItem("ORIGIN",sfFill(origin,summary.origin))}
 
                 </div>
 
@@ -9384,6 +10709,14 @@ async function loadFromHash(){
 
     if(!hash){
 
+        if(!currentResults.length){
+
+            loadBrowsePage(
+                0
+            );
+
+        }
+
         return;
 
     }
@@ -9402,6 +10735,14 @@ async function loadFromHash(){
 
 
     if(!strain){
+
+        if(!currentResults.length){
+
+            loadBrowsePage(
+                0
+            );
+
+        }
 
         return;
 
@@ -9455,4 +10796,5 @@ loadFromHash();
 </body>
 
 </html>
+
 
