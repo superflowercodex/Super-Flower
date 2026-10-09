@@ -5942,6 +5942,7 @@ async function sfWebImages(name){
                             w: x.width,
                             h: x.height,
                             src: 'openverse',
+                            identity: 'openverse:' + String(x.id || x.url || x.thumbnail || url),
                             queryIndex
                         });
                     });
@@ -5968,6 +5969,7 @@ async function sfWebImages(name){
                             w: info.width,
                             h: info.height,
                             src: 'commons',
+                            identity: 'commons:' + String(page.title || info.url || url),
                             queryIndex
                         });
                     });
@@ -5981,6 +5983,7 @@ async function sfWebImages(name){
     const best = found
         .map(pic => ({pic, score: sfScoreWebImage(pic, cleanName) + (pic.queryIndex === 0 ? 12 : pic.queryIndex === 1 ? 6 : 0)}))
         .filter(item => item.score > -9999)
+        .filter(item => !sfWebImageAlreadyBelongsToAnotherStrain(item.pic, cleanName))
         .sort((a, b) => b.score - a.score)
         .filter(item => {
             const url = item.pic.url;
@@ -5993,6 +5996,68 @@ async function sfWebImages(name){
 
     sfWebCache.set(key, best);
     return best;
+}
+
+/* ---------- CROSS-STRAIN IMAGE UNIQUENESS ---------- */
+/* A real web photograph can be assigned to only one strain in this browser.
+   Ownership persists across reloads via localStorage. If storage is unavailable,
+   the in-memory map still prevents reuse for the current page session. */
+
+const SF_IMAGE_OWNER_STORAGE_KEY = "superFlowerImageOwnersV1";
+const sfWebImageOwners = new Map();
+
+function sfReadWebImageOwners(){
+    try{
+        const saved = JSON.parse(localStorage.getItem(SF_IMAGE_OWNER_STORAGE_KEY) || "{}");
+        Object.entries(saved).forEach(([identity, owner]) => {
+            if(identity && owner){ sfWebImageOwners.set(identity, owner); }
+        });
+    }catch(error){}
+}
+
+function sfWriteWebImageOwners(){
+    try{
+        localStorage.setItem(
+            SF_IMAGE_OWNER_STORAGE_KEY,
+            JSON.stringify(Object.fromEntries(sfWebImageOwners.entries()))
+        );
+    }catch(error){}
+}
+
+sfReadWebImageOwners();
+
+function sfImageIdentity(pic){
+    let identity = String(pic && pic.url || pic && pic.identity || "").trim();
+    if(!identity){ return ""; }
+
+    /* Normalize common URL variants so resized/parameterized copies don't evade
+       the uniqueness check. Provider file IDs/titles take precedence above. */
+    try{
+        const u = new URL(identity, location.href);
+        u.hash = "";
+        ["w","h","width","height","fit","crop","auto","ixlib","ixid","q","quality","fm","format","s"].forEach(k => u.searchParams.delete(k));
+        identity = u.origin + u.pathname + (u.searchParams.toString() ? "?" + u.searchParams.toString() : "");
+    }catch(error){
+        identity = identity.split("#")[0].split("?")[0];
+    }
+    return identity.toLowerCase();
+}
+
+function sfWebImageAlreadyBelongsToAnotherStrain(pic, name){
+    const identity = sfImageIdentity(pic);
+    const owner = sfWebImageOwners.get(identity);
+    return !!(identity && owner && owner !== sfWebKey(name));
+}
+
+function sfClaimWebImage(pic, name){
+    const identity = sfImageIdentity(pic);
+    if(!identity){ return false; }
+    const owner = sfWebImageOwners.get(identity);
+    const strain = sfWebKey(name);
+    if(owner && owner !== strain){ return false; }
+    sfWebImageOwners.set(identity, strain);
+    sfWriteWebImageOwners();
+    return true;
 }
 
 /* ---------- BUD IMAGE: CANNALIB RECORD -> OPENVERSE / WIKIMEDIA BACKUPS ---------- */
@@ -6058,8 +6123,15 @@ function sfTryWebImage(token, list, index, name){
 
         }
 
+        /* Final guard at display time prevents races when two strain searches
+           complete at nearly the same time. Never show a photo owned by another strain. */
+        if(!sfClaimWebImage(pic, name)){
+            sfTryWebImage(token, list, index + 1, name);
+            return;
+        }
+
         flowerImage.style.display = "block";
-        flowerReferenceLabel.textContent = "WEB BUD PHOTOGRAPH " + (index + 1) + " OF " + list.length;
+        flowerReferenceLabel.textContent = "WEB BUD REFERENCE PHOTO — NOT VERIFIED AS THIS STRAIN";
         flowerCredit.textContent = pic.credit || "WEB SOURCE";
         flowerCredit.style.display = "block";
 
