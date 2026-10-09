@@ -1616,6 +1616,35 @@ body::before{
 */
 const SF_ENGINE_CONFIG_URL = "";
 
+/*
+    If no engine URL is set, the page runs in LOCAL CATALOG MODE:
+    A-Z and search use the built-in strain list below, and every
+    other field is filled by the web search + Super Flower
+    calculators. No failing network calls are made.
+*/
+const SF_LOCAL_STRAINS = ["3 Kings", "9 Pound Hammer", "Acapulco", "Acapulco Gold", "Ace of Spades", "Afghan Kush", "Afghani", "Afghooey", "Agent Orange", "AK-47", "Alaskan Thunder Fuck", "Alien OG", "Amnesia", "Amnesia Haze", "Animal Cookies", "Animal Mints", "Apple Fritter", "Banana Kush", "Banana OG", "Bangi Haze", "Berry White", "Bio-Diesel", "Black Domina", "Black Jack", "Black Widow", "Blackberry Kush", "Blue Cheese", "Blue Cookies", "Blue Dream", "Blue Widow", "Blue Zkittlez", "Blueberry", "Bruce Banner", "Bubba Kush", "Bubble Gum", "Cake Mix", "Cali Orange", "Candyland", "Cannatonic", "Casey Jones", "Cheese", "Cheetah Piss", "Chemdawg", "Chemdawg 91", "Chernobyl", "Cherry Pie", "Chocolope", "Cinderella 99", "Colombian Gold", "Cookies and Cream", "Critical Kush", "Critical Mass", "Crystal Coma", "Death Star", "Do-Si-Dos", "Dosidos", "Durban Poison", "Dutch Dragon", "Dutch Treat", "Early Girl", "Edelweiss", "Elvis", "Emerald Triangle", "Fire OG", "Forbidden Fruit", "Fruity Pebbles", "Funky Monkey", "Gary Payton", "Gelato", "Girl Scout Cookies", "Glue (Gorilla Glue #4)", "GMO Cookies", "God's Gift", "Golden Goat", "Gorilla Glue", "Grand Daddy Purple", "Granddaddy Purple", "Grapefruit", "Green Crack", "Green Poison", "Gushers", "Harlequin", "Hawaiian Snow", "Headband", "Hindu Kush", "Ice Cream Cake", "Island Sweet Skunk", "Jack Frost", "Jack Herer", "Jager", "Jillybean", "Kali Mist", "Key Lime Pie", "Kosher Kush", "Kush Mints", "LA Confidential", "Lamb's Bread", "Larry OG", "Lava Cake", "Lemon Cherry Gelato", "Lemon Haze", "Lemon Kush", "Lemon Skunk", "Lemonade", "MAC", "Mac 1", "Mango Kush", "Master Kush", "Maui Wowie", "Mendo Breath", "Mimosa", "Mimosa EVO", "Moby Dick", "Mother's Milk", "Nevil's Wreck", "Northern Lights", "Northern Lights #5", "OG Kush", "Orange Cream", "Orange Kush", "Papaya", "Peanut Butter Breath", "Pineapple Chunk", "Pineapple Express", "Pink Kush", "Pink Panties", "Platinum Cookies", "Platinum OG", "Purple Haze", "Purple Kush", "Purple Punch", "Purple Urkle", "Rainbow Belts", "Red Congolese", "Rockstar", "Romulan", "Runtz", "Sage N Sour", "Sherbert", "Sherbet", "Silver Haze", "Skunk #1", "Skywalker OG", "Slurricane", "Sour Diesel", "Sour Tangie", "Space Queen", "Strawberry Banana", "Strawberry Cough", "Strawberry Diesel", "Sunset Sherbet", "Super Boof", "Super Lemon Haze", "Super Silver Haze", "Super Sour Diesel", "Sweet Tooth", "Tahoe OG", "Tangerine Dream", "Tangie", "Thai", "Trainwreck", "Triangle Kush", "Tropicana Cookies", "Wedding Cake", "White Fire OG", "White Rhino", "White Russian", "White Widow", "Wifi", "Wookies", "Yoda OG", "Zeta", "Zkittlez", "Zombie Kush"];
+
+const SF_ENGINE_ON = Boolean(
+    new URLSearchParams(location.search).get("engine") ||
+    window.SUPER_FLOWER_ENGINE_URL ||
+    SF_ENGINE_CONFIG_URL
+);
+
+function sfLocalSearch(query, limit){
+
+    const q = String(query || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+
+    const slug = n => n.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+    const key = n => n.toLowerCase().replace(/[^a-z0-9]/g, "");
+
+    const starts = SF_LOCAL_STRAINS.filter(n => key(n).startsWith(q));
+    const inside = SF_LOCAL_STRAINS.filter(n => !key(n).startsWith(q) && key(n).includes(q));
+
+    return starts.concat(inside).slice(0, limit).map(n => ({name:n, id:slug(n), name_norm:slug(n)}));
+
+}
+
 const SUPER_FLOWER_ENGINE_BASE =
     String(
         new URLSearchParams(location.search).get("engine") ||
@@ -2501,6 +2530,12 @@ async function fetchSearchPage(
     limit = RESULTS_PER_PAGE
 ){
 
+    if(!SF_ENGINE_ON){
+
+        return sfLocalSearch(query, limit);
+
+    }
+
     const url =
         SEARCH_ENDPOINT +
         "?q=" +
@@ -2510,16 +2545,34 @@ async function fetchSearchPage(
         "&limit=" +
         limit;
 
-    const response =
-        await sfFetch(
-            url,
-            {
-                method:"GET",
-                headers:getHeaders(),
-                cache:"no-store",
-                signal
-            }
-        );
+    let response;
+
+    try{
+
+        response =
+            await sfFetch(
+                url,
+                {
+                    method:"GET",
+                    headers:getHeaders(),
+                    cache:"no-store",
+                    signal
+                }
+            );
+
+    }catch(error){
+
+        if(error && error.name === "AbortError"){ throw error; }
+
+        return sfLocalSearch(query, limit);
+
+    }
+
+    if(response.status === 404){
+
+        return sfLocalSearch(query, limit);
+
+    }
 
     let data =
         null;
@@ -2613,7 +2666,7 @@ async function browseFill(controller){
     while(
         browseBuffer.length < BROWSE_PAGE_SIZE &&
         browseNextPrefix < BROWSE_PREFIXES.length &&
-        empties < 30
+        empties < 60
     ){
 
         const start = browseNextPrefix;
@@ -4207,7 +4260,7 @@ async function loadRecord(
         ===================================================== */
 
         for(
-            const candidateId of candidateIds
+            const candidateId of (SF_ENGINE_ON ? candidateIds : [])
         ){
 
             try{
@@ -4289,12 +4342,11 @@ async function loadRecord(
             !record
         ){
 
-            throw (
-                lastError ||
-                new Error(
-                    "SUPER FLOWER ENGINE RECORD COULD NOT BE LOADED."
-                )
-            );
+            record = {
+                name:slim.name,
+                id:slim.id,
+                source:"SUPER FLOWER LOCAL CATALOG"
+            };
 
         }
 
@@ -5362,6 +5414,12 @@ function sfWebKey(name){
 }
 
 async function sfJSON(url){
+
+    if(
+        url.indexOf(SF_RESEARCH_BASE + "/") === 0 &&
+        !SF_ENGINE_ON &&
+        !window.SUPER_FLOWER_RESEARCH_URL
+    ){ return null; }
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 9000);
