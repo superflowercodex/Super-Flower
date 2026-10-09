@@ -134,16 +134,51 @@ body::before{
 }
 
 .search-title{
-    margin:0;
-    color:var(--gold);
+    margin:0 auto;
+    max-width:100%;
+    color:#f9e7a0;
     font-family:Georgia,"Times New Roman",serif;
-    font-size:clamp(1.5rem,4vw,3.2rem);
-    line-height:1.1;
-    letter-spacing:.08em;
-    text-shadow:
-        0 0 6px #fff,
-        0 0 18px var(--gold),
-        0 0 38px rgba(255,210,26,.35);
+    font-size:clamp(1.65rem,5.5vw,3.6rem);
+    font-weight:700;
+    line-height:1.12;
+    letter-spacing:.055em;
+    text-align:center;
+    text-transform:lowercase;
+    text-wrap:balance;
+    background:linear-gradient(
+        180deg,
+        #fffdf0 0%,
+        #fff0a3 15%,
+        #ffd21a 38%,
+        #d4a62b 58%,
+        #fff0a3 72%,
+        #b8860b 100%
+    );
+    -webkit-background-clip:text;
+    background-clip:text;
+    -webkit-text-fill-color:transparent;
+    filter:drop-shadow(0 0 2px rgba(255,255,220,.8));
+    animation:sfDiamondPulse 3.6s ease-in-out infinite;
+}
+
+@keyframes sfDiamondPulse{
+    0%,100%{
+        filter:
+            drop-shadow(0 0 2px rgba(255,255,220,.65))
+            drop-shadow(0 0 7px rgba(255,210,26,.45));
+    }
+    50%{
+        filter:
+            drop-shadow(0 0 4px rgba(255,255,245,1))
+            drop-shadow(0 0 12px rgba(255,210,26,.95))
+            drop-shadow(0 0 25px rgba(255,190,0,.55));
+    }
+}
+
+@media(prefers-reduced-motion:reduce){
+    .search-title{
+        animation:none;
+    }
 }
 
 .search-subtitle{
@@ -1146,8 +1181,10 @@ body::before{
 @media(max-width:390px){
 
     .search-title{
-        font-size:1.35rem;
-    }
+    font-size:clamp(1.35rem,6vw,1.65rem);
+    letter-spacing:.035em;
+    line-height:1.18;
+}
 
     .search-subtitle{
         font-size:.55rem;
@@ -1181,8 +1218,10 @@ body::before{
 <header class="search-header">
 
     <h1 class="search-title">
-        SEARCH THE LIVING SUPER FLOWER RECORD
-    </h1>
+    Search The Living
+    <br>
+    Super Flower Record
+</h1>
 
     <p class="search-subtitle">
         SUPER FLOWER — CANNABIS CODEX
