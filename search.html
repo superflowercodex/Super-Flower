@@ -142,7 +142,7 @@ body::before{
     line-height:1.12;
     letter-spacing:.055em;
     text-align:center;
-    text-transform:none;
+    text-transform:uppercase;
     text-wrap:balance;
     background:linear-gradient(
         180deg,
@@ -347,6 +347,19 @@ body::before{
     margin-top:14px;
     padding-top:12px;
     border-top:1px solid rgba(255,210,26,.16);
+}
+
+.filter-bottom-actions{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:12px;
+}
+
+.filter-search-button{
+    min-height:38px;
+    padding:0 18px;
 }
 
 .clear-filters-button{
@@ -1229,7 +1242,7 @@ body::before{
     <h1 class="search-title">
         SEARCH THE LIVING
         <br>
-        Super Flower Record
+        SUPER FLOWER RECORD
     </h1>
 
     <p class="search-subtitle">
@@ -1491,13 +1504,23 @@ body::before{
 
         <div class="filter-bottom">
 
-            <button
-                id="clearFiltersButton"
+            <div class="filter-bottom-actions">
+                <button
+                    id="clearFiltersButton"
                 class="clear-filters-button"
                 type="button"
             >
                 CLEAR FILTERS
-            </button>
+                </button>
+
+                <button
+                    id="filterSearchButton"
+                    class="search-button filter-search-button"
+                    type="button"
+                >
+                    SEARCH FILTERS
+                </button>
+            </div>
 
         </div>
 
@@ -2046,6 +2069,9 @@ const clearFiltersButton =
         "clearFiltersButton"
     );
 
+const filterSearchButton =
+    document.getElementById("filterSearchButton");
+
 const searchStatus =
     document.getElementById(
         "searchStatus"
@@ -2364,6 +2390,20 @@ allFilterControls.forEach(select => {
 /* =========================================================
    CLEAR FILTERS
 ========================================================= */
+
+filterSearchButton.addEventListener("click", () => {
+    const query = searchInput.value.trim();
+    const hasFilters = allFilterControls.some(control => control.value);
+
+    if(hasFilters){
+        performFilterSearch();
+    }else if(query){
+        performSearch(query);
+    }else{
+        setStatus("CHOOSE ONE OR MORE FILTERS, OR ENTER A STRAIN NAME.");
+    }
+});
+
 
 clearFiltersButton.addEventListener(
     "click",
@@ -11953,17 +11993,8 @@ async function loadFromHash(){
 
 
     if(!hash){
-
-        if(!currentResults.length){
-
-            loadBrowsePage(
-                0
-            );
-
-        }
-
+        // Start with no A–Z letter selected. The visitor chooses a letter or searches.
         return;
-
     }
 
 
@@ -11980,17 +12011,8 @@ async function loadFromHash(){
 
 
     if(!strain){
-
-        if(!currentResults.length){
-
-            loadBrowsePage(
-                0
-            );
-
-        }
-
+        // Do not auto-select the A bank when there is no strain hash.
         return;
-
     }
 
 
@@ -12024,6 +12046,9 @@ window.addEventListener(
 ========================================================= */
 
 resetSpecimen();
+results.innerHTML = "";
+results.classList.remove("visible");
+setStatus("CHOOSE A–Z, ENTER A STRAIN, OR SELECT FILTERS.");
 
 
 /* =========================================================
