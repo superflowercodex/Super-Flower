@@ -2531,6 +2531,78 @@ function showLoading(text){
 
 
 /* =========================================================
+   SECONDARY STRAIN RECORD PROVIDER — BU PROFILES
+   Used only when CannaLib's search/record request fails.
+   Docs: https://budprofiles.com/api-docs
+========================================================= */
+const SF_BACKUP_RECORD_BASE = "https://budprofiles.com/api/v1";
+
+function sfBackupNormaliseStrain(item){
+    if(!item || typeof item !== "object"){ return null; }
+    const name = String(item.name || item.strain_name || item.title || "").trim();
+    if(!name){ return null; }
+    const slug = String(item.slug || item.id || name.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,""));
+    const thc = item.thc ?? item.thc_percent ?? item.thc_percentage ?? null;
+    const cbd = item.cbd ?? item.cbd_percent ?? item.cbd_percentage ?? null;
+    return {
+        ...item,
+        id: slug,
+        slug,
+        name,
+        name_norm: slug,
+        source: "BudProfiles (backup strain record source)",
+        type: item.type || item.strain_type || "",
+        thc: thc,
+        cbd: cbd,
+        thc_range: item.thc_range || (thc !== null ? String(thc) + "%" : ""),
+        cbd_range: item.cbd_range || (cbd !== null ? String(cbd) + "%" : ""),
+        backup_record_source: "BudProfiles"
+    };
+}
+
+async function sfBackupSearch(query, signal, limit = RESULTS_PER_PAGE){
+    const url = SF_BACKUP_RECORD_BASE + "/strains?q=" +
+        encodeURIComponent(String(query || "")) + "&page=1&limit=" +
+        encodeURIComponent(String(Math.min(100, Math.max(1, limit))));
+    const response = await fetch(url, {
+        method: "GET",
+        headers: {"Accept":"application/json"},
+        cache: "no-store",
+        signal
+    });
+    if(!response.ok){ throw new Error("BudProfiles search HTTP " + response.status); }
+    const payload = await response.json();
+    const rows = Array.isArray(payload) ? payload :
+        Array.isArray(payload?.data) ? payload.data :
+        Array.isArray(payload?.data?.items) ? payload.data.items :
+        Array.isArray(payload?.results) ? payload.results : [];
+    return rows.map(sfBackupNormaliseStrain).filter(Boolean);
+}
+
+async function sfBackupGetRecord(slim, signal){
+    const candidates = [slim?.slug, slim?.id, slim?.name_norm, slim?.name]
+        .map(v => String(v || "").trim()).filter(Boolean)
+        .map(v => v.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,""));
+    for(const slug of [...new Set(candidates)]){
+        try{
+            const response = await fetch(
+                SF_BACKUP_RECORD_BASE + "/strains/" + encodeURIComponent(slug),
+                {method:"GET", headers:{"Accept":"application/json"}, cache:"no-store", signal}
+            );
+            if(!response.ok){ continue; }
+            const payload = await response.json();
+            const raw = payload?.data && !Array.isArray(payload.data) ? payload.data :
+                payload?.strain || payload?.record || payload;
+            const normalised = sfBackupNormaliseStrain(raw);
+            if(normalised){ return normalised; }
+        }catch(error){
+            if(error?.name === "AbortError"){ throw error; }
+        }
+    }
+    return null;
+}
+
+/* =========================================================
    SUPER FLOWER ENGINE REQUEST
 ========================================================= */
 
@@ -2572,15 +2644,23 @@ async function fetchSearchPage(
 
     }catch(error){
 
-        if(error && error.name === "AbortError"){ throw error; }
+        if(error && error.name === "AbortError" && signal && signal.aborted){ throw error; }
 
-        return sfLocalSearch(query, limit);
+        try{
+            return await sfBackupSearch(query, signal, limit);
+        }catch(backupError){
+            return sfLocalSearch(query, limit);
+        }
 
     }
 
     if(response.status === 404 || response.status === 429){
 
-        return sfLocalSearch(query, limit);
+        try{
+            return await sfBackupSearch(query, signal, limit);
+        }catch(backupError){
+            return sfLocalSearch(query, limit);
+        }
 
     }
 
@@ -2627,15 +2707,22 @@ async function fetchSearchPage(
 
         }
 
-        throw new Error(
-            message
-        );
+        try{
+            return await sfBackupSearch(query, signal, limit);
+        }catch(backupError){
+            throw new Error(message + " | Backup source unavailable: " + backupError.message);
+        }
 
     }
 
-    return extractSearchResults(
-        data
-    );
+    const primaryResults = extractSearchResults(data);
+    if(primaryResults.length){ return primaryResults; }
+
+    try{
+        return await sfBackupSearch(query, signal, limit);
+    }catch(backupError){
+        return primaryResults;
+    }
 
 }
 
@@ -4362,13 +4449,27 @@ async function loadRecord(
             !response.ok ||
             !record
         ){
+            const backupController = new AbortController();
+            const backupTimer = setTimeout(() => backupController.abort(), 9000);
+            try{
+                const backupRecord = await sfBackupGetRecord(slim, backupController.signal);
+                if(backupRecord){
+                    record = backupRecord;
+                    id = backupRecord.slug || backupRecord.id || slim.id;
+                }
+            }catch(backupError){
+                /* Keep going to the local-name fallback if both record sources fail. */
+            }finally{
+                clearTimeout(backupTimer);
+            }
+        }
 
-            record = {
+        if(!record || !response || !response.ok){
+            record = record || {
                 name:slim.name,
                 id:slim.id,
-                source:"SUPER FLOWER LOCAL CATALOG"
+                source:"LOCAL NAME ONLY — BOTH LIVE RECORD SOURCES UNAVAILABLE"
             };
-
         }
 
 
