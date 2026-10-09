@@ -12,7 +12,8 @@
 
 <meta
     name="description"
-    content="SEARCH THE LIVING SUPER FLOWER RECORD — the living searchable Super Flower Cannabis Codex."
+    content="SEARCH THE LIVING
+SUPER FLOWER RECORD — the living searchable Super Flower Cannabis Codex."
 >
 
 <meta
@@ -1578,16 +1579,6 @@ body::before{
 
     <br>
 
-    <a
-        href="https://cannalib.org"
-        target="_blank"
-        rel="noopener noreferrer"
-    >
-        Data by CannaLib
-    </a>
-
-    <br>
-
     SUPER FLOWER CODEX —
     SEARCH THE LIVING SUPER FLOWER RECORD
 
@@ -1624,7 +1615,7 @@ body::before{
     Example: "https://abcd1234.supabase.co/functions/v1/super-flower-engine"
     Or open this page with  ?engine=https://YOUR-ENGINE-URL  on the end.
 */
-const SF_ENGINE_CONFIG_URL = "https://api.cannalib.org";
+const SF_ENGINE_CONFIG_URL = "";
 
 /*
     If no engine URL is set, the page runs in LOCAL CATALOG MODE:
@@ -1660,17 +1651,17 @@ const SUPER_FLOWER_ENGINE_BASE =
         new URLSearchParams(location.search).get("engine") ||
         window.SUPER_FLOWER_ENGINE_URL ||
         SF_ENGINE_CONFIG_URL ||
-        "https://api.cannalib.org"
+        "/api/super-flower-engine"
     ).replace(/\/$/, "");
 
 const SEARCH_ENDPOINT =
     SUPER_FLOWER_ENGINE_BASE +
-    "/v1/catalogs/strains";
+    "/search";
 
 const RECORD_ENDPOINT =
     id =>
         SUPER_FLOWER_ENGINE_BASE +
-        "/v1/catalogs/strains/" +
+        "/record/" +
         encodeURIComponent(id);
 
 /* =========================================================
@@ -2578,7 +2569,7 @@ async function fetchSearchPage(
 
     }
 
-    if(response.status === 404 || response.status === 429){
+    if(response.status === 404){
 
         return sfLocalSearch(query, limit);
 
@@ -2657,7 +2648,7 @@ async function fetchBrowsePrefix(index, signal){
 
     const prefix = BROWSE_PREFIXES[index];
 
-    const raw = await fetchSearchPage(prefix, signal);
+    const raw = await fetchSearchPage(prefix, signal, 25);
 
     const items = prepareResults(raw).filter(
         item => normaliseKey(item.name_norm || item.name).startsWith(prefix)
@@ -2676,11 +2667,11 @@ async function browseFill(controller){
     while(
         browseBuffer.length < BROWSE_PAGE_SIZE &&
         browseNextPrefix < BROWSE_PREFIXES.length &&
-        empties < 8
+        empties < 60
     ){
 
         const start = browseNextPrefix;
-        const end = Math.min(start + 1, BROWSE_PREFIXES.length);
+        const end = Math.min(start + 3, BROWSE_PREFIXES.length);
         const indexes = [];
 
         for(let i = start; i < end; i++){ indexes.push(i); }
@@ -2752,18 +2743,7 @@ async function browseShow(pageNo){
 
         if(pageNo >= browsePages.length){
 
-            if(browseExhausted){
-
-                setStatus("END OF A TO Z.");
-
-            }else{
-
-                results.innerHTML = `<div class="no-results">NO NAMES FOUND IN THIS RANGE.<br><br>PRESS NEXT 5 TO KEEP LOOKING.</div>`;
-                results.classList.add("visible");
-
-                setStatus("NO NAMES FOUND IN THIS RANGE — PRESS NEXT 5.");
-
-            }
+            setStatus(browsePages.length ? "END OF A TO Z." : "NO STRAINS FOUND.");
 
             renderPagination();
 
@@ -5465,7 +5445,7 @@ const SF_GOOGLE_CX_CONFIG = "";
 const SF_GOOGLE_KEY = String(window.SUPER_FLOWER_GOOGLE_KEY || SF_GOOGLE_KEY_CONFIG);
 const SF_GOOGLE_CX = String(window.SUPER_FLOWER_GOOGLE_CX || SF_GOOGLE_CX_CONFIG);
 const SF_RESEARCH_BASE = String(
-    window.SUPER_FLOWER_RESEARCH_URL || ""
+    window.SUPER_FLOWER_RESEARCH_URL || SUPER_FLOWER_ENGINE_BASE
 ).replace(/\/$/, "");
 
 const sfWebCache = new Map();
@@ -5477,7 +5457,11 @@ function sfWebKey(name){
 
 async function sfJSON(url){
 
-    if(/^\/(research|images)\?/.test(url)){ return null; }
+    if(
+        url.indexOf(SF_RESEARCH_BASE + "/") === 0 &&
+        !SF_ENGINE_ON &&
+        !window.SUPER_FLOWER_RESEARCH_URL
+    ){ return null; }
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 9000);
@@ -6144,7 +6128,7 @@ function sfTryWebImage(token, list, index, name){
 
     if(index >= list.length){
 
-        sfTryFallbackImage(token, 0, name);
+        sfShowBudIllustration(token, name);
 
         return;
 
@@ -6193,46 +6177,6 @@ function sfTryWebImage(token, list, index, name){
     flowerImage.referrerPolicy = "no-referrer";
     flowerImage.alt = name + " bud";
     flowerImage.src = pic.url;
-
-}
-
-function sfTryFallbackImage(token, tries, name){
-
-    if(token !== flowerLoadToken){ return; }
-
-    if(tries >= FALLBACK_FLOWER_IMAGES.length){
-
-        sfShowBudIllustration(token, name);
-
-        return;
-
-    }
-
-    const pick =
-        (stableHash(String(name)) + tries) %
-        FALLBACK_FLOWER_IMAGES.length;
-
-    flowerImage.onload = () => {
-
-        if(token !== flowerLoadToken){ return; }
-
-        flowerImage.style.display = "block";
-        flowerReferenceLabel.textContent = "ARCHIVAL CANNABIS FLOWER REFERENCE — NOT THIS STRAIN";
-        flowerCredit.textContent = "WIKIMEDIA COMMONS";
-        flowerCredit.style.display = "block";
-
-    };
-
-    flowerImage.onerror = () => {
-
-        if(token !== flowerLoadToken){ return; }
-
-        sfTryFallbackImage(token, tries + 1, name);
-
-    };
-
-    flowerImage.alt = "Cannabis flower reference";
-    flowerImage.src = FALLBACK_FLOWER_IMAGES[pick];
 
 }
 
@@ -7041,15 +6985,7 @@ function showNoLiveFlower(){
     and is NOT presented as the selected strain.
 */
 
-const FALLBACK_FLOWER_IMAGES = [
-
-    "https://upload.wikimedia.org/wikipedia/commons/1/1d/Macro_cannabis_bud.jpg",
-
-    "https://upload.wikimedia.org/wikipedia/commons/4/4c/Marijuana_flower.jpg",
-
-    "https://upload.wikimedia.org/wikipedia/commons/9/91/5_grams_of_cannabis_buds.jpg"
-
-];
+const FALLBACK_FLOWER_IMAGES = [];
 
 
 /*
