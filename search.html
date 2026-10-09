@@ -5444,31 +5444,15 @@ function sfResonance(record, slim, typeText){
    ever left empty. Values are labelled by where they came from:
    RECORD (engine) > WEB SEARCH > CALCULATED / ESTIMATE.
 
-   OPTIONAL KEYS (set before this script loads):
-     window.SUPER_FLOWER_GOOGLE_KEY  = "your Google API key";
-     window.SUPER_FLOWER_GOOGLE_CX   = "your Programmable Search id";
-     window.SUPER_FLOWER_RESEARCH_URL = "https://your-endpoint";
-       -> optional server route: /research?name=  and  /images?name=
-   Without keys the page still searches Wikipedia, Wikimedia
-   Commons and Openverse (all browser-safe, no key needed).
+   IMAGE ORDER:
+     1. CannaLib strain record photographs.
+     2. Openverse image search.
+     3. Wikimedia Commons image search.
+   No separate Super Flower strain database or image endpoint is required.
 ========================================================= */
 
-/*
-    >>> PASTE YOUR GOOGLE KEYS BETWEEN THE QUOTES (2 VALUES) <<<
-    Google Programmable Search is IMAGE BACKUP ONLY.
-    It is queried only when primary / Super Flower Engine image sources
-    return no acceptable photograph.
-    Key  = Google Cloud API key with "Custom Search API" enabled.
-    CX   = the search engine ID.
-*/
-const SF_GOOGLE_KEY_CONFIG = "";
-const SF_GOOGLE_CX_CONFIG = "";
-
-const SF_GOOGLE_KEY = String(window.SUPER_FLOWER_GOOGLE_KEY || SF_GOOGLE_KEY_CONFIG);
-const SF_GOOGLE_CX = String(window.SUPER_FLOWER_GOOGLE_CX || SF_GOOGLE_CX_CONFIG);
-const SF_RESEARCH_BASE = String(
-    window.SUPER_FLOWER_RESEARCH_URL || ""
-).replace(/\/$/, "");
+/* CannaLib is the primary strain source. Backup photo searches use public image APIs. */
+const SF_RESEARCH_BASE = String(window.SUPER_FLOWER_RESEARCH_URL || "").replace(/\/$/, "");
 
 const sfWebCache = new Map();
 const sfWebPending = new Set();
@@ -5779,8 +5763,7 @@ async function sfWebResearch(name, breeder){
         })
     );
 
-    /* Google is intentionally NOT used for strain facts.
-       It is reserved for image backup only in sfWebImages(). */
+    /* Google is intentionally not used for strain facts or image API calls. */
 
     /* Wikipedia (no key) */
 
@@ -5835,66 +5818,41 @@ async function sfWebResearch(name, breeder){
 }
 
 function sfScoreWebImage(pic, name){
-
-    const raw = String(pic.title || "") + " " + String(pic.url || "");
-
+    const url = String(pic.url || "");
+    const raw = String(pic.title || "") + " " + url;
     let hay;
+    try{ hay = decodeURIComponent(raw).toLowerCase(); }
+    catch(error){ hay = raw.toLowerCase(); }
 
-    try{ hay = decodeURIComponent(raw).toLowerCase(); }catch(error){ hay = raw.toLowerCase(); }
+    if(!/^https?:/i.test(url)){ return -9999; }
+    if(/\.(svg|gif|pdf|webm|mp4|ogv|tif|tiff)(\?|$)/i.test(url)){ return -9999; }
 
-    if(!/^https:/i.test(pic.url || "")){ return -9999; }
-    if(/\.(svg|gif|pdf|webm|mp4|ogv|tif|tiff)(\?|$)/i.test(pic.url)){ return -9999; }
-
-    const tokens = String(name).toLowerCase().split(/[^a-z0-9]+/).filter(x => x.length > 1);
-
-    /* the strain's own words must not trip the reject list */
-
-    let test = hay;
-
-    tokens.forEach(token => { test = test.split(token).join(" "); });
-
-    if(/joint|blunt|bong|pipe|vape|vaporiz|cartridge|edible|gumm|\boil\b|tincture|\bjar\b|\bbag\b|packag|dispensar|\bstore\b|\bshop\b|smok|person|people|\bman\b|woman|girl|\bboy\b|protest|rally|flag|poster|shirt|tattoo|logo|icon|\bmap\b|diagram|cartoon|vector|banner|infographic|stamp|clipart|illustration|drawing|painting|food|cooking|recipe|brownie|police|arrest|court|legal|market|mural|screenshot/.test(test)){ return -9999; }
-
-    const hits = tokens.filter(token => hay.includes(token)).length;
-    const fullName = tokens.length && hits === tokens.length;
-
-    const trusted = pic.src === "google" || pic.src === "engine";
-
-    /* Google / engine results are trusted. Free sources must name the
-       exact strain AND say it is cannabis / a bud, or they are dropped. */
-
-    if(
-        !trusted &&
-        !(fullName && /cannabis|marijuana|\bweed\b|\bthc\b|strain|\bbuds?\b|flowers?\b|\bnugs?\b/.test(hay))
-    ){ return -9999; }
-
-    let score = 0;
-
-    score += fullName ? 40 : hits * 8;
-
-    if(/\bbuds?\b|flowers?\b|\bnugs?\b|\bcola|trichome|macro|close-?up|resin/.test(test)){ score += 25; }
-    if(/plant|leaf|leaves|hemp|garden|field|farm|greenhouse|cultivat|harvest|drying|trim|tree|forest/.test(test)){ score -= 12; }
-    if(/\bseed/.test(test)){ score -= 15; }
-    if(/trichome|macro|close-?up/.test(hay)){ score += 10; }
-    if(/cannabis|marijuana/.test(hay)){ score += 6; }
-
-    if(pic.w >= 800){ score += 5; }
-    if(pic.h >= 600){ score += 3; }
-
-    if(pic.w && pic.h){
-
-        const ratio = pic.w / pic.h;
-
-        if(ratio > 2 || ratio < 0.5){ score -= 10; }
-        if(pic.w < 400 || pic.h < 400){ return -9999; }
-
+    /* Reject clear non-photo subjects, but do not demand exact strain wording:
+       many genuine flower photographs have generic filenames and sparse metadata. */
+    if(/joint|blunt|bong|pipe|vape|vaporiz|cartridge|edible|gumm|tincture|packag|dispensar|poster|shirt|tattoo|logo|icon|diagram|cartoon|vector|banner|infographic|stamp|clipart|illustration|drawing|painting|food|cooking|recipe|brownie|police|arrest|court|screenshot/.test(hay)){
+        return -9999;
     }
 
+    const tokens = String(name || "").toLowerCase().split(/[^a-z0-9]+/).filter(x => x.length > 1);
+    const hits = tokens.filter(token => hay.includes(token)).length;
+    const fullName = tokens.length > 0 && hits === tokens.length;
+    const hasFlowerTerms = /cannabis|marijuana|\bweed\b|\bthc\b|strain|\bbuds?\b|flowers?|nugs?|trichome|hemp/.test(hay);
+
+    /* For external open image catalogues, accept a credible cannabis-flower result
+       even if the strain name is absent. The UI labels it as a reference, not a match. */
+    if(!fullName && !hasFlowerTerms){ return -9999; }
+
+    let score = 0;
+    score += fullName ? 45 : hits * 5;
+    if(/\bbuds?\b|flowers?|\bnugs?\b|\bcola|trichome|macro|close-?up|resin/.test(hay)){ score += 24; }
+    if(/cannabis|marijuana|\bweed\b/.test(hay)){ score += 10; }
+    if(/plant|leaf|leaves|garden|field|farm|greenhouse|cultivat|harvest|tree|forest/.test(hay)){ score -= 8; }
+    if(/seed/.test(hay)){ score -= 10; }
+    if(/\.(jpg|jpeg|png|webp|avif)(?:[?#]|$)/i.test(url)){ score += 5; }
+    if(Number(pic.w) >= 500){ score += 4; }
+    if(Number(pic.h) >= 500){ score += 4; }
     if(pic.src === "engine"){ score += 12; }
-    if(pic.src === "google"){ score += 8; }
-
     return score;
-
 }
 
 /* pixel check: a bud photo is mostly green / purple plant colour.
@@ -5954,134 +5912,90 @@ function sfFlowerPixelCheck(image){
 }
 
 async function sfWebImages(name){
-
     const key = "img:" + sfWebKey(name);
-
     if(sfWebCache.has(key)){ return sfWebCache.get(key); }
 
-    const q = name + " cannabis bud";
+    const cleanName = String(name || "").trim();
+    const queries = [
+        cleanName + ' cannabis flower',
+        cleanName + ' cannabis bud photo',
+        cleanName + ' marijuana buds',
+        'cannabis flower macro trichomes',
+        'cannabis bud close up photograph'
+    ].filter(Boolean);
+    const found = [];
+    const jobs = [];
 
-    /*
-        IMAGE SOURCE ORDER — DO NOT CHANGE:
-        1. Selected CannaLib / primary record photographs are tested first
-           by renderFlower() before this fallback function is called.
-        2. The Super Flower Engine image route is the next image source.
-        3. Openverse and Wikimedia Commons are image fallbacks.
-        Google Custom Search JSON API is unavailable to this new engine, so
-        it is not called by this file.
-    */
-
-    const collectEngineImages = async () => {
-        const found = [];
-        const data = await sfJSON(
-            SF_RESEARCH_BASE + "/images?name=" + encodeURIComponent(name)
+    /* CannaLib record photos are tried by renderFlower() first.
+       These are independent backup image catalogues only. */
+    queries.forEach((query, queryIndex) => {
+        jobs.push(
+            sfJSON('https://api.openverse.org/v1/images/?page_size=20&mature=false&q=' + encodeURIComponent(query))
+                .then(data => {
+                    (data?.results || []).forEach(x => {
+                        const url = x.url || x.thumbnail;
+                        if(!url){ return; }
+                        found.push({
+                            url,
+                            title: [x.title || '', x.description || '', ...(Array.isArray(x.tags) ? x.tags.map(t => typeof t === 'string' ? t : (t.name || '')) : [])].join(' '),
+                            credit: 'OPENVERSE — ' + (x.creator || x.source || 'OPEN LICENSE') + (x.license ? ' · CC ' + String(x.license).toUpperCase() : ''),
+                            w: x.width,
+                            h: x.height,
+                            src: 'openverse',
+                            queryIndex
+                        });
+                    });
+                })
         );
+    });
 
-        (data?.images || data?.items || []).forEach(x => {
-            const url = typeof x === "string" ? x : (x.url || x.src);
-
-            if(url){
-                found.push({
-                    url,
-                    title:typeof x === "string" ? "" : (x.title || ""),
-                    credit:typeof x === "string" ? "SUPER FLOWER ENGINE IMAGE SOURCE" : (x.credit || x.source || "SUPER FLOWER ENGINE IMAGE SOURCE"),
-                    w:typeof x === "string" ? undefined : x.width,
-                    h:typeof x === "string" ? undefined : x.height,
-                    src:"engine"
-                });
-            }
-        });
-
-        return found;
-    };
-
-    const rankAndLimit = found => {
-        const seen = new Set();
-
-        return found
-            .map(pic => ({pic, score:sfScoreWebImage(pic, name)}))
-            .filter(item => item.score > -9999)
-            .sort((a, b) => b.score - a.score)
-            .filter(item => {
-                if(seen.has(item.pic.url)){ return false; }
-                seen.add(item.pic.url);
-                return true;
-            })
-            .slice(0, 5)
-            .map(item => item.pic);
-    };
-
-    /* FIRST FALLBACK: Super Flower Engine / primary image route. */
-    let engineImages = [];
-
-    try{
-        engineImages = rankAndLimit(await collectEngineImages());
-    }catch(error){
-        engineImages = [];
-    }
-
-    if(engineImages.length){
-        sfWebCache.set(key, engineImages);
-        return engineImages;
-    }
-
-    /*
-       Google API fallback is not callable for this newly-created engine:
-       Google closed Custom Search JSON API access to new customers in 2026.
-       Continue with active image APIs instead of making a request that will fail.
-    */
-
-    /* FINAL BACKUPS: Openverse and Wikimedia Commons. */
-    const finalBackups = [];
-    const jobs = [
-        sfJSON(
-            "https://api.openverse.org/v1/images/?page_size=20&mature=false&q=" + encodeURIComponent(q)
-        ).then(data => {
-            (data?.results || []).forEach(x => {
-                if(x.url){
-                    finalBackups.push({
-                        url:x.url,
-                        title:x.title || "",
-                        credit:"OPENVERSE — " + (x.creator || x.source || "OPEN LICENSE") + (x.license ? " · CC " + String(x.license).toUpperCase() : ""),
-                        w:x.width,
-                        h:x.height,
-                        src:"openverse"
+    /* Wikimedia searches: exact strain first, then broader real flower-photo terms. */
+    [cleanName + ' cannabis flower', cleanName + ' marijuana bud', 'cannabis flower macro', 'cannabis buds'].forEach((query, queryIndex) => {
+        jobs.push(
+            sfJSON('https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrnamespace=6&gsrlimit=20' +
+                '&gsrsearch=' + encodeURIComponent(query) +
+                '&prop=imageinfo&iiprop=url|size|extmetadata&iiurlwidth=1000')
+                .then(data => {
+                    Object.values(data?.query?.pages || {}).forEach(page => {
+                        const info = page.imageinfo && page.imageinfo[0];
+                        if(!info || !(info.thumburl || info.url)){ return; }
+                        const artist = String(info.extmetadata?.Artist?.value || '').replace(/<[^>]+>/g, '').trim();
+                        const license = String(info.extmetadata?.LicenseShortName?.value || '').replace(/<[^>]+>/g, '').trim();
+                        found.push({
+                            url: info.thumburl || info.url,
+                            title: page.title || '',
+                            credit: 'WIKIMEDIA COMMONS' + (artist ? ' — ' + artist : '') + (license ? ' · ' + license : ''),
+                            w: info.width,
+                            h: info.height,
+                            src: 'commons',
+                            queryIndex
+                        });
                     });
-                }
-            });
-        }),
-        sfJSON(
-            "https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrnamespace=6&gsrlimit=15" +
-            "&gsrsearch=" + encodeURIComponent(name + " cannabis flower") +
-            "&prop=imageinfo&iiprop=url|size|extmetadata&iiurlwidth=900"
-        ).then(data => {
-            Object.values(data?.query?.pages || {}).forEach(page => {
-                const info = page.imageinfo && page.imageinfo[0];
-
-                if(info && (info.thumburl || info.url)){
-                    const artist = String(info.extmetadata?.Artist?.value || "").replace(/<[^>]+>/g, "").trim();
-
-                    finalBackups.push({
-                        url:info.thumburl || info.url,
-                        title:page.title || "",
-                        credit:"WIKIMEDIA COMMONS" + (artist ? " — " + artist : ""),
-                        w:info.width,
-                        h:info.height,
-                        src:"commons"
-                    });
-                }
-            });
-        })
-    ];
+                })
+        );
+    });
 
     await Promise.allSettled(jobs);
 
-    const best = rankAndLimit(finalBackups);
+    const seen = new Set();
+    const best = found
+        .map(pic => ({pic, score: sfScoreWebImage(pic, cleanName) + (pic.queryIndex === 0 ? 12 : pic.queryIndex === 1 ? 6 : 0)}))
+        .filter(item => item.score > -9999)
+        .sort((a, b) => b.score - a.score)
+        .filter(item => {
+            const url = item.pic.url;
+            if(seen.has(url)){ return false; }
+            seen.add(url);
+            return true;
+        })
+        .slice(0, 20)
+        .map(item => item.pic);
+
     sfWebCache.set(key, best);
     return best;
 }
 
-/* ---------- BUD IMAGE: CANNALIB -> ENGINE -> OPENVERSE / WIKIMEDIA -> ARCHIVAL BUD ---------- */
+/* ---------- BUD IMAGE: CANNALIB RECORD -> OPENVERSE / WIKIMEDIA BACKUPS ---------- */
 
 async function sfWebFlowerFallback(token, name){
 
@@ -6113,7 +6027,7 @@ function sfTryWebImage(token, list, index, name){
 
     if(index >= list.length){
 
-        sfTryFallbackImage(token, 0, name);
+        sfShowBudIllustration(token, name);
 
         return;
 
