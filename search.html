@@ -5818,8 +5818,8 @@ async function sfWebResearch(name, breeder){
 }
 
 function sfScoreWebImage(pic, name){
-    const url = String(pic.url || "");
-    const raw = String(pic.title || "") + " " + url;
+    const url = String(pic && pic.url || "");
+    const raw = String(pic && pic.title || "") + " " + url;
     let hay;
     try{ hay = decodeURIComponent(raw).toLowerCase(); }
     catch(error){ hay = raw.toLowerCase(); }
@@ -5827,8 +5827,8 @@ function sfScoreWebImage(pic, name){
     if(!/^https?:/i.test(url)){ return -9999; }
     if(/\.(svg|gif|pdf|webm|mp4|ogv|tif|tiff)(\?|$)/i.test(url)){ return -9999; }
 
-    /* Reject clear non-photo subjects, but do not demand exact strain wording:
-       many genuine flower photographs have generic filenames and sparse metadata. */
+    /* Reject known non-flower content. Search requests are already targeted
+       at cannabis flowers, so missing title tags are not grounds for rejection. */
     if(/joint|blunt|bong|pipe|vape|vaporiz|cartridge|edible|gumm|tincture|packag|dispensar|poster|shirt|tattoo|logo|icon|diagram|cartoon|vector|banner|infographic|stamp|clipart|illustration|drawing|painting|food|cooking|recipe|brownie|police|arrest|court|screenshot/.test(hay)){
         return -9999;
     }
@@ -5838,12 +5838,8 @@ function sfScoreWebImage(pic, name){
     const fullName = tokens.length > 0 && hits === tokens.length;
     const hasFlowerTerms = /cannabis|marijuana|\bweed\b|\bthc\b|strain|\bbuds?\b|flowers?|nugs?|trichome|hemp/.test(hay);
 
-    /* For external open image catalogues, accept a credible cannabis-flower result
-       even if the strain name is absent. The UI labels it as a reference, not a match. */
-    if(!fullName && !hasFlowerTerms){ return -9999; }
-
-    let score = 0;
-    score += fullName ? 45 : hits * 5;
+    let score = 8; // Candidate came from a targeted cannabis-flower image query.
+    score += fullName ? 70 : hits * 5;
     if(/\bbuds?\b|flowers?|\bnugs?\b|\bcola|trichome|macro|close-?up|resin/.test(hay)){ score += 24; }
     if(/cannabis|marijuana|\bweed\b/.test(hay)){ score += 10; }
     if(/plant|leaf|leaves|garden|field|farm|greenhouse|cultivat|harvest|tree|forest/.test(hay)){ score -= 8; }
@@ -5852,6 +5848,10 @@ function sfScoreWebImage(pic, name){
     if(Number(pic.w) >= 500){ score += 4; }
     if(Number(pic.h) >= 500){ score += 4; }
     if(pic.src === "engine"){ score += 12; }
+
+    /* When metadata is sparse, accept the image because it came from a targeted
+       search; label it as a reference photo, never as a verified strain match. */
+    if(!hasFlowerTerms && !fullName){ score -= 2; }
     return score;
 }
 
@@ -5969,7 +5969,7 @@ async function sfWebImages(name){
                             w: info.width,
                             h: info.height,
                             src: 'commons',
-                            identity: 'commons:' + String(page.title || info.url || url),
+                            identity: 'commons:' + String(page.title || info.url || info.thumburl || ''),
                             queryIndex
                         });
                     });
@@ -6113,8 +6113,7 @@ function sfTryWebImage(token, list, index, name){
         }
 
         if(
-            !imagePassesFlowerQualityCheck(flowerImage) ||
-            sfFlowerPixelCheck(flowerImage) === false
+            !flowerImageHasGoodDimensions(flowerImage)
         ){
 
             sfTryWebImage(token, list, index + 1, name);
@@ -8434,10 +8433,9 @@ function renderFlower(
     */
 
     const rawPictures =
-        pictures ||
-        extractPictures(
-            record
-        );
+        (Array.isArray(pictures) && pictures.length)
+            ? pictures
+            : extractPictures(record);
 
 
     /*
@@ -9566,7 +9564,15 @@ const PICTURE_KEYS = [
     "photographs",
     "photograph",
 
-    "media"
+    "media",
+    "credited_pictures",
+    "creditedPictures",
+    "picture_credits",
+    "pictureCredits",
+    "artwork",
+    "featured_image",
+    "featuredImage",
+    "thumbnail"
 
 ];
 
