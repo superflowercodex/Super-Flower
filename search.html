@@ -5032,7 +5032,9 @@ function superFlowerEngine(record, slim, known){
     const out = {};
     const web = known.web || {};
     const name = String(known.name || "");
-    const terpenes = sfTerpeneList(record, slim);
+    let terpenes = sfTerpeneList(record, slim);
+
+    (web.terpenes || []).forEach(t => { if(!terpenes.includes(t)){ terpenes.push(t); } });
 
     const recordParents = sfEmpty(known.genetics) ? "" : String(known.genetics);
     const parentsText = recordParents || (web.parents || []).join(" × ");
@@ -5056,6 +5058,36 @@ function superFlowerEngine(record, slim, known){
     }
 
     out.type = typeKey.toUpperCase() + basis;
+
+    /* TERPENES — RECORD, THEN WEB, THEN TYPE DEFAULT */
+
+    if(!terpenes.length){
+
+        terpenes = ({
+            indica:["myrcene","caryophyllene","linalool"],
+            sativa:["terpinolene","pinene","limonene"],
+            hybrid:["caryophyllene","limonene","myrcene"]
+        })[typeKey].slice();
+
+        out.terpenesEstimated = true;
+
+    }
+
+    out.terpenes = terpenes;
+
+    /* THC / CBD — RECORD, THEN WEB, THEN TYPE ESTIMATE */
+
+    out.thc = sfEmpty(known.thc)
+        ? (web.thc
+            ? web.thc + "% (WEB SEARCH)"
+            : ({indica:"18–24",sativa:"17–23",hybrid:"18–25"})[typeKey] + "% (ESTIMATE FROM TYPE)")
+        : known.thc;
+
+    out.cbd = sfEmpty(known.cbd)
+        ? (web.cbd
+            ? web.cbd + "% (WEB SEARCH)"
+            : "0.1–1% (ESTIMATE FROM TYPE)")
+        : known.cbd;
 
     /* ORIGIN — ALWAYS FILLED */
 
@@ -5105,7 +5137,7 @@ function superFlowerEngine(record, slim, known){
 
     const identity = getStableStrainIdentity(record, slim, name);
 
-    out.chem = sfChemistry(typeKey, known.thc, known.cbd, terpenes, identity);
+    out.chem = sfChemistry(typeKey, out.thc, out.cbd, terpenes, identity);
     out.cult = sfCultivation(typeKey, web);
 
     /* AROMA */
@@ -5114,7 +5146,7 @@ function superFlowerEngine(record, slim, known){
 
         out.aroma = [...new Set(
             terpenes.flatMap(t => SF_TERPENES[t].aroma.split(", "))
-        )].join(" · ") + " (FROM TERPENES)";
+        )].join(" · ") + (out.terpenesEstimated ? " (ESTIMATED FROM TYPE)" : " (FROM TERPENES)");
 
     }
 
@@ -5265,7 +5297,7 @@ function sfParentsFor(record){
 
 function sfInfoDerive(record, summary){
 
-    const terpenes = sfTerpeneList(record, null);
+    const terpenes = (summary.terpenes && summary.terpenes.length) ? summary.terpenes : sfTerpeneList(record, null);
 
     const typeText = String(summary.type || "").toLowerCase();
 
@@ -5346,7 +5378,7 @@ const SF_RES_TERPENES = {
 
 function sfResonance(record, slim, typeText){
 
-    const terpenes = sfTerpeneList(record, slim);
+    const terpenes = (slim && slim.__terps) || sfTerpeneList(record, slim);
 
     const key = ["indica","sativa","hybrid"].find(
         k => String(typeText || "").toLowerCase().includes(k)
@@ -5670,6 +5702,22 @@ function sfExtract(text, name){
 
     }
 
+    /* CANNABINOIDS + TERPENES */
+
+    m = t.match(/THC[^.\d]{0,40}(\d{1,2}(?:\.\d+)?)\s*(?:-|–|to)\s*(\d{1,2}(?:\.\d+)?)\s*%/i) ||
+        t.match(/THC[^.\d]{0,30}(\d{1,2}(?:\.\d+)?)\s*%/i);
+
+    if(m && +m[1] <= 35 && (!m[2] || +m[2] <= 40)){ out.thc = m[1] + (m[2] && !/%/.test(m[2]) ? "–" + m[2] : ""); }
+
+    m = t.match(/CBD[^.\d]{0,40}(\d{1,2}(?:\.\d+)?)\s*(?:-|–|to)\s*(\d{1,2}(?:\.\d+)?)\s*%/i) ||
+        t.match(/CBD[^.\d]{0,30}(\d{1,2}(?:\.\d+)?)\s*%/i);
+
+    if(m && +m[1] <= 30){ out.cbd = m[1] + (m[2] ? "–" + m[2] : ""); }
+
+    const terps = Object.keys(SF_TERPENES).filter(k => new RegExp("\\b" + k, "i").test(t));
+
+    if(terps.length){ out.terpenes = terps.slice(0, 5); }
+
     /* PHOTOPERIOD / AUTOFLOWER */
 
     out.autoflower = /\bauto-?flower/i.test(t);
@@ -5762,13 +5810,14 @@ async function sfWebResearch(name, breeder){
 
     const merged = {...found};
 
-    ["type","origin","flowering","height","yield","photoperiod"].forEach(key => {
+    ["type","origin","flowering","height","yield","photoperiod","thc","cbd"].forEach(key => {
 
         if(direct[key]){ merged[key] = direct[key]; }
 
     });
 
     if(Array.isArray(direct.parents) && direct.parents.length){ merged.parents = direct.parents; }
+    if(Array.isArray(direct.terpenes) && direct.terpenes.length){ merged.terpenes = direct.terpenes; }
     if(typeof direct.autoflower === "boolean"){ merged.autoflower = direct.autoflower; }
 
     merged.type = sfNormType(merged.type) || "";
@@ -5780,25 +5829,40 @@ async function sfWebResearch(name, breeder){
 
 function sfScoreWebImage(pic, name){
 
-    const hay = (String(pic.title || "") + " " + String(pic.url || "")).toLowerCase();
+    const raw = String(pic.title || "") + " " + String(pic.url || "");
+
+    let hay;
+
+    try{ hay = decodeURIComponent(raw).toLowerCase(); }catch(error){ hay = raw.toLowerCase(); }
 
     if(!/^https:/i.test(pic.url || "")){ return -9999; }
-    if(/\.(svg|gif|pdf|webm|mp4)(\?|$)/i.test(pic.url)){ return -9999; }
-    if(/logo|icon|diagram|\bmap\b|seed ?pack|bottle|packag|product|cartoon|vector|banner|infographic|stamp|clipart/i.test(hay)){ return -9999; }
+    if(/\.(svg|gif|pdf|webm|mp4|ogv|tif|tiff)(\?|$)/i.test(pic.url)){ return -9999; }
+
+    const tokens = String(name).toLowerCase().split(/[^a-z0-9]+/).filter(x => x.length > 1);
+
+    /* the strain's own words must not trip the reject list */
+
+    let test = hay;
+
+    tokens.forEach(token => { test = test.split(token).join(" "); });
+
+    if(/plant|leaf|leaves|seed|hemp|garden|field|farm|greenhouse|joint|blunt|bong|pipe|vape|vaporiz|cartridge|edible|gumm|\boil\b|tincture|\bjar\b|\bbag\b|packag|dispensar|store|shop|smok|person|people|\bman\b|woman|girl|\bboy\b|hand|protest|rally|flag|poster|shirt|tattoo|logo|icon|\bmap\b|diagram|plantation|cultivat|grow ?room|harvest|drying|trim|cartoon|vector|banner|infographic|stamp|clipart|illustration|drawing|painting|food|cooking|recipe|brownie|tree|forest|police|arrest|court|legal|market|mural|screenshot/.test(test)){ return -9999; }
+
+    /* MUST be flower: bud / flower / nug / cola / trichome / macro */
+
+    if(!/\bbuds?\b|flowers?\b|\bnugs?\b|\bcola|trichome|macro|close-?up|resin/.test(test)){ return -9999; }
+
+    const hits = tokens.filter(token => hay.includes(token)).length;
+    const fullName = tokens.length && hits === tokens.length;
+
+    if(!/cannabis|marijuana|\bweed\b|\bthc\b|strain/.test(hay) && !fullName){ return -9999; }
 
     let score = 0;
 
-    const tokens = String(name).toLowerCase().split(/[^a-z0-9]+/).filter(x => x.length > 1);
-    const hits = tokens.filter(token => hay.includes(token)).length;
+    score += fullName ? 40 : hits * 8;
 
-    if(tokens.length && hits === tokens.length){ score += 40; }
-    else { score += hits * 8; }
-
-    if(/\bbud|flower|nug|cola|trichome|closeup|close-up|macro/.test(hay)){ score += 15; }
-    if(/cannabis|marijuana|weed/.test(hay)){ score += 8; }
-    if(/\bleaf|leaves\b/.test(hay)){ score -= 8; }
-    if(/\bseed/.test(hay)){ score -= 10; }
-    if(/plant|garden|field|farm/.test(hay)){ score -= 3; }
+    if(/trichome|macro|close-?up/.test(hay)){ score += 10; }
+    if(/cannabis|marijuana/.test(hay)){ score += 6; }
 
     if(pic.w >= 800){ score += 5; }
     if(pic.h >= 600){ score += 3; }
@@ -5807,15 +5871,71 @@ function sfScoreWebImage(pic, name){
 
         const ratio = pic.w / pic.h;
 
-        if(ratio > 2.2 || ratio < 0.45){ score -= 10; }
-        if(pic.w < 300 || pic.h < 300){ score -= 20; }
+        if(ratio > 2 || ratio < 0.5){ score -= 10; }
+        if(pic.w < 400 || pic.h < 400){ return -9999; }
 
     }
 
     if(pic.src === "engine"){ score += 12; }
-    if(pic.src === "google"){ score += 10; }
+    if(pic.src === "google"){ score += 8; }
 
     return score;
+
+}
+
+/* pixel check: a bud photo is mostly green / purple plant colour.
+   Returns false only when the picture is readable and clearly is not. */
+
+function sfFlowerPixelCheck(image){
+
+    try{
+
+        const size = 64;
+        const canvas = document.createElement("canvas");
+
+        canvas.width = size;
+        canvas.height = size;
+
+        const context = canvas.getContext("2d", {willReadFrequently:true});
+
+        context.drawImage(image, 0, 0, size, size);
+
+        const data = context.getImageData(0, 0, size, size).data;
+
+        let plant = 0;
+        let subject = 0;
+
+        for(let i = 0; i < data.length; i += 4){
+
+            const r = data[i];
+            const g = data[i + 1];
+            const b = data[i + 2];
+            const mx = Math.max(r, g, b);
+            const mn = Math.min(r, g, b);
+
+            if(mx > 240 && mn > 235){ continue; }
+            if(mx < 18){ continue; }
+
+            subject++;
+
+            const sat = (mx - mn) / (mx || 1);
+
+            if(
+                (g >= r * 0.95 && g > b * 1.05 && sat > 0.12) ||
+                (b > g * 1.05 && r >= g && sat > 0.15)
+            ){ plant++; }
+
+        }
+
+        if(subject < size * size * 0.1){ return false; }
+
+        return plant / subject >= 0.35;
+
+    }catch(error){
+
+        return null;
+
+    }
 
 }
 
@@ -5826,7 +5946,7 @@ async function sfWebImages(name){
     if(sfWebCache.has(key)){ return sfWebCache.get(key); }
 
     const found = [];
-    const q = name + " cannabis strain bud";
+    const q = name + " cannabis bud";
     const jobs = [];
 
     jobs.push(
@@ -5860,7 +5980,7 @@ async function sfWebImages(name){
             sfJSON(
                 "https://www.googleapis.com/customsearch/v1?key=" + encodeURIComponent(SF_GOOGLE_KEY) +
                 "&cx=" + encodeURIComponent(SF_GOOGLE_CX) +
-                "&searchType=image&num=10&imgSize=large&safe=active&q=" + encodeURIComponent(q)
+                "&searchType=image&num=10&imgSize=large&safe=active&q=" + encodeURIComponent(name + " cannabis bud flower macro")
             ).then(data => {
 
                 (data?.items || []).forEach(x => {
@@ -5905,7 +6025,7 @@ async function sfWebImages(name){
     jobs.push(
         sfJSON(
             "https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrnamespace=6&gsrlimit=15" +
-            "&gsrsearch=" + encodeURIComponent(name + " cannabis") +
+            "&gsrsearch=" + encodeURIComponent(name + " cannabis flower") +
             "&prop=imageinfo&iiprop=url|size|extmetadata&iiurlwidth=900"
         ).then(data => {
 
@@ -6004,6 +6124,17 @@ function sfTryWebImage(token, list, index, name){
         if(token !== flowerLoadToken){ return; }
 
         if(flowerImage.naturalWidth < 200 || flowerImage.naturalHeight < 200){
+
+            sfTryWebImage(token, list, index + 1, name);
+
+            return;
+
+        }
+
+        if(
+            (!imagePassesFlowerQualityCheck(flowerImage) || sfFlowerPixelCheck(flowerImage) === false) ||
+            sfFlowerPixelCheck(flowerImage) === false
+        ){
 
             sfTryWebImage(token, list, index + 1, name);
 
@@ -6619,6 +6750,9 @@ genetics =
 
     if(sfEmpty(genetics) && engine.genetics){ genetics = engine.genetics; }
 
+    const thcShow = sfEmpty(thc) ? engine.thc : thc;
+    const cbdShow = sfEmpty(cbd) ? engine.cbd : cbd;
+
     if(engine.aroma){ aroma = engine.aroma; }
 
     aroma = String(aroma).split(" · ").map(sfPrettyTerpene).join(" · ");
@@ -6685,12 +6819,12 @@ genetics =
 
         field(
             "THC RANGE",
-            sfPct(thc)
+            sfPct(thcShow)
         ) +
 
         field(
             "CBD RANGE",
-            sfPct(cbd)
+            sfPct(cbdShow)
         ) +
 
         field(
@@ -6720,7 +6854,7 @@ genetics =
 
     renderResonance(
         record,
-        sfResonance(record, slim, type)
+        sfResonance(record, {...(slim || {}), __terps:engine.terpenes}, type)
     );
 
 
@@ -6735,12 +6869,14 @@ genetics =
             breeder,
             pictures,
             genetics,
-            thc,
-            cbd,
+            thc:thcShow,
+            cbd:cbdShow,
             aroma,
             codex,
             type,
             origin:engine.origin,
+            terpenes:engine.terpenes,
+            terpenesEstimated:engine.terpenesEstimated,
             lineage:engine.lineage,
             lineageNote:engine.lineageNote,
             chem:engine.chem,
@@ -8125,9 +8261,7 @@ function loadNextLiveFlower(
             */
 
             if(
-                !imagePassesFlowerQualityCheck(
-                    flowerImage
-                )
+                (!imagePassesFlowerQualityCheck(flowerImage) || sfFlowerPixelCheck(flowerImage) === false)
             ){
 
                 flowerImage.onload =
@@ -8850,7 +8984,7 @@ function renderInfo(
                     TERPENE PROFILE
                 </div>
 
-                ${renderChips(terpenes.map(sfPrettyTerpene))}
+                ${renderChips((terpenes.length ? terpenes : (summary.terpenes || [])).map(sfPrettyTerpene))}${!terpenes.length && summary.terpenesEstimated ? sfNote("NO TERPENE DATA FOUND — ESTIMATED FROM TYPE") : ""}
 
             </section>
 
