@@ -1609,9 +1609,18 @@ body::before{
    Function / other server endpoint.
 ========================================================= */
 
+/*
+    >>> PUT YOUR LIVE ENGINE URL BETWEEN THE QUOTES BELOW <<<
+    Example: "https://abcd1234.supabase.co/functions/v1/super-flower-engine"
+    Or open this page with  ?engine=https://YOUR-ENGINE-URL  on the end.
+*/
+const SF_ENGINE_CONFIG_URL = "";
+
 const SUPER_FLOWER_ENGINE_BASE =
     String(
+        new URLSearchParams(location.search).get("engine") ||
         window.SUPER_FLOWER_ENGINE_URL ||
+        SF_ENGINE_CONFIG_URL ||
         "/api/super-flower-engine"
     ).replace(/\/$/, "");
 
@@ -2535,6 +2544,16 @@ async function fetchSearchPage(
             data?.error ||
             data?.message ||
             `HTTP ${response.status}`;
+
+        if(
+            response.status === 404
+        ){
+
+            message =
+                "ENGINE NOT FOUND AT " + SUPER_FLOWER_ENGINE_BASE +
+                " — SET SF_ENGINE_CONFIG_URL AT THE TOP OF THE SCRIPT, OR OPEN THE PAGE WITH ?engine=YOUR-ENGINE-URL";
+
+        }
 
         if(
             response.status === 429
