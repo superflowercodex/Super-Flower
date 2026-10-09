@@ -1180,10 +1180,8 @@ body::before{
 <header class="search-header">
 
     <h1 class="search-title">
-    SEARCH THE LIVING
-    <br>
-    SUPER FLOWER RECORD
-</h1>
+        SEARCH THE LIVING SUPER FLOWER RECORD
+    </h1>
 
     <p class="search-subtitle">
         SUPER FLOWER — CANNABIS CODEX
@@ -6198,11 +6196,21 @@ function sfTryWebImage(token, list, index, name){
 
 }
 
+const sfFallbackOwner = new Map();
+
 function sfTryFallbackImage(token, tries, name){
 
     if(token !== flowerLoadToken){ return; }
 
-    if(tries >= FALLBACK_FLOWER_IMAGES.length){
+    const owner = sfWebKey(name);
+
+    /* a stock photo may only ever belong to ONE strain per session */
+
+    const free = FALLBACK_FLOWER_IMAGES.filter(
+        url => !sfFallbackOwner.has(url) || sfFallbackOwner.get(url) === owner
+    );
+
+    if(!free.length || tries >= free.length){
 
         sfShowBudIllustration(token, name);
 
@@ -6210,13 +6218,13 @@ function sfTryFallbackImage(token, tries, name){
 
     }
 
-    const pick =
-        (stableHash(String(name)) + tries) %
-        FALLBACK_FLOWER_IMAGES.length;
+    const url = free[(stableHash(String(name)) + tries) % free.length];
 
     flowerImage.onload = () => {
 
         if(token !== flowerLoadToken){ return; }
+
+        sfFallbackOwner.set(url, owner);
 
         flowerImage.style.display = "block";
         flowerReferenceLabel.textContent = "ARCHIVAL CANNABIS FLOWER REFERENCE — NOT THIS STRAIN";
@@ -6234,7 +6242,8 @@ function sfTryFallbackImage(token, tries, name){
     };
 
     flowerImage.alt = "Cannabis flower reference";
-    flowerImage.src = FALLBACK_FLOWER_IMAGES[pick];
+    flowerImage.style.filter = "";
+    flowerImage.src = url;
 
 }
 
@@ -6245,6 +6254,12 @@ function sfShowBudIllustration(token, name){
     flowerImage.onload = null;
     flowerImage.onerror = null;
     flowerImage.alt = "Archival bud illustration";
+
+    const shift = (stableHash(String(name || "")) % 110) - 50;
+
+    flowerImage.style.filter =
+        "hue-rotate(" + shift + "deg) saturate(1.15)";
+
     flowerImage.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(ULTIMATE_FLOWER_SVG);
     flowerImage.style.display = "block";
     flowerReferenceLabel.textContent = "ARCHIVAL BUD — NO MATCHING PHOTO FOUND" + (SF_GOOGLE_KEY ? "" : " (ADD GOOGLE KEY FOR MORE)");
@@ -6999,6 +7014,7 @@ function invalidateFlowerLoad(){
 
 
     flowerReferenceLabel.textContent = "LOADING BUD PHOTOGRAPH...";
+    flowerImage.style.filter = "";
 
 }
 
@@ -7016,6 +7032,7 @@ function showNoLiveFlower(){
         "data:image/svg+xml;charset=utf-8," +
         encodeURIComponent(ULTIMATE_FLOWER_SVG);
 
+    flowerImage.style.filter = "";
     flowerImage.style.display = "block";
 
     flowerReferenceLabel.textContent =
@@ -11923,6 +11940,5 @@ loadFromHash();
 </body>
 
 </html>
-
 
 
