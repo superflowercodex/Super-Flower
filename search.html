@@ -5455,7 +5455,9 @@ function sfResonance(record, slim, typeText){
 
 /*
     >>> PASTE YOUR GOOGLE KEYS BETWEEN THE QUOTES (2 VALUES) <<<
-    Google Programmable Search: image search ON, search the entire web.
+    Google Programmable Search is IMAGE BACKUP ONLY.
+    It is queried only when primary / Super Flower Engine image sources
+    return no acceptable photograph.
     Key  = Google Cloud API key with "Custom Search API" enabled.
     CX   = the search engine ID.
 */
@@ -5777,29 +5779,8 @@ async function sfWebResearch(name, breeder){
         })
     );
 
-    /* Google Programmable Search (needs key) */
-
-    if(SF_GOOGLE_KEY && SF_GOOGLE_CX){
-
-        jobs.push(
-            sfJSON(
-                "https://www.googleapis.com/customsearch/v1?key=" + encodeURIComponent(SF_GOOGLE_KEY) +
-                "&cx=" + encodeURIComponent(SF_GOOGLE_CX) +
-                "&num=10&q=" + encodeURIComponent(query + " genetics origin lineage flowering time height yield")
-            ).then(data => {
-
-                (data?.items || []).forEach(item => {
-
-                    texts.push((item.title || "") + ". " + (item.snippet || ""));
-
-                    if(item.link){ sources.push(item.link); }
-
-                });
-
-            })
-        );
-
-    }
+    /* Google is intentionally NOT used for strain facts.
+       It is reserved for image backup only in sfWebImages(). */
 
     /* Wikipedia (no key) */
 
@@ -5978,99 +5959,109 @@ async function sfWebImages(name){
 
     if(sfWebCache.has(key)){ return sfWebCache.get(key); }
 
-    const found = [];
     const q = name + " cannabis bud";
-    const jobs = [];
 
-    jobs.push(
-        sfJSON(SF_RESEARCH_BASE + "/images?name=" + encodeURIComponent(name)).then(data => {
+    /*
+        IMAGE SOURCE ORDER — DO NOT CHANGE:
+        1. Selected CannaLib / primary record photographs are tested first
+           by renderFlower() before this fallback function is called.
+        2. The Super Flower Engine image route is the next image source.
+        3. Openverse and Wikimedia Commons are image fallbacks.
+        Google Custom Search JSON API is unavailable to this new engine, so
+        it is not called by this file.
+    */
 
-            (data?.images || data?.items || []).forEach(x => {
-
-                const url = typeof x === "string" ? x : (x.url || x.src);
-
-                if(url){
-
-                    found.push({
-                        url,
-                        title:x.title || "",
-                        credit:x.credit || x.source || "SUPER FLOWER ENGINE WEB SEARCH",
-                        w:x.width,
-                        h:x.height,
-                        src:"engine"
-                    });
-
-                }
-
-            });
-
-        })
-    );
-
-    if(SF_GOOGLE_KEY && SF_GOOGLE_CX){
-
-        jobs.push(
-            sfJSON(
-                "https://www.googleapis.com/customsearch/v1?key=" + encodeURIComponent(SF_GOOGLE_KEY) +
-                "&cx=" + encodeURIComponent(SF_GOOGLE_CX) +
-                "&searchType=image&imgType=photo&num=10&imgSize=large&safe=active&q=" + encodeURIComponent(name + " cannabis bud flower macro")
-            ).then(data => {
-
-                (data?.items || []).forEach(x => {
-
-                    found.push({
-                        url:x.link,
-                        title:x.title || "",
-                        credit:"GOOGLE IMAGES — " + (x.displayLink || "WEB"),
-                        w:x.image?.width,
-                        h:x.image?.height,
-                        src:"google"
-                    });
-
-                });
-
-            })
+    const collectEngineImages = async () => {
+        const found = [];
+        const data = await sfJSON(
+            SF_RESEARCH_BASE + "/images?name=" + encodeURIComponent(name)
         );
 
+        (data?.images || data?.items || []).forEach(x => {
+            const url = typeof x === "string" ? x : (x.url || x.src);
+
+            if(url){
+                found.push({
+                    url,
+                    title:typeof x === "string" ? "" : (x.title || ""),
+                    credit:typeof x === "string" ? "SUPER FLOWER ENGINE IMAGE SOURCE" : (x.credit || x.source || "SUPER FLOWER ENGINE IMAGE SOURCE"),
+                    w:typeof x === "string" ? undefined : x.width,
+                    h:typeof x === "string" ? undefined : x.height,
+                    src:"engine"
+                });
+            }
+        });
+
+        return found;
+    };
+
+    const rankAndLimit = found => {
+        const seen = new Set();
+
+        return found
+            .map(pic => ({pic, score:sfScoreWebImage(pic, name)}))
+            .filter(item => item.score > -9999)
+            .sort((a, b) => b.score - a.score)
+            .filter(item => {
+                if(seen.has(item.pic.url)){ return false; }
+                seen.add(item.pic.url);
+                return true;
+            })
+            .slice(0, 5)
+            .map(item => item.pic);
+    };
+
+    /* FIRST FALLBACK: Super Flower Engine / primary image route. */
+    let engineImages = [];
+
+    try{
+        engineImages = rankAndLimit(await collectEngineImages());
+    }catch(error){
+        engineImages = [];
     }
 
-    jobs.push(
+    if(engineImages.length){
+        sfWebCache.set(key, engineImages);
+        return engineImages;
+    }
+
+    /*
+       Google API fallback is not callable for this newly-created engine:
+       Google closed Custom Search JSON API access to new customers in 2026.
+       Continue with active image APIs instead of making a request that will fail.
+    */
+
+    /* FINAL BACKUPS: Openverse and Wikimedia Commons. */
+    const finalBackups = [];
+    const jobs = [
         sfJSON(
             "https://api.openverse.org/v1/images/?page_size=20&mature=false&q=" + encodeURIComponent(q)
         ).then(data => {
-
             (data?.results || []).forEach(x => {
-
-                found.push({
-                    url:x.url,
-                    title:x.title || "",
-                    credit:"OPENVERSE — " + (x.creator || x.source || "OPEN LICENSE") + (x.license ? " · CC " + String(x.license).toUpperCase() : ""),
-                    w:x.width,
-                    h:x.height,
-                    src:"openverse"
-                });
-
+                if(x.url){
+                    finalBackups.push({
+                        url:x.url,
+                        title:x.title || "",
+                        credit:"OPENVERSE — " + (x.creator || x.source || "OPEN LICENSE") + (x.license ? " · CC " + String(x.license).toUpperCase() : ""),
+                        w:x.width,
+                        h:x.height,
+                        src:"openverse"
+                    });
+                }
             });
-
-        })
-    );
-
-    jobs.push(
+        }),
         sfJSON(
             "https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrnamespace=6&gsrlimit=15" +
             "&gsrsearch=" + encodeURIComponent(name + " cannabis flower") +
             "&prop=imageinfo&iiprop=url|size|extmetadata&iiurlwidth=900"
         ).then(data => {
-
             Object.values(data?.query?.pages || {}).forEach(page => {
-
                 const info = page.imageinfo && page.imageinfo[0];
 
-                if(info){
-
+                if(info && (info.thumburl || info.url)){
                     const artist = String(info.extmetadata?.Artist?.value || "").replace(/<[^>]+>/g, "").trim();
 
-                    found.push({
+                    finalBackups.push({
                         url:info.thumburl || info.url,
                         title:page.title || "",
                         credit:"WIKIMEDIA COMMONS" + (artist ? " — " + artist : ""),
@@ -6078,41 +6069,19 @@ async function sfWebImages(name){
                         h:info.height,
                         src:"commons"
                     });
-
                 }
-
             });
-
         })
-    );
+    ];
 
     await Promise.allSettled(jobs);
 
-    const seen = new Set();
-
-    const best = found
-        .map(pic => ({pic, score:sfScoreWebImage(pic, name)}))
-        .filter(item => item.score > -9999)
-        .sort((a, b) => b.score - a.score)
-        .filter(item => {
-
-            if(seen.has(item.pic.url)){ return false; }
-
-            seen.add(item.pic.url);
-
-            return true;
-
-        })
-        .slice(0, 5)
-        .map(item => item.pic);
-
+    const best = rankAndLimit(finalBackups);
     sfWebCache.set(key, best);
-
     return best;
-
 }
 
-/* ---------- BUD IMAGE: ENGINE PHOTOS -> WEB TOP 5 -> ARCHIVAL BUD ---------- */
+/* ---------- BUD IMAGE: CANNALIB -> ENGINE -> OPENVERSE / WIKIMEDIA -> ARCHIVAL BUD ---------- */
 
 async function sfWebFlowerFallback(token, name){
 
@@ -6262,7 +6231,7 @@ function sfShowBudIllustration(token, name){
 
     flowerImage.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(ULTIMATE_FLOWER_SVG);
     flowerImage.style.display = "block";
-    flowerReferenceLabel.textContent = "ARCHIVAL BUD — NO MATCHING PHOTO FOUND" + (SF_GOOGLE_KEY ? "" : " (ADD GOOGLE KEY FOR MORE)");
+    flowerReferenceLabel.textContent = "ARCHIVAL BUD — NO MATCHING PHOTO FOUND";
     flowerCredit.textContent = (name ? name + " — " : "") + "SUPER FLOWER ARCHIVAL ILLUSTRATION (NOT THIS PHENOTYPE)";
     flowerCredit.style.display = "block";
 
