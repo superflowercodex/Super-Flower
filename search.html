@@ -132,7 +132,6 @@ body::before{
     padding:25px 0 20px;
 }
 
-
 .search-title{
     margin:0 auto;
     max-width:100%;
@@ -180,7 +179,6 @@ body::before{
         animation:none;
     }
 }
-
 
 .search-subtitle{
     margin:12px 0 0;
@@ -298,8 +296,20 @@ body::before{
 
 .filters{
     display:grid;
-    grid-template-columns:repeat(5,minmax(0,1fr));
+    grid-template-columns:repeat(4,minmax(0,1fr));
     gap:9px;
+}
+
+@media(max-width:1000px){
+    .filters{
+        grid-template-columns:repeat(2,minmax(0,1fr));
+    }
+}
+
+@media(max-width:520px){
+    .filters{
+        grid-template-columns:1fr;
+    }
 }
 
 .filter-group{
@@ -1179,13 +1189,11 @@ body::before{
    VERY SMALL
 ========================================================= */
 
+@media(max-width:390px){
 
-.search-title{
-    font-size:1.35rem;
-    line-height:1.12;
-    letter-spacing:.055em;
-}
-
+    .search-title{
+        font-size:1.35rem;
+    }
 
     .search-subtitle{
         font-size:.55rem;
@@ -1218,13 +1226,11 @@ body::before{
 
 <header class="search-header">
 
-    
-<h1 class="search-title">
-    SEARCH THE LIVING
-    <br>
-    SUPER FLOWER RECORD
-</h1>
-
+    <h1 class="search-title">
+        SEARCH THE LIVING
+        <br>
+        Super Flower Record
+    </h1>
 
     <p class="search-subtitle">
         SUPER FLOWER — CANNABIS CODEX
@@ -1295,145 +1301,189 @@ body::before{
         <div class="filters">
 
             <div class="filter-group">
-
-                <label
-                    class="filter-label"
-                    for="typeFilter"
-                >
-                    TYPE
-                </label>
-
-                <select
-                    id="typeFilter"
-                    class="filter-select"
-                >
-
-                    <option value="">
-                        ALL TYPES
-                    </option>
-
+                <label class="filter-label" for="typeFilter">STRAIN TYPE</label>
+                <select id="typeFilter" class="filter-select">
+                    <option value="">ALL TYPES</option>
                 </select>
-
             </div>
 
-
             <div class="filter-group">
-
-                <label
-                    class="filter-label"
-                    for="breederFilter"
-                >
-                    BREEDER
-                </label>
-
-                <select
-                    id="breederFilter"
-                    class="filter-select"
-                >
-
-                    <option value="">
-                        ALL BREEDERS
-                    </option>
-
+                <label class="filter-label" for="breederFilter">BREEDER</label>
+                <select id="breederFilter" class="filter-select">
+                    <option value="">ALL BREEDERS</option>
                 </select>
-
             </div>
 
-
             <div class="filter-group">
-
-                <label
-                    class="filter-label"
-                    for="thcFilter"
-                >
-                    THC
-                </label>
-
-                <select
-                    id="thcFilter"
-                    class="filter-select"
-                >
-
-                    <option value="">
-                        ALL THC
-                    </option>
-
-                    <option value="reported">
-                        REPORTED
-                    </option>
-
-                    <option value="high">
-                        20%+
-                    </option>
-
-                    <option value="medium">
-                        10–19.9%
-                    </option>
-
-                    <option value="low">
-                        UNDER 10%
-                    </option>
-
+                <label class="filter-label" for="geneticsFilter">GENETICS / PARENTS</label>
+                <select id="geneticsFilter" class="filter-select">
+                    <option value="">ALL GENETICS</option>
                 </select>
-
             </div>
 
-
             <div class="filter-group">
-
-                <label
-                    class="filter-label"
-                    for="cbdFilter"
-                >
-                    CBD
-                </label>
-
-                <select
-                    id="cbdFilter"
-                    class="filter-select"
-                >
-
-                    <option value="">
-                        ALL CBD
-                    </option>
-
-                    <option value="reported">
-                        REPORTED
-                    </option>
-
-                    <option value="high">
-                        5%+
-                    </option>
-
-                    <option value="low">
-                        UNDER 5%
-                    </option>
-
+                <label class="filter-label" for="originFilter">ORIGIN / LANDRACE</label>
+                <select id="originFilter" class="filter-select">
+                    <option value="">ALL ORIGINS</option>
                 </select>
-
             </div>
 
+            <div class="filter-group">
+                <label class="filter-label" for="thcFilter">THC</label>
+                <select id="thcFilter" class="filter-select">
+                    <option value="">ALL THC</option>
+                    <option value="reported">REPORTED</option>
+                    <option value="high">20%+</option>
+                    <option value="medium">10–19.9%</option>
+                    <option value="low">UNDER 10%</option>
+                </select>
+            </div>
 
             <div class="filter-group">
-
-                <label
-                    class="filter-label"
-                    for="terpeneFilter"
-                >
-                    TERPENE
-                </label>
-
-                <select
-                    id="terpeneFilter"
-                    class="filter-select"
-                >
-
-                    <option value="">
-                        ALL TERPENES
-                    </option>
-
+                <label class="filter-label" for="cbdFilter">CBD</label>
+                <select id="cbdFilter" class="filter-select">
+                    <option value="">ALL CBD</option>
+                    <option value="reported">REPORTED</option>
+                    <option value="high">5%+</option>
+                    <option value="low">UNDER 5%</option>
                 </select>
+            </div>
 
+            <div class="filter-group">
+                <label class="filter-label" for="cbgFilter">CBG</label>
+                <select id="cbgFilter" class="filter-select">
+                    <option value="">ALL CBG</option>
+                    <option value="reported">REPORTED</option>
+                    <option value="high">1%+</option>
+                    <option value="low">UNDER 1%</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label class="filter-label" for="terpeneFilter">TERPENE</label>
+                <select id="terpeneFilter" class="filter-select">
+                    <option value="">ALL TERPENES</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label class="filter-label" for="aromaFilter">AROMA / FLAVOUR</label>
+                <select id="aromaFilter" class="filter-select">
+                    <option value="">ALL AROMAS / FLAVOURS</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label class="filter-label" for="effectsFilter">EFFECTS / CHARACTER</label>
+                <select id="effectsFilter" class="filter-select">
+                    <option value="">ALL EFFECTS</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label class="filter-label" for="relaxationFilter">RELAXATION</label>
+                <select id="relaxationFilter" class="filter-select">
+                    <option value="">ALL RELAXATION SCORES</option>
+                    <option value="high">HIGH (70–90)</option>
+                    <option value="medium">MODERATE (40–69)</option>
+                    <option value="low">LOW (10–39)</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label class="filter-label" for="focusFilter">FOCUS</label>
+                <select id="focusFilter" class="filter-select">
+                    <option value="">ALL FOCUS SCORES</option>
+                    <option value="high">HIGH (70–90)</option>
+                    <option value="medium">MODERATE (40–69)</option>
+                    <option value="low">LOW (10–39)</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label class="filter-label" for="creativityFilter">CREATIVITY</label>
+                <select id="creativityFilter" class="filter-select">
+                    <option value="">ALL CREATIVITY SCORES</option>
+                    <option value="high">HIGH (70–90)</option>
+                    <option value="medium">MODERATE (40–69)</option>
+                    <option value="low">LOW (10–39)</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label class="filter-label" for="meditationFilter">MEDITATION</label>
+                <select id="meditationFilter" class="filter-select">
+                    <option value="">ALL MEDITATION SCORES</option>
+                    <option value="high">HIGH (70–90)</option>
+                    <option value="medium">MODERATE (40–69)</option>
+                    <option value="low">LOW (10–39)</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label class="filter-label" for="frequencyFilter">CODEX FREQUENCY</label>
+                <select id="frequencyFilter" class="filter-select">
+                    <option value="">ALL FREQUENCIES</option>
+                    <option value="396">396 Hz</option>
+                    <option value="417">417 Hz</option>
+                    <option value="528">528 Hz</option>
+                    <option value="639">639 Hz</option>
+                    <option value="741">741 Hz</option>
+                    <option value="852">852 Hz</option>
+                    <option value="963">963 Hz</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label class="filter-label" for="chakraFilter">CHAKRA RESONANCE</label>
+                <select id="chakraFilter" class="filter-select">
+                    <option value="">ALL CHAKRAS</option>
+                    <option value="ROOT">ROOT</option>
+                    <option value="SACRAL">SACRAL</option>
+                    <option value="SOLAR PLEXUS">SOLAR PLEXUS</option>
+                    <option value="HEART">HEART</option>
+                    <option value="THROAT">THROAT</option>
+                    <option value="THIRD EYE">THIRD EYE</option>
+                    <option value="CROWN">CROWN</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label class="filter-label" for="planetFilter">PLANETARY RESONANCE</label>
+                <select id="planetFilter" class="filter-select">
+                    <option value="">ALL PLANETS</option>
+                    <option value="MARS">MARS</option>
+                    <option value="VENUS">VENUS</option>
+                    <option value="SUN">SUN</option>
+                    <option value="EARTH">EARTH</option>
+                    <option value="MERCURY">MERCURY</option>
+                    <option value="JUPITER">JUPITER</option>
+                    <option value="SATURN">SATURN</option>
+                    <option value="NEPTUNE">NEPTUNE</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label class="filter-label" for="cultivationFilter">CULTIVATION</label>
+                <select id="cultivationFilter" class="filter-select">
+                    <option value="">ALL CULTIVATION DATA</option>
+                    <option value="indoor">INDOOR</option>
+                    <option value="outdoor">OUTDOOR</option>
+                    <option value="greenhouse">GREENHOUSE</option>
+                    <option value="short-flowering">SHORT FLOWERING</option>
+                    <option value="long-flowering">LONG FLOWERING</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label class="filter-label" for="recordQualityFilter">RECORD QUALITY</label>
+                <select id="recordQualityFilter" class="filter-select">
+                    <option value="">ALL RECORDS</option>
+                    <option value="chemistry">HAS CANNABINOID / TERPENE DATA</option>
+                    <option value="photo">HAS PHOTOGRAPH</option>
+                    <option value="reported">HAS REPORTED SOURCE DATA</option>
+                    <option value="incomplete">MISSING CHEMISTRY DATA</option>
+                </select>
             </div>
 
         </div>
@@ -2006,30 +2056,33 @@ const results =
         "results"
     );
 
-const typeFilter =
-    document.getElementById(
-        "typeFilter"
-    );
+const typeFilter = document.getElementById("typeFilter");
+const breederFilter = document.getElementById("breederFilter");
+const geneticsFilter = document.getElementById("geneticsFilter");
+const originFilter = document.getElementById("originFilter");
+const thcFilter = document.getElementById("thcFilter");
+const cbdFilter = document.getElementById("cbdFilter");
+const cbgFilter = document.getElementById("cbgFilter");
+const terpeneFilter = document.getElementById("terpeneFilter");
+const aromaFilter = document.getElementById("aromaFilter");
+const effectsFilter = document.getElementById("effectsFilter");
+const relaxationFilter = document.getElementById("relaxationFilter");
+const focusFilter = document.getElementById("focusFilter");
+const creativityFilter = document.getElementById("creativityFilter");
+const meditationFilter = document.getElementById("meditationFilter");
+const frequencyFilter = document.getElementById("frequencyFilter");
+const chakraFilter = document.getElementById("chakraFilter");
+const planetFilter = document.getElementById("planetFilter");
+const cultivationFilter = document.getElementById("cultivationFilter");
+const recordQualityFilter = document.getElementById("recordQualityFilter");
 
-const breederFilter =
-    document.getElementById(
-        "breederFilter"
-    );
-
-const thcFilter =
-    document.getElementById(
-        "thcFilter"
-    );
-
-const cbdFilter =
-    document.getElementById(
-        "cbdFilter"
-    );
-
-const terpeneFilter =
-    document.getElementById(
-        "terpeneFilter"
-    );
+const allFilterControls = [
+    typeFilter, breederFilter, geneticsFilter, originFilter,
+    thcFilter, cbdFilter, cbgFilter, terpeneFilter, aromaFilter,
+    effectsFilter, relaxationFilter, focusFilter, creativityFilter,
+    meditationFilter, frequencyFilter, chakraFilter, planetFilter,
+    cultivationFilter, recordQualityFilter
+];
 
 const flowerImage =
     document.getElementById(
@@ -2292,23 +2345,9 @@ searchInput.addEventListener(
    FILTER EVENTS
 ========================================================= */
 
-[
-    typeFilter,
-    breederFilter,
-    thcFilter,
-    cbdFilter,
-    terpeneFilter
-]
-.forEach(
-    select => {
-
-        select.addEventListener(
-            "change",
-            applyFilters
-        );
-
-    }
-);
+allFilterControls.forEach(select => {
+    select.addEventListener("change", applyFilters);
+});
 
 
 /* =========================================================
@@ -2319,27 +2358,11 @@ clearFiltersButton.addEventListener(
     "click",
     () => {
 
-        [
-            typeFilter,
-            breederFilter,
-            thcFilter,
-            cbdFilter,
-            terpeneFilter
-        ]
-        .forEach(
-            select => {
+        allFilterControls.forEach(select => {
+            select.value = "";
+        });
 
-                select.value =
-                    "";
-
-            }
-        );
-
-
-        renderResults(
-            currentResults
-        );
-
+        applyFilters();
 
         setStatus(
             currentResults.length
@@ -3428,286 +3451,192 @@ function extractSearchResults(
 
 
 /* =========================================================
-   FILTER POPULATION
+   FILTER POPULATION — EXPANDED SUPER FLOWER CODEX
 ========================================================= */
 
-function populateFilters(
-    records
-){
+function getNestedFilterValue(source, aliases, depth = 0){
+    if(!source || typeof source !== "object" || depth > 4) return "";
 
-    preserveSelectValue(
-        typeFilter,
-        uniqueValues(
-            records,
-            record =>
-                record.type
-        )
-    );
-
-
-    preserveSelectValue(
-        breederFilter,
-        uniqueValues(
-            records,
-            record =>
-                record.breeder
-        )
-    );
-
-
-    preserveSelectValue(
-        terpeneFilter,
-        uniqueTerpenes(
-            records
-        )
-    );
-
-}
-
-
-/* =========================================================
-   PRESERVE SELECT
-========================================================= */
-
-function preserveSelectValue(
-    select,
-    values
-){
-
-    const old =
-        select.value;
-
-
-    const firstOption =
-        select.options[0];
-
-
-    select.innerHTML =
-        "";
-
-
-    select.appendChild(
-        firstOption
-    );
-
-
-    values
-        .sort(
-            (a,b) =>
-                a.localeCompare(
-                    b
-                )
-        )
-        .forEach(
-            value => {
-
-                const option =
-                    document.createElement(
-                        "option"
-                    );
-
-
-                option.value =
-                    value;
-
-
-                option.textContent =
-                    value;
-
-
-                select.appendChild(
-                    option
-                );
-
-            }
-        );
-
-
-    select.value =
-        values.includes(
-            old
-        )
-            ? old
-            : "";
-
-}
-
-
-/* =========================================================
-   UNIQUE VALUES
-========================================================= */
-
-function uniqueValues(
-    records,
-    getter
-){
-
-    return [
-
-        ...new Set(
-
-            records
-
-                .map(
-                    getter
-                )
-
-                .filter(
-                    value =>
-                        value !== undefined &&
-                        value !== null &&
-                        String(value).trim()
-                )
-
-                .map(
-                    value =>
-                        String(value).trim()
-                )
-
-        )
-
-    ];
-
-}
-
-
-/* =========================================================
-   TERPENES
-========================================================= */
-
-function uniqueTerpenes(
-    records
-){
-
-    const values =
-        [];
-
-
-    records.forEach(
-        record => {
-
-            normalizeList(
-                record.top_terpenes
-            )
-            .forEach(
-                value =>
-                    values.push(
-                        value
-                    )
-            );
-
+    const aliasSet = new Set(aliases.map(key => key.toLowerCase()));
+    for(const [key, value] of Object.entries(source)){
+        if(aliasSet.has(key.toLowerCase())){
+            const display = resolveSourceDisplayValue(value);
+            if(display && typeof display !== "object") return String(display);
+            if(Array.isArray(value)) return value.map(resolveSourceDisplayValue).filter(Boolean).join(" · ");
         }
-    );
+    }
 
-
-    return [
-        ...new Set(
-            values
-        )
-    ];
-
+    for(const value of Object.values(source)){
+        if(value && typeof value === "object"){
+            const found = getNestedFilterValue(value, aliases, depth + 1);
+            if(found) return found;
+        }
+    }
+    return "";
 }
 
+function filterField(record, aliases){
+    const direct = getNestedFilterValue(record, aliases);
+    if(direct) return direct;
+    return getNestedFilterValue(record && record.source, aliases);
+}
 
-/* =========================================================
-   APPLY FILTERS
-========================================================= */
+function codexFilterValue(record, key){
+    const aliases = {
+        frequency:["frequency","codex_frequency","frequency_hz","hz","resonance_frequency"],
+        chakra:["chakra","codex_chakra","resonance_chakra"],
+        planet:["planet","codex_planet","planetary_alignment","resonance_planet"]
+    };
+    const explicit = filterField(record, aliases[key] || [key]);
+    if(explicit) return explicit;
+
+    // When the source has no explicit Codex field, use the page's stable Codex reference alignment.
+    try{
+        const aligned = resolveCodexAlignment(record.source || record, record, record.name);
+        return aligned && aligned[key] !== undefined ? String(aligned[key]) : "";
+    }catch(error){
+        return "";
+    }
+}
+
+function filterText(record, aliases){
+    return filterField(record, aliases).toLowerCase();
+}
+
+function uniqueFilterValues(records, getter){
+    return [...new Set(records.map(getter).flatMap(value => {
+        if(Array.isArray(value)) return value;
+        return String(value || "").split(/[·,;/|]/);
+    }).map(value => String(value || "").trim()).filter(Boolean))];
+}
+
+function populateFilters(records){
+    const dynamic = [
+        [typeFilter, record => record.type],
+        [breederFilter, record => record.breeder],
+        [geneticsFilter, record => record.genetics],
+        [originFilter, record => filterField(record, ["origin","country_of_origin","landrace","region","native_region"])],
+        [terpeneFilter, record => normalizeList(record.top_terpenes)],
+        [aromaFilter, record => filterField(record, ["aroma","aromas","flavour","flavor","flavours","flavors","taste","taste_profile"])],
+        [effectsFilter, record => filterField(record, ["effects","effect","reported_effects","character","reported_character","medical_effects"])]
+    ];
+
+    dynamic.forEach(([select, getter]) => {
+        preserveSelectValue(select, uniqueFilterValues(records, getter));
+    });
+}
+
+function preserveSelectValue(select, values){
+    if(!select) return;
+    const old = select.value;
+    const firstOption = select.options[0];
+    select.innerHTML = "";
+    select.appendChild(firstOption);
+
+    [...new Set(values.map(value => String(value).trim()).filter(Boolean))]
+        .sort((a,b) => a.localeCompare(b))
+        .forEach(value => {
+            const option = document.createElement("option");
+            option.value = value;
+            option.textContent = value;
+            select.appendChild(option);
+        });
+
+    select.value = values.includes(old) ? old : "";
+}
+
+function matchesTextFilter(record, select, aliases){
+    if(!select.value) return true;
+    const wanted = select.value.toLowerCase();
+    const value = filterText(record, aliases);
+    return value.includes(wanted);
+}
+
+function matchesCannabinoidFilter(value, mode, highThreshold, mediumThreshold = null){
+    if(!mode) return true;
+    const numbers = extractNumbers(value);
+    if(mode === "reported") return numbers.length > 0;
+    if(!numbers.length) return false;
+    const highest = Math.max(...numbers);
+    if(mode === "high") return highest >= highThreshold;
+    if(mode === "medium" && mediumThreshold !== null) return highest >= mediumThreshold && highest < highThreshold;
+    if(mode === "low") return highest < highThreshold;
+    return true;
+}
 
 function applyFilters(){
+    const filtered = currentResults.filter(record => {
+        if(typeFilter.value && String(record.type || "") !== typeFilter.value) return false;
+        if(breederFilter.value && String(record.breeder || "") !== breederFilter.value) return false;
+        if(geneticsFilter.value && !matchesTextFilter(record, geneticsFilter, ["genetics","parents","parent_strains","lineage","cross","crosses","genetic_lineage"])) return false;
+        if(originFilter.value && !matchesTextFilter(record, originFilter, ["origin","country_of_origin","landrace","region","native_region"])) return false;
 
-    const filtered =
-        currentResults.filter(
-            record => {
+        if(thcFilter.value && !matchesTHC(record.thc_range, thcFilter.value)) return false;
+        if(cbdFilter.value && !matchesCBD(record.cbd_range, cbdFilter.value)) return false;
+        if(cbgFilter.value && !matchesCannabinoidFilter(filterField(record, ["cbg","cbg_percent","cbg_percentage","total_cbg"]), cbgFilter.value, 1)) return false;
 
+        if(terpeneFilter.value && !normalizeList(record.top_terpenes).some(value => value.toLowerCase().includes(terpeneFilter.value.toLowerCase()))) return false;
+        if(aromaFilter.value && !matchesTextFilter(record, aromaFilter, ["aroma","aromas","flavour","flavor","flavours","flavors","taste","taste_profile"])) return false;
+        if(effectsFilter.value && !matchesTextFilter(record, effectsFilter, ["effects","effect","reported_effects","character","reported_character","medical_effects"])) return false;
 
-                if(
-                    typeFilter.value &&
-                    String(
-                        record.type || ""
-                    ) !==
-                    typeFilter.value
-                ){
+        // Resonance filters use the same engine profile shown on each specimen.
+        const resonanceModeMatches = (score, mode) => {
+            if(!mode) return true;
+            if(!Number.isFinite(Number(score))) return false;
+            const n = Number(score);
+            if(mode === "high") return n >= 70;
+            if(mode === "medium") return n >= 40 && n <= 69;
+            if(mode === "low") return n >= 10 && n <= 39;
+            return true;
+        };
+        if(relaxationFilter.value || focusFilter.value || creativityFilter.value || meditationFilter.value){
+            const typeText = record.type || record.strain_type || record.category || "";
+            const profile = sfResonance(record, record, typeText);
+            if(!profile) return false;
+            if(!resonanceModeMatches(profile.RELAXATION, relaxationFilter.value)) return false;
+            if(!resonanceModeMatches(profile.FOCUS, focusFilter.value)) return false;
+            if(!resonanceModeMatches(profile.CREATIVITY, creativityFilter.value)) return false;
+            if(!resonanceModeMatches(profile.MEDITATION, meditationFilter.value)) return false;
+        }
 
-                    return false;
+        const frequency = codexFilterValue(record, "frequency");
+        if(frequencyFilter.value && !String(frequency).includes(frequencyFilter.value)) return false;
+        const chakra = codexFilterValue(record, "chakra");
+        if(chakraFilter.value && !String(chakra).toUpperCase().includes(chakraFilter.value.toUpperCase())) return false;
+        const planet = codexFilterValue(record, "planet");
+        if(planetFilter.value && !String(planet).toUpperCase().includes(planetFilter.value.toUpperCase())) return false;
 
-                }
+        const cultivation = [
+            filterField(record, ["cultivation","growing_environment","environment","grow_type","cultivation_type"]),
+            filterField(record, ["flowering_time","flowering_period","flowering_days","flowering"]),
+            filterField(record, ["height","plant_height","height_range"])
+        ].join(" ").toLowerCase();
 
+        if(cultivationFilter.value){
+            const mode = cultivationFilter.value;
+            if(mode === "indoor" && !cultivation.includes("indoor")) return false;
+            if(mode === "outdoor" && !cultivation.includes("outdoor")) return false;
+            if(mode === "greenhouse" && !cultivation.includes("greenhouse")) return false;
+            const days = (cultivation.match(/\d+/g) || []).map(Number);
+            if(mode === "short-flowering" && !(days.some(n => n > 0 && n <= 8) || /short flowering|7.?8 weeks/i.test(cultivation))) return false;
+            if(mode === "long-flowering" && !(days.some(n => n >= 10) || /long flowering|10.?12 weeks/i.test(cultivation))) return false;
+        }
 
-                if(
-                    breederFilter.value &&
-                    String(
-                        record.breeder || ""
-                    ) !==
-                    breederFilter.value
-                ){
-
-                    return false;
-
-                }
-
-
-                if(
-                    thcFilter.value &&
-                    !matchesTHC(
-                        record.thc_range,
-                        thcFilter.value
-                    )
-                ){
-
-                    return false;
-
-                }
-
-
-                if(
-                    cbdFilter.value &&
-                    !matchesCBD(
-                        record.cbd_range,
-                        cbdFilter.value
-                    )
-                ){
-
-                    return false;
-
-                }
-
-
-                if(
-                    terpeneFilter.value &&
-                    !normalizeList(
-                        record.top_terpenes
-                    )
-                    .some(
-                        value =>
-                            value
-                                .toLowerCase()
-                                .includes(
-                                    terpeneFilter.value
-                                        .toLowerCase()
-                                )
-                    )
-                ){
-
-                    return false;
-
-                }
-
-
-                return true;
-
-            }
+        const source = record.source || {};
+        const photo = Boolean(filterField(record, ["image","image_url","photo","photo_url","imageUrl","picture","picture_url","image_uri","photo_uri"]));
+        const hasReported = Boolean(
+            filterField(record, ["thc","thc_range","thc_percent","cbd","cbd_range","cbg","terpenes","top_terpenes","breeder","genetics","parents","origin"])
         );
+        if(recordQualityFilter.value === "chemistry" && !record.has_chemistry) return false;
+        if(recordQualityFilter.value === "photo" && !photo) return false;
+        if(recordQualityFilter.value === "reported" && !hasReported) return false;
+        if(recordQualityFilter.value === "incomplete" && (record.thc_range || record.cbd_range || record.cbg || normalizeList(record.top_terpenes).length)) return false;
 
+        return true;
+    });
 
-    renderResults(
-        filtered
-    );
-
-
-    setStatus(
-        `${filtered.length} MATCHES AFTER FILTERS.`
-    );
-
+    renderResults(filtered);
+    setStatus(`${filtered.length} MATCHES AFTER FILTERS.`);
 }
 
 
@@ -4039,6 +3968,15 @@ function resolveSearchRecord(
         cbd_range: cbd,
         cbg,
         genetics,
+        origin: resolvedFieldValue(record, ["origin","country_of_origin","landrace","region","native_region"], ""),
+        aroma: resolvedFieldValue(record, ["aroma","aromas","flavour","flavor","flavours","flavors","taste","taste_profile"], ""),
+        effects: resolvedFieldValue(record, ["effects","effect","reported_effects","character","reported_character","medical_effects"], ""),
+        frequency: resolvedFieldValue(record, ["frequency","codex_frequency","frequency_hz","hz","resonance_frequency"], ""),
+        chakra: resolvedFieldValue(record, ["chakra","codex_chakra","resonance_chakra"], ""),
+        planet: resolvedFieldValue(record, ["planet","codex_planet","planetary_alignment","resonance_planet"], ""),
+        cultivation: resolvedFieldValue(record, ["cultivation","growing_environment","environment","grow_type","cultivation_type"], ""),
+        flowering_time: resolvedFieldValue(record, ["flowering_time","flowering_period","flowering_days","flowering"], ""),
+        image_url: resolvedFieldValue(record, ["image","image_url","photo","photo_url","imageUrl","picture","picture_url","image_uri","photo_uri"], ""),
         top_terpenes: topTerpenes,
         has_chemistry:
             Boolean(
