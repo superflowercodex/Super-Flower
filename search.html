@@ -419,8 +419,8 @@ body::before{
 
 
 /* =========================================================
-   CANNALIB PAGINATION
-   10 LIVE STRAINS PER PAGE
+   SUPER FLOWER ENGINE PAGINATION
+   10 LIVE STRAINS PER PAGE — SUPER FLOWER ENGINE
 ========================================================= */
 
 .results-pagination{
@@ -1572,13 +1572,9 @@ body::before{
 
 <div class="credit">
 
-    <a
-        href="https://cannalib.org"
-        target="_blank"
-        rel="noopener noreferrer"
-    >
-        Data by CannaLib
-    </a>
+    <span>
+        POWERED BY SUPER FLOWER ENGINE
+    </span>
 
     <br>
 
@@ -1599,30 +1595,46 @@ body::before{
 
 
 /* =========================================================
-   PUBLIC CANNALIB API
+   SUPER FLOWER ENGINE API
+   ---------------------------------------------------------
+   This page is powered by the Super Flower Engine.
+
+   The engine is the master research/reconciliation layer.
+   It may collect information from multiple permitted sources,
+   reconcile values, select photographs and return one complete
+   Super Flower record.
+
+   Keep the engine URL configurable so this page can run from
+   GitHub Pages, a custom domain, or behind a Supabase Edge
+   Function / other server endpoint.
 ========================================================= */
 
-const API_BASE =
-    "https://api.cannalib.org";
+const SUPER_FLOWER_ENGINE_BASE =
+    String(
+        window.SUPER_FLOWER_ENGINE_URL ||
+        "/api/super-flower-engine"
+    ).replace(/\/$/, "");
 
 const SEARCH_ENDPOINT =
-    API_BASE +
-    "/v1/catalogs/strains";
+    SUPER_FLOWER_ENGINE_BASE +
+    "/search";
 
 const RECORD_ENDPOINT =
     id =>
-        API_BASE +
-        "/v1/catalogs/strains/" +
+        SUPER_FLOWER_ENGINE_BASE +
+        "/record/" +
         encodeURIComponent(id);
 
-
 /* =========================================================
-   CANNALIB LIVE PAGINATION
-   10 STRAINS PER PAGE
+   SUPER FLOWER ENGINE LIVE PAGINATION
+   10 STRAINS PER PAGE — SUPER FLOWER ENGINE
 ========================================================= */
 
 const RESULTS_PER_PAGE =
     10;
+
+const BROWSE_PAGE_SIZE =
+    5;
 
 
 /*
@@ -1649,11 +1661,11 @@ const RESULTS_PER_PAGE =
     They form the unique Super Flower Codex
     interpretation layer.
 
-    CannaLib remains the biological/source
-    record.
+    Super Flower Engine remains the master source
+    and reconciliation record.
 
-    The Codex alignment is NOT claimed to be
-    a CannaLib field.
+    The Codex alignment is kept separate from
+    the Super Flower Engine source data.
 */
 
 const GLCTC1_CODEX_FREQUENCIES = [
@@ -2324,7 +2336,7 @@ async function sfFetch(url, options = {}){
     }
 
     throw new Error(
-        "COULD NOT REACH CANNALIB. CHECK YOUR CONNECTION AND TRY AGAIN."
+        "COULD NOT REACH THE SUPER FLOWER ENGINE. CHECK YOUR CONNECTION AND TRY AGAIN."
     );
 
 }
@@ -2335,8 +2347,8 @@ let retryAction = null;
 /* =========================================================
    A-Z BROWSE + LIVE SEARCH (10 STRAINS AT A TIME)
    ---------------------------------------------------------
-   The keyless CannaLib API returns the 10 best matches for
-   a query and has no "next page". So A-Z browsing walks an
+   The Super Flower Engine returns the best matches for
+   a query and supports prefix-based A-Z browsing. The page walks an
    ordered list of two-letter prefixes (aa, ab, ac ... zz).
    Each page is ONE request for ONE prefix, showing up to
    10 strains sorted A-Z. Empty prefixes are skipped.
@@ -2471,12 +2483,13 @@ function showLoading(text){
 
 
 /* =========================================================
-   CANNALIB REQUEST (no page parameter: keyless API has none)
+   SUPER FLOWER ENGINE REQUEST
 ========================================================= */
 
 async function fetchSearchPage(
     query,
-    signal
+    signal,
+    limit = RESULTS_PER_PAGE
 ){
 
     const url =
@@ -2486,7 +2499,7 @@ async function fetchSearchPage(
             query
         ) +
         "&limit=" +
-        RESULTS_PER_PAGE;
+        limit;
 
     const response =
         await sfFetch(
@@ -2528,7 +2541,7 @@ async function fetchSearchPage(
         ){
 
             message =
-                "RATE LIMIT REACHED. KEYLESS ACCESS IS 60 REQUESTS PER HOUR. WAIT A WHILE AND TRY AGAIN.";
+                "SUPER FLOWER ENGINE RATE LIMIT REACHED. PLEASE TRY AGAIN SHORTLY.";
 
         }
 
@@ -2546,148 +2559,118 @@ async function fetchSearchPage(
 
 
 /* =========================================================
-   A-Z BROWSE PAGE
+   A-Z BROWSE — 5 STRAIN NAMES AT A TIME (NAMES ONLY)
 ========================================================= */
 
-async function fetchBrowsePrefix(
-    index,
-    signal
-){
+let browsePages = [];
+let browsePageNo = -1;
+let browseNextPrefix = 0;
+let browseBuffer = [];
+let browseExhausted = false;
+const browseSeen = new Set();
 
-    if(
-        browseCache.has(
-            index
-        )
-    ){
+async function fetchBrowsePrefix(index, signal){
 
-        return browseCache.get(
-            index
-        );
+    if(browseCache.has(index)){ return browseCache.get(index); }
 
-    }
+    const prefix = BROWSE_PREFIXES[index];
 
-    const prefix =
-        BROWSE_PREFIXES[index];
+    const raw = await fetchSearchPage(prefix, signal, 25);
 
-    const raw =
-        await fetchSearchPage(
-            prefix,
-            signal
-        );
-
-    /*
-        Typeahead may also match inside names or aliases.
-        Browse pages keep only names that START with the
-        prefix so the list really reads A to Z.
-    */
-
-    const items =
-        prepareResults(
-            raw
-        )
-        .filter(
-            item =>
-                normaliseKey(
-                    item.name_norm ||
-                    item.name
-                )
-                .startsWith(
-                    prefix
-                )
-        );
-
-    browseCache.set(
-        index,
-        items
+    const items = prepareResults(raw).filter(
+        item => normaliseKey(item.name_norm || item.name).startsWith(prefix)
     );
+
+    browseCache.set(index, items);
 
     return items;
 
 }
 
+async function browseFill(controller){
 
-async function loadBrowsePage(
-    index,
-    direction = 1
-){
+    let empties = 0;
 
-    browseMode =
-        true;
+    while(
+        browseBuffer.length < BROWSE_PAGE_SIZE &&
+        browseNextPrefix < BROWSE_PREFIXES.length &&
+        empties < 30
+    ){
 
-    retryAction =
-        () => loadBrowsePage(index, direction);
+        const start = browseNextPrefix;
+        const end = Math.min(start + 3, BROWSE_PREFIXES.length);
+        const indexes = [];
 
-    const controller =
-        startController();
+        for(let i = start; i < end; i++){ indexes.push(i); }
 
-    setStatus(
-        "LOADING 10 LIVE STRAINS A TO Z..."
-    );
+        const batch = await Promise.all(
+            indexes.map(i => fetchBrowsePrefix(i, controller.signal))
+        );
 
-    showLoading(
-        "LOADING 10 LIVE STRAINS..."
-    );
+        if(controller !== searchController){ return false; }
 
-    renderPagination();
+        browseNextPrefix = end;
+
+        batch.forEach(items => {
+
+            let added = 0;
+
+            items.forEach(item => {
+
+                const key = normaliseKey(item.name_norm || item.name);
+
+                if(!browseSeen.has(key)){
+
+                    browseSeen.add(key);
+                    browseBuffer.push(item);
+                    added++;
+
+                }
+
+            });
+
+            empties = added ? 0 : empties + 1;
+
+        });
+
+    }
+
+    if(browseNextPrefix >= BROWSE_PREFIXES.length){ browseExhausted = true; }
+
+    return true;
+
+}
+
+async function browseShow(pageNo){
+
+    browseMode = true;
+
+    retryAction = () => browseShow(pageNo);
+
+    const controller = startController();
 
     try{
 
-        let i =
-            index;
+        while(browsePages.length <= pageNo){
 
-        let found =
-            null;
+            if(browseBuffer.length < BROWSE_PAGE_SIZE && !browseExhausted){
 
-        let tries =
-            0;
+                setStatus("LOADING STRAIN NAMES...");
+                showLoading("LOADING STRAIN NAMES...");
 
-        while(
-            i >= 0 &&
-            i < BROWSE_PREFIXES.length &&
-            tries <= BROWSE_MAX_SKIP
-        ){
-
-            const items =
-                await fetchBrowsePrefix(
-                    i,
-                    controller.signal
-                );
-
-            if(
-                controller !== searchController
-            ){
-
-                return;
+                if(!(await browseFill(controller))){ return; }
 
             }
 
-            if(
-                items.length
-            ){
+            if(!browseBuffer.length){ break; }
 
-                found =
-                    items;
-
-                break;
-
-            }
-
-            i +=
-                direction;
-
-            tries++;
+            browsePages.push(browseBuffer.splice(0, BROWSE_PAGE_SIZE));
 
         }
 
-        if(
-            !found
-        ){
+        if(pageNo >= browsePages.length){
 
-            setStatus(
-                direction > 0
-                    ? "NO FURTHER STRAINS FOUND. END OF A TO Z."
-                    : "START OF A TO Z."
-            );
+            setStatus(browsePages.length ? "END OF A TO Z." : "NO STRAINS FOUND.");
 
             renderPagination();
 
@@ -2695,35 +2678,68 @@ async function loadBrowsePage(
 
         }
 
-        browseIndex =
-            i;
+        browsePageNo = pageNo;
 
-        currentResults =
-            found;
+        currentResults = browsePages[pageNo];
 
         resetFilters();
-
-        populateFilters(
-            currentResults
-        );
-
-        renderResults(
-            currentResults
-        );
-
+        populateFilters(currentResults);
+        renderResults(currentResults);
         renderPagination();
 
         setStatus(
-            `${currentResults.length} LIVE STRAINS — A TO Z — ${BROWSE_PREFIXES[browseIndex].toUpperCase()}`
+            currentResults.length + " STRAINS — A TO Z — PAGE " + (pageNo + 1)
         );
 
     }catch(error){
 
-        showError(
-            error
-        );
+        showError(error);
 
     }
+
+}
+
+function browseReset(index){
+
+    browsePages = [];
+    browsePageNo = -1;
+    browseBuffer = [];
+    browseSeen.clear();
+    browseExhausted = false;
+    browseIndex = Math.max(0, index);
+    browseNextPrefix = browseIndex;
+
+}
+
+function loadBrowsePage(index = 0){
+
+    if(browsePages.length && index === browseIndex){
+
+        return browseShow(Math.max(0, browsePageNo));
+
+    }
+
+    browseReset(index);
+
+    return browseShow(0);
+
+}
+
+function browseLetter(letter){
+
+    browseReset(BROWSE_PREFIXES.indexOf(letter + "a"));
+
+    return browseShow(0);
+
+}
+
+function browseStep(delta){
+
+    const next = browsePageNo + delta;
+
+    if(next < 0){ return; }
+
+    return browseShow(next);
 
 }
 
@@ -2911,12 +2927,7 @@ function ensureBrowseControls(){
                 searchInput.value =
                     "";
 
-                loadBrowsePage(
-                    BROWSE_PREFIXES.indexOf(
-                        button.dataset.letter + "a"
-                    ),
-                    1
-                );
+                browseLetter(button.dataset.letter);
 
             }
         );
@@ -2984,19 +2995,13 @@ function ensureBrowseControls(){
                     button.id === "previousPageButton"
                 ){
 
-                    loadBrowsePage(
-                        browseIndex - 1,
-                        -1
-                    );
+                    browseStep(-1);
 
                 }else if(
                     button.id === "nextPageButton"
                 ){
 
-                    loadBrowsePage(
-                        browseIndex + 1,
-                        1
-                    );
+                    browseStep(1);
 
                 }else if(
                     button.id === "backToAzButton"
@@ -3004,6 +3009,8 @@ function ensureBrowseControls(){
 
                     searchInput.value =
                         "";
+
+                    browseMode = true;
 
                     loadBrowsePage(
                         browseIndex >= 0
@@ -3028,43 +3035,36 @@ function ensureBrowseControls(){
 
 function renderPagination(){
 
-    const {
-        bar,
-        pagination
-    } =
-        ensureBrowseControls();
+    const {bar, pagination} = ensureBrowseControls();
+
+    const shown =
+        browseMode && browsePageNo >= 0 && browsePages[browsePageNo]
+            ? browsePages[browsePageNo][0]
+            : null;
 
     const activeLetter =
-        browseMode && browseIndex >= 0
-            ? BROWSE_PREFIXES[browseIndex][0]
+        shown
+            ? (normaliseKey(shown.name_norm || shown.name)[0] || "")
             : "";
 
     bar.innerHTML =
         BROWSE_LETTERS
-            .map(
-                letter => `
-                    <button
-                        type="button"
-                        class="az-letter${letter === activeLetter ? " active" : ""}"
-                        data-letter="${letter}"
-                        aria-label="Browse strains starting with ${letter.toUpperCase()}"
-                    >${letter.toUpperCase()}</button>
-                `
-            )
+            .map(letter => `
+                <button
+                    type="button"
+                    class="az-letter${letter === activeLetter ? " active" : ""}"
+                    data-letter="${letter}"
+                    aria-label="Browse strains starting with ${letter.toUpperCase()}"
+                >${letter.toUpperCase()}</button>
+            `)
             .join("");
 
-    bar.classList.add(
-        "visible"
-    );
+    bar.classList.add("visible");
 
     if(!browseMode){
 
         pagination.innerHTML = `
-            <button
-                type="button"
-                class="results-page-button"
-                id="backToAzButton"
-            >
+            <button type="button" class="results-page-button" id="backToAzButton">
                 ‹ BROWSE A TO Z
             </button>
 
@@ -3075,52 +3075,43 @@ function renderPagination(){
             </div>
         `;
 
-        pagination.classList.add(
-            "visible"
-        );
+        pagination.classList.add("visible");
 
         return;
 
     }
 
-    const label =
-        browseIndex >= 0
-            ? BROWSE_PREFIXES[browseIndex].toUpperCase()
-            : "—";
+    const atEnd =
+        browseExhausted &&
+        !browseBuffer.length &&
+        browsePageNo >= browsePages.length - 1;
 
     pagination.innerHTML = `
         <button
             type="button"
             class="results-page-button"
             id="previousPageButton"
-            ${browseIndex <= 0 ? "disabled" : ""}
+            ${browsePageNo <= 0 ? "disabled" : ""}
         >
-            ‹ PREVIOUS
+            ‹ PREVIOUS 5
         </button>
 
         <div class="results-page-status">
             A TO Z
-            <strong>${label}</strong>
+            <strong>${activeLetter ? activeLetter.toUpperCase() : "—"}</strong>
         </div>
 
         <button
             type="button"
             class="results-page-button"
             id="nextPageButton"
-            ${
-                browseIndex < 0 ||
-                browseIndex >= BROWSE_PREFIXES.length - 1
-                    ? "disabled"
-                    : ""
-            }
+            ${atEnd ? "disabled" : ""}
         >
-            NEXT ›
+            NEXT 5 ›
         </button>
     `;
 
-    pagination.classList.add(
-        "visible"
-    );
+    pagination.classList.add("visible");
 
 }
 
@@ -3901,6 +3892,22 @@ function renderResults(
                 record.id ||
                 "UNKNOWN STRAIN";
 
+            if(browseMode){
+
+                button.innerHTML = `
+                    <div>
+                        <div class="result-name">${escapeHTML(name)}</div>
+                    </div>
+                    <div class="result-right">OPEN<br>›</div>
+                `;
+
+                button.addEventListener("click", () => loadRecord(record));
+
+                results.appendChild(button);
+
+                return;
+
+            }
 
             const meta =
                 [
@@ -4034,7 +4041,7 @@ function unwrapRecord(
 
 
     /*
-        CannaLib records can be returned
+        Super Flower Engine records can be returned
         inside wrapper objects.
 
         Keep unwrapping known record/data
@@ -4177,7 +4184,7 @@ async function loadRecord(
 
 
         /* =====================================================
-           PRIMARY LIVE SOURCE — CANNALIB
+           PRIMARY LIVE SOURCE — SUPER FLOWER ENGINE
         ===================================================== */
 
         for(
@@ -4266,7 +4273,7 @@ async function loadRecord(
             throw (
                 lastError ||
                 new Error(
-                    "CANNALIB RECORD COULD NOT BE LOADED."
+                    "SUPER FLOWER ENGINE RECORD COULD NOT BE LOADED."
                 )
             );
 
@@ -4274,10 +4281,10 @@ async function loadRecord(
 
 
         /*
-            IMPORTANT: keep the COMPLETE CannaLib payload intact.
+            IMPORTANT: keep the COMPLETE Super Flower Engine payload intact.
 
             Do NOT unwrap to record.strain / record.data here.
-            CannaLib can place complementary fields beside the
+            Super Flower Engine can place complementary fields beside the
             primary record object. Throwing those siblings away is
             exactly what caused otherwise available fields to render
             empty. The deep resolver below searches the whole payload.
@@ -4289,7 +4296,7 @@ async function loadRecord(
         ){
 
             throw new Error(
-                "CANNALIB RETURNED AN INVALID SPECIMEN RECORD."
+                "SUPER FLOWER ENGINE RETURNED AN INVALID SPECIMEN RECORD."
             );
 
         }
@@ -4298,7 +4305,7 @@ async function loadRecord(
         /*
             IMPORTANT:
 
-            CannaLib is the source record.
+            Super Flower Engine is the source record.
 
             Do not inject invented or hard-coded
             strain information here.
@@ -4872,7 +4879,7 @@ function resolveGeneticsFromParents(
 /* =========================================================
    SUPER FLOWER ENGINE
    ---------------------------------------------------------
-   Derives fields CannaLib does not supply from the data it
+   Derives fields Super Flower Engine does not supply from the data it
    DOES supply (parents, terpenes, type). Derived values are
    always labelled and are never shown as measured data.
    Edit the tables below to tune the Codex.
@@ -4952,71 +4959,105 @@ function sfTerpeneList(record, slim){
 function superFlowerEngine(record, slim, known){
 
     const out = {};
-
+    const web = known.web || {};
+    const name = String(known.name || "");
     const terpenes = sfTerpeneList(record, slim);
 
-    const parents = String(known.genetics || "");
+    const recordParents = sfEmpty(known.genetics) ? "" : String(known.genetics);
+    const parentsText = recordParents || (web.parents || []).join(" × ");
 
     const matches = SF_LANDRACES.filter(
-        item => item.re.test(parents)
+        item => item.re.test(parentsText + " " + name)
     );
 
-    /* TYPE — from parents, only when CannaLib gave none */
+    /* TYPE — ALWAYS SATIVA, INDICA OR HYBRID */
 
-    if(sfEmpty(known.type) && matches.length){
+    let typeKey = sfNormType(known.type);
+    let basis = "";
 
-        const types = [...new Set(matches.map(m => m.type))];
+    if(!typeKey && web.type){ typeKey = web.type; basis = " (WEB SEARCH)"; }
 
-        out.type = (
-            types.length === 1
-                ? types[0]
-                : "hybrid"
-        ) + " (INFERRED FROM PARENTS)";
+    if(!typeKey){
 
-    }
-
-    /* ORIGIN — from landrace parents */
-
-    if(matches.length){
-
-        out.origin = [...new Set(matches.map(m => m.origin))]
-            .join(" / ") + " (INFERRED FROM PARENTS)";
+        typeKey = sfGuessType(name, terpenes, matches);
+        basis = " (SUPER FLOWER ENGINE CALCULATION)";
 
     }
 
-    /* AROMA — from terpenes, only when none was reported */
+    out.type = typeKey.toUpperCase() + basis;
+
+    /* ORIGIN — ALWAYS FILLED */
+
+    if(web.origin){
+
+        out.origin = web.origin + " (WEB SEARCH)";
+
+    }else if(matches.length){
+
+        out.origin = [...new Set(matches.map(m => m.origin))].join(" / ") + " (INFERRED FROM LINEAGE)";
+
+    }else{
+
+        const hit = SF_BREEDER_ORIGIN.find(([re]) => re.test(String(known.breeder || "")));
+
+        out.origin = hit
+            ? hit[1] + " (BREEDER BASE — ESTIMATE)"
+            : ({
+                indica:"AFGHANISTAN / HINDU KUSH LINEAGE",
+                sativa:"EQUATORIAL LANDRACE LINEAGE",
+                hybrid:"INTERNATIONAL SELECTIVE BREEDING"
+            })[typeKey] + " (ESTIMATE FROM TYPE)";
+
+    }
+
+    /* GENETIC LINEAGE — ALWAYS FILLED */
+
+    if(sfEmpty(known.genetics)){
+
+        if(web.parents && web.parents.length){
+
+            out.lineage = web.parents;
+            out.lineageNote = "FOUND BY WIDER WEB SEARCH";
+
+        }else{
+
+            out.lineage = [sfNameLineage(name, typeKey, matches)];
+            out.lineageNote = "NO PUBLISHED PARENTS FOUND — ESTIMATED FROM NAME, TYPE AND LANDRACE MATCHES";
+
+        }
+
+        out.genetics = out.lineage.join(" × ");
+
+    }
+
+    /* CHEMISTRY CALCULATOR + CULTIVATION */
+
+    const identity = getStableStrainIdentity(record, slim, name);
+
+    out.chem = sfChemistry(typeKey, known.thc, known.cbd, terpenes, identity);
+    out.cult = sfCultivation(typeKey, web);
+
+    /* AROMA */
 
     if(sfEmpty(known.aroma) && terpenes.length){
 
         out.aroma = [...new Set(
-            terpenes.flatMap(
-                t => SF_TERPENES[t].aroma.split(", ")
-            )
+            terpenes.flatMap(t => SF_TERPENES[t].aroma.split(", "))
         )].join(" · ") + " (FROM TERPENES)";
 
     }
 
-    /* CODEX — scored from type + terpenes, hash only as last resort */
-
-    const baseType = String(
-        (sfEmpty(known.type) ? out.type : known.type) || ""
-    ).toLowerCase();
-
-    const typeKey = ["indica","sativa","hybrid"].find(
-        k => baseType.includes(k)
-    );
+    /* CODEX */
 
     const scores = {};
 
-    GLCTC1_CODEX_FREQUENCIES.forEach(
-        row => { scores[row.chakra] = 0; }
-    );
+    GLCTC1_CODEX_FREQUENCIES.forEach(row => { scores[row.chakra] = 0; });
 
     Object.entries(SF_TYPE_CHAKRA[typeKey] || {}).forEach(
         ([chakra, weight]) => { scores[chakra] += weight; }
     );
 
-    terpenes.slice(0,3).forEach((t, i) => {
+    terpenes.slice(0, 3).forEach((t, i) => {
 
         scores[SF_TERPENES[t].chakra] += 3 - i;
 
@@ -5026,28 +5067,17 @@ function superFlowerEngine(record, slim, known){
 
     if(best > 0){
 
-        const identity = getStableStrainIdentity(
-            record, slim, known.name
-        );
-
         const tied = GLCTC1_CODEX_FREQUENCIES.filter(
             row => scores[row.chakra] === best
         );
 
         const row = tied[stableHash(identity) % tied.length];
 
-        const reasons = [];
+        const reasons = [typeKey.toUpperCase()];
 
-        if(typeKey){ reasons.push(typeKey.toUpperCase()); }
+        terpenes.slice(0, 3).forEach(t => reasons.push(t.toUpperCase()));
 
-        terpenes.slice(0,3).forEach(
-            t => reasons.push(t.toUpperCase())
-        );
-
-        out.codex = {
-            ...row,
-            basis:"DERIVED FROM " + reasons.join(" + ")
-        };
+        out.codex = {...row, basis:"DERIVED FROM " + reasons.join(" + ")};
 
     }
 
@@ -5059,7 +5089,7 @@ function superFlowerEngine(record, slim, known){
 /* =========================================================
    SUPER FLOWER ENGINE — PANEL DERIVATIONS
    Fills Effects, Aroma, Flowering and Height from the
-   terpenes and type CannaLib does supply. Always labelled
+   terpenes and type Super Flower Engine does supply. Always labelled
    as inferred. Edit these tables to tune the Codex.
 ========================================================= */
 
@@ -5284,19 +5314,827 @@ function sfResonance(record, slim, typeText){
 }
 
 /* =========================================================
+   SUPER FLOWER ENGINE — WIDER WEB RESEARCH + CHEMISTRY
+   ---------------------------------------------------------
+   Everything below always returns a value, so no field is
+   ever left empty. Values are labelled by where they came from:
+   RECORD (engine) > WEB SEARCH > CALCULATED / ESTIMATE.
+
+   OPTIONAL KEYS (set before this script loads):
+     window.SUPER_FLOWER_GOOGLE_KEY  = "your Google API key";
+     window.SUPER_FLOWER_GOOGLE_CX   = "your Programmable Search id";
+     window.SUPER_FLOWER_RESEARCH_URL = "https://your-endpoint";
+       -> optional server route: /research?name=  and  /images?name=
+   Without keys the page still searches Wikipedia, Wikimedia
+   Commons and Openverse (all browser-safe, no key needed).
+========================================================= */
+
+const SF_GOOGLE_KEY = String(window.SUPER_FLOWER_GOOGLE_KEY || "");
+const SF_GOOGLE_CX = String(window.SUPER_FLOWER_GOOGLE_CX || "");
+const SF_RESEARCH_BASE = String(
+    window.SUPER_FLOWER_RESEARCH_URL || SUPER_FLOWER_ENGINE_BASE
+).replace(/\/$/, "");
+
+const sfWebCache = new Map();
+const sfWebPending = new Set();
+
+function sfWebKey(name){
+    return normaliseKey(name);
+}
+
+async function sfJSON(url){
+
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 9000);
+
+    try{
+
+        const response = await fetch(
+            url,
+            {headers:{"Accept":"application/json"}, signal:controller.signal}
+        );
+
+        if(!response.ok){ return null; }
+
+        return await response.json();
+
+    }catch(error){
+
+        return null;
+
+    }finally{
+
+        clearTimeout(timer);
+
+    }
+
+}
+
+const SF_PLACES = [
+    ["Netherlands","NETHERLANDS"],["Holland","NETHERLANDS"],["Amsterdam","NETHERLANDS"],
+    ["California","CALIFORNIA, USA"],["Oregon","OREGON, USA"],["Washington State","WASHINGTON, USA"],
+    ["Colorado","COLORADO, USA"],["Hawaii","HAWAII, USA"],["Humboldt","CALIFORNIA, USA"],
+    ["United States","USA"],["Canada","CANADA"],["British Columbia","BRITISH COLUMBIA, CANADA"],
+    ["Afghanistan","AFGHANISTAN"],["Hindu Kush","HINDU KUSH (AFGHANISTAN / PAKISTAN)"],["Pakistan","PAKISTAN"],
+    ["India","INDIA"],["Nepal","NEPAL"],["Thailand","THAILAND"],["Cambodia","CAMBODIA"],["Laos","LAOS"],
+    ["Vietnam","VIETNAM"],["Colombia","COLOMBIA"],["Mexico","MEXICO"],["Jamaica","JAMAICA"],
+    ["South Africa","SOUTH AFRICA"],["Morocco","MOROCCO"],["Lebanon","LEBANON"],["Turkey","TURKEY"],
+    ["Spain","SPAIN"],["Switzerland","SWITZERLAND"],["United Kingdom","UNITED KINGDOM"],
+    ["Israel","ISRAEL"],["Brazil","BRAZIL"],["Panama","PANAMA"],["Italy","ITALY"],["Australia","AUSTRALIA"]
+];
+
+const SF_BREEDER_ORIGIN = [
+    [/dutch passion|sensi|barney|green house|serious seeds|paradise|nirvana|royal queen|world of seeds/i,"NETHERLANDS"],
+    [/dinafem|kannabia|fast buds|00 seeds|sweet seeds|medical seeds|bulk seed/i,"SPAIN"],
+    [/humboldt|cookie|dna genetics|tga|reserva privada|jungle boys|compound genetics|seed junky|gage/i,"CALIFORNIA, USA"],
+    [/bc bud|crop king|true north|canuk|dr\. greenthumb/i,"CANADA"],
+    [/mephisto|buddha seeds|ace seeds|swiss/i,"EUROPE"]
+];
+
+const SF_TYPE_YIELD = {
+    indica:"400–550 G/M² INDOOR",
+    sativa:"350–500 G/M² INDOOR",
+    hybrid:"400–550 G/M² INDOOR"
+};
+
+const SF_NAME_LINEAGE = [
+    [/\bog\b|og kush/i,"OG KUSH LINE (CHEMDAWG × HINDU KUSH-TYPE LANDRACE INFLUENCE)"],
+    [/kush/i,"HINDU KUSH LANDRACE LINE"],
+    [/haze/i,"HAZE LINE (THAI / COLOMBIAN / MEXICAN / SOUTH INDIAN LANDRACES)"],
+    [/skunk/i,"SKUNK #1 LINE (AFGHAN × COLOMBIAN × ACAPULCO GOLD)"],
+    [/diesel|chem/i,"CHEMDAWG / DIESEL LINE"],
+    [/cookie|gsc|gelato|sherb/i,"GIRL SCOUT COOKIES LINE (DURBAN POISON × OG KUSH)"],
+    [/cheese/i,"UK CHEESE (SKUNK #1 PHENOTYPE) LINE"],
+    [/widow/i,"WHITE WIDOW LINE (BRAZILIAN SATIVA × SOUTH INDIAN INDICA)"],
+    [/northern lights|\bnl\b/i,"NORTHERN LIGHTS LINE (AFGHAN-BASED INDICA)"],
+    [/purple|urkle|grand\s?daddy|\bgdp\b/i,"PURPLE INDICA LINE (AFGHAN / PURPLE LANDRACE-DERIVED)"],
+    [/jack|durban/i,"JACK HERER / DURBAN LINE (SATIVA-DOMINANT)"]
+];
+
+function sfNormType(text){
+
+    const t = String(text || "").toLowerCase();
+
+    if(!t || /not reported|unknown/.test(t)){ return ""; }
+
+    const h = /hybrid/.test(t);
+    const i = /indica/.test(t);
+    const s = /sativa/.test(t);
+
+    if(h || (i && s)){ return "hybrid"; }
+    if(i){ return "indica"; }
+    if(s){ return "sativa"; }
+
+    return "";
+
+}
+
+function sfGuessType(name, terpenes, matches){
+
+    let indica = 0;
+    let sativa = 0;
+
+    matches.forEach(m => {
+        if(m.type === "indica"){ indica += 2; } else { sativa += 2; }
+    });
+
+    if(/kush|\bog\b|purple|granddaddy|afghan|bubba|northern lights|cookie|gelato|critical|indica/i.test(name)){ indica += 1; }
+    if(/haze|thai|jack|durban|diesel|amnesia|lemon|tangie|sativa|cinderella/i.test(name)){ sativa += 1; }
+
+    terpenes.forEach((t, i) => {
+
+        const w = i < 2 ? 1 : 0.5;
+
+        if(["myrcene","linalool","nerolidol","humulene","bisabolol"].includes(t)){ indica += w; }
+        if(["terpinolene","pinene","ocimene","limonene","camphene"].includes(t)){ sativa += w; }
+        if(t === "caryophyllene"){ indica += w / 2; }
+
+    });
+
+    if(Math.abs(indica - sativa) < 1.5){ return "hybrid"; }
+
+    return indica > sativa ? "indica" : "sativa";
+
+}
+
+function sfCleanName(value){
+
+    return String(value || "")
+        .replace(/\b(strain|cannabis|marijuana|the|and)\b/gi, " ")
+        .replace(/[()\[\]"]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+
+}
+
+function sfToCm(value, unit){
+
+    const u = String(unit || "").toLowerCase();
+
+    if(u.startsWith("cm") || u.startsWith("centi")){ return value; }
+    if(u.startsWith("in")){ return Math.round(value * 2.54); }
+    if(u.startsWith("f")){ return Math.round(value * 30.48); }
+
+    return value;
+
+}
+
+function sfExtract(text, name){
+
+    const out = {};
+
+    if(!text){ return out; }
+
+    const t = String(text).replace(/\s+/g, " ");
+    const lowerName = String(name || "").toLowerCase();
+    const count = re => (t.match(re) || []).length;
+
+    /* TYPE */
+
+    const ind = count(/indica/gi);
+    const sat = count(/sativa/gi);
+    const hyb = count(/hybrid/gi);
+
+    if(ind + sat + hyb){
+
+        out.type =
+            (hyb >= Math.max(ind, sat) || (ind && sat && Math.abs(ind - sat) <= 1))
+                ? "hybrid"
+                : (ind > sat ? "indica" : "sativa");
+
+    }
+
+    /* ORIGIN — most mentioned place */
+
+    const tally = {};
+
+    SF_PLACES.forEach(([needle, label]) => {
+
+        const n = count(new RegExp("\\b" + needle + "\\b", "gi"));
+
+        if(n){ tally[label] = (tally[label] || 0) + n; }
+
+    });
+
+    const placed = Object.entries(tally).sort((a, b) => b[1] - a[1]);
+
+    if(placed.length){
+
+        out.origin = placed[0][0];
+
+        if(placed[1] && placed[1][1] >= placed[0][1]){
+            out.origin += " / " + placed[1][0];
+        }
+
+    }
+
+    /* LINEAGE */
+
+    const patterns = [
+        /(?:cross(?:ing|ed)?(?: between| of)?|hybrid of|descend\w* from|bred from|result of crossing|combining|combination of|offspring of|genetics? (?:of|are|is))\s+([A-Z][\w'’.#\- ]{1,40}?)\s+(?:and|x|×|with|&)\s+([A-Z][\w'’.#\- ]{1,40}?)(?=[.,;:)]|\s+(?:which|that|it|is|was|and|to|resulting|producing|for|by)\b)/,
+        /\b([A-Z][\w'’.#\-]+(?: [A-Z0-9][\w'’.#\-]+){0,3}) (?:x|×) ([A-Z][\w'’.#\-]+(?: [A-Z0-9][\w'’.#\-]+){0,3})/
+    ];
+
+    for(const re of patterns){
+
+        const m = t.match(re);
+
+        if(m){
+
+            const parents = [sfCleanName(m[1]), sfCleanName(m[2])]
+                .filter(p => p.length > 1 && p.toLowerCase() !== lowerName);
+
+            if(parents.length === 2){
+
+                out.parents = parents;
+
+                break;
+
+            }
+
+        }
+
+    }
+
+    /* FLOWERING */
+
+    let m = t.match(/(\d{1,2})(?:\s*(?:-|–|to)\s*(\d{1,2}))?\s*weeks?\s*(?:of\s*)?(?:flower|bloom)/i) ||
+            t.match(/(?:flower\w*|bloom\w*)(?:\s+(?:time|period))?[^.\d]{0,40}(\d{1,2})(?:\s*(?:-|–|to)\s*(\d{1,2}))?\s*weeks?/i);
+
+    if(m){
+
+        out.flowering = m[1] + (m[2] ? "–" + m[2] : "") + " WEEKS";
+
+    }else{
+
+        m = t.match(/(?:flower\w*|bloom\w*)[^.\d]{0,40}(\d{2,3})(?:\s*(?:-|–|to)\s*(\d{2,3}))?\s*days/i);
+
+        if(m){ out.flowering = m[1] + (m[2] ? "–" + m[2] : "") + " DAYS"; }
+
+    }
+
+    /* HEIGHT */
+
+    m = t.match(/(?:height|tall|grows? (?:up )?to|stature|stretch)[^.]{0,60}?(\d{1,3})\s*(?:-|–|to)\s*(\d{1,3})\s*(cm|centimet\w*|inch\w*|in\b|ft|feet)/i);
+
+    if(m){
+
+        out.height = sfToCm(+m[1], m[3]) + "–" + sfToCm(+m[2], m[3]) + " CM";
+
+    }
+
+    /* YIELD */
+
+    m = t.match(/yields?[^.]{0,60}?(\d{2,4})\s*(?:-|–|to)\s*(\d{2,4})\s*(g|grams|oz|ounces)\s*(?:\/|per)\s*(m2|m²|sq\w*|plant)/i);
+
+    if(m){
+
+        out.yield = m[1] + "–" + m[2] + " " + m[3].toUpperCase() + " / " + m[4].toUpperCase().replace("M2","M²");
+
+    }
+
+    /* PHOTOPERIOD / AUTOFLOWER */
+
+    out.autoflower = /\bauto-?flower/i.test(t);
+
+    return out;
+
+}
+
+async function sfWebResearch(name, breeder){
+
+    const texts = [];
+    const sources = [];
+    let direct = {};
+
+    const query = name + " cannabis strain";
+    const jobs = [];
+
+    /* Optional Super Flower server research route */
+
+    jobs.push(
+        sfJSON(SF_RESEARCH_BASE + "/research?name=" + encodeURIComponent(name)).then(data => {
+
+            if(data && typeof data === "object"){
+
+                direct = data.result || data;
+
+                if(direct.text){ texts.push(String(direct.text)); }
+
+            }
+
+        })
+    );
+
+    /* Google Programmable Search (needs key) */
+
+    if(SF_GOOGLE_KEY && SF_GOOGLE_CX){
+
+        jobs.push(
+            sfJSON(
+                "https://www.googleapis.com/customsearch/v1?key=" + encodeURIComponent(SF_GOOGLE_KEY) +
+                "&cx=" + encodeURIComponent(SF_GOOGLE_CX) +
+                "&num=10&q=" + encodeURIComponent(query + " genetics origin lineage flowering time height yield")
+            ).then(data => {
+
+                (data?.items || []).forEach(item => {
+
+                    texts.push((item.title || "") + ". " + (item.snippet || ""));
+
+                    if(item.link){ sources.push(item.link); }
+
+                });
+
+            })
+        );
+
+    }
+
+    /* Wikipedia (no key) */
+
+    jobs.push(
+        sfJSON(
+            "https://en.wikipedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrlimit=3" +
+            "&gsrsearch=" + encodeURIComponent(query) +
+            "&prop=extracts&explaintext=1&exlimit=3&exchars=7000&redirects=1"
+        ).then(data => {
+
+            Object.values(data?.query?.pages || {}).forEach(page => {
+
+                const body = String(page.extract || "");
+
+                if(
+                    /cannabis|marijuana/i.test(body) &&
+                    body.toLowerCase().includes(String(name).toLowerCase().split(" ")[0])
+                ){
+
+                    texts.push(body);
+
+                    sources.push("https://en.wikipedia.org/wiki/" + encodeURIComponent(String(page.title).replace(/ /g, "_")));
+
+                }
+
+            });
+
+        })
+    );
+
+    await Promise.allSettled(jobs);
+
+    const found = sfExtract(texts.join("\n"), name);
+
+    const merged = {...found};
+
+    ["type","origin","flowering","height","yield","photoperiod"].forEach(key => {
+
+        if(direct[key]){ merged[key] = direct[key]; }
+
+    });
+
+    if(Array.isArray(direct.parents) && direct.parents.length){ merged.parents = direct.parents; }
+    if(typeof direct.autoflower === "boolean"){ merged.autoflower = direct.autoflower; }
+
+    merged.type = sfNormType(merged.type) || "";
+    merged.sources = sources;
+
+    return merged;
+
+}
+
+function sfScoreWebImage(pic, name){
+
+    const hay = (String(pic.title || "") + " " + String(pic.url || "")).toLowerCase();
+
+    if(!/^https:/i.test(pic.url || "")){ return -9999; }
+    if(/\.(svg|gif|pdf|webm|mp4)(\?|$)/i.test(pic.url)){ return -9999; }
+    if(/logo|icon|diagram|\bmap\b|seed ?pack|bottle|packag|product|cartoon|vector|banner|infographic|stamp|clipart/i.test(hay)){ return -9999; }
+
+    let score = 0;
+
+    const tokens = String(name).toLowerCase().split(/[^a-z0-9]+/).filter(x => x.length > 1);
+    const hits = tokens.filter(token => hay.includes(token)).length;
+
+    if(tokens.length && hits === tokens.length){ score += 40; }
+    else { score += hits * 8; }
+
+    if(/\bbud|flower|nug|cola|trichome|closeup|close-up|macro/.test(hay)){ score += 15; }
+    if(/cannabis|marijuana|weed/.test(hay)){ score += 8; }
+    if(/\bleaf|leaves\b/.test(hay)){ score -= 8; }
+    if(/\bseed/.test(hay)){ score -= 10; }
+    if(/plant|garden|field|farm/.test(hay)){ score -= 3; }
+
+    if(pic.w >= 800){ score += 5; }
+    if(pic.h >= 600){ score += 3; }
+
+    if(pic.w && pic.h){
+
+        const ratio = pic.w / pic.h;
+
+        if(ratio > 2.2 || ratio < 0.45){ score -= 10; }
+        if(pic.w < 300 || pic.h < 300){ score -= 20; }
+
+    }
+
+    if(pic.src === "engine"){ score += 12; }
+    if(pic.src === "google"){ score += 10; }
+
+    return score;
+
+}
+
+async function sfWebImages(name){
+
+    const key = "img:" + sfWebKey(name);
+
+    if(sfWebCache.has(key)){ return sfWebCache.get(key); }
+
+    const found = [];
+    const q = name + " cannabis strain bud";
+    const jobs = [];
+
+    jobs.push(
+        sfJSON(SF_RESEARCH_BASE + "/images?name=" + encodeURIComponent(name)).then(data => {
+
+            (data?.images || data?.items || []).forEach(x => {
+
+                const url = typeof x === "string" ? x : (x.url || x.src);
+
+                if(url){
+
+                    found.push({
+                        url,
+                        title:x.title || "",
+                        credit:x.credit || x.source || "SUPER FLOWER ENGINE WEB SEARCH",
+                        w:x.width,
+                        h:x.height,
+                        src:"engine"
+                    });
+
+                }
+
+            });
+
+        })
+    );
+
+    if(SF_GOOGLE_KEY && SF_GOOGLE_CX){
+
+        jobs.push(
+            sfJSON(
+                "https://www.googleapis.com/customsearch/v1?key=" + encodeURIComponent(SF_GOOGLE_KEY) +
+                "&cx=" + encodeURIComponent(SF_GOOGLE_CX) +
+                "&searchType=image&num=10&imgSize=large&safe=active&q=" + encodeURIComponent(q)
+            ).then(data => {
+
+                (data?.items || []).forEach(x => {
+
+                    found.push({
+                        url:x.link,
+                        title:x.title || "",
+                        credit:"GOOGLE IMAGES — " + (x.displayLink || "WEB"),
+                        w:x.image?.width,
+                        h:x.image?.height,
+                        src:"google"
+                    });
+
+                });
+
+            })
+        );
+
+    }
+
+    jobs.push(
+        sfJSON(
+            "https://api.openverse.org/v1/images/?page_size=20&mature=false&q=" + encodeURIComponent(q)
+        ).then(data => {
+
+            (data?.results || []).forEach(x => {
+
+                found.push({
+                    url:x.url,
+                    title:x.title || "",
+                    credit:"OPENVERSE — " + (x.creator || x.source || "OPEN LICENSE") + (x.license ? " · CC " + String(x.license).toUpperCase() : ""),
+                    w:x.width,
+                    h:x.height,
+                    src:"openverse"
+                });
+
+            });
+
+        })
+    );
+
+    jobs.push(
+        sfJSON(
+            "https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*&generator=search&gsrnamespace=6&gsrlimit=15" +
+            "&gsrsearch=" + encodeURIComponent(name + " cannabis") +
+            "&prop=imageinfo&iiprop=url|size|extmetadata&iiurlwidth=900"
+        ).then(data => {
+
+            Object.values(data?.query?.pages || {}).forEach(page => {
+
+                const info = page.imageinfo && page.imageinfo[0];
+
+                if(info){
+
+                    const artist = String(info.extmetadata?.Artist?.value || "").replace(/<[^>]+>/g, "").trim();
+
+                    found.push({
+                        url:info.thumburl || info.url,
+                        title:page.title || "",
+                        credit:"WIKIMEDIA COMMONS" + (artist ? " — " + artist : ""),
+                        w:info.width,
+                        h:info.height,
+                        src:"commons"
+                    });
+
+                }
+
+            });
+
+        })
+    );
+
+    await Promise.allSettled(jobs);
+
+    const seen = new Set();
+
+    const best = found
+        .map(pic => ({pic, score:sfScoreWebImage(pic, name)}))
+        .filter(item => item.score > -9999)
+        .sort((a, b) => b.score - a.score)
+        .filter(item => {
+
+            if(seen.has(item.pic.url)){ return false; }
+
+            seen.add(item.pic.url);
+
+            return true;
+
+        })
+        .slice(0, 5)
+        .map(item => item.pic);
+
+    sfWebCache.set(key, best);
+
+    return best;
+
+}
+
+/* ---------- BUD IMAGE: ENGINE PHOTOS -> WEB TOP 5 -> ARCHIVAL BUD ---------- */
+
+async function sfWebFlowerFallback(token, name){
+
+    if(token !== flowerLoadToken){ return; }
+
+    flowerImage.style.display = "none";
+    flowerReferenceLabel.textContent = "SEARCHING THE WEB FOR BUD PHOTOGRAPHS...";
+    flowerCredit.style.display = "none";
+
+    let list = [];
+
+    try{
+
+        list = await sfWebImages(name);
+
+    }catch(error){
+
+        list = [];
+
+    }
+
+    sfTryWebImage(token, list, 0, name);
+
+}
+
+function sfTryWebImage(token, list, index, name){
+
+    if(token !== flowerLoadToken){ return; }
+
+    if(index >= list.length){
+
+        sfShowBudIllustration(token, name);
+
+        return;
+
+    }
+
+    const pic = list[index];
+
+    flowerImage.onload = () => {
+
+        if(token !== flowerLoadToken){ return; }
+
+        if(flowerImage.naturalWidth < 200 || flowerImage.naturalHeight < 200){
+
+            sfTryWebImage(token, list, index + 1, name);
+
+            return;
+
+        }
+
+        flowerImage.style.display = "block";
+        flowerReferenceLabel.textContent = "WEB BUD PHOTOGRAPH " + (index + 1) + " OF " + list.length;
+        flowerCredit.textContent = pic.credit || "WEB SOURCE";
+        flowerCredit.style.display = "block";
+
+    };
+
+    flowerImage.onerror = () => {
+
+        if(token !== flowerLoadToken){ return; }
+
+        sfTryWebImage(token, list, index + 1, name);
+
+    };
+
+    flowerImage.referrerPolicy = "no-referrer";
+    flowerImage.alt = name + " bud";
+    flowerImage.src = pic.url;
+
+}
+
+function sfShowBudIllustration(token, name){
+
+    if(token !== flowerLoadToken){ return; }
+
+    flowerImage.onload = null;
+    flowerImage.onerror = null;
+    flowerImage.alt = "Archival bud illustration";
+    flowerImage.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(ULTIMATE_FLOWER_SVG);
+    flowerImage.style.display = "block";
+    flowerReferenceLabel.textContent = "ARCHIVAL BUD — NO PHOTOGRAPH FOUND FOR THIS STRAIN";
+    flowerCredit.textContent = (name ? name + " — " : "") + "SUPER FLOWER ARCHIVAL ILLUSTRATION (NOT THIS PHENOTYPE)";
+    flowerCredit.style.display = "block";
+
+}
+
+/* ---------- SUPER FLOWER CHEMISTRY CALCULATOR ---------- */
+
+function sfChemistry(typeKey, thcText, cbdText, terpenes, identity){
+
+    const nums = text =>
+        (String(text || "").match(/\d+(?:\.\d+)?/g) || [])
+            .map(Number)
+            .filter(n => n <= 40);
+
+    const mid = list =>
+        list.length
+            ? list.reduce((a, b) => a + b, 0) / list.length
+            : null;
+
+    const thc = mid(nums(thcText)) ?? ({indica:20, sativa:19, hybrid:20}[typeKey] || 20);
+    const cbd = mid(nums(cbdText)) ?? 0.1;
+
+    const hash = stableHash(String(identity) + "|chem");
+
+    const jitter = n => 1 + (((hash >>> n) % 21) - 10) / 100;
+
+    const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+    const sativaLean = typeKey === "sativa";
+    const indicaLean = typeKey === "indica";
+    const brightTerps = terpenes.includes("terpinolene") || terpenes.includes("pinene");
+
+    const values = {
+
+        cbg:clamp(
+            (0.25 + 0.06 * cbd + (sativaLean ? 0.15 : indicaLean ? 0.03 : 0.08) + (thc < 15 ? 0.1 : 0)) * jitter(0),
+            0.1, 1.5
+        ),
+
+        cbn:clamp(
+            (0.08 + 0.004 * thc + (indicaLean ? 0.06 : 0)) * jitter(5),
+            0.05, 0.6
+        ),
+
+        cbc:clamp(
+            (0.12 + 0.01 * thc + 0.04 * cbd) * jitter(10),
+            0.05, 0.8
+        ),
+
+        thcv:clamp(
+            ((sativaLean ? 0.25 + 0.01 * thc : typeKey === "hybrid" ? 0.10 : 0.04) + (brightTerps ? 0.1 : 0)) * jitter(15),
+            0.02, 1.2
+        )
+
+    };
+
+    const range = v => {
+
+        const lo = Math.max(0.01, v * 0.75).toFixed(2);
+        const hi = (v * 1.25).toFixed(2);
+
+        return lo + "–" + hi + "% (CALCULATED)";
+
+    };
+
+    return {
+        cbg:range(values.cbg),
+        cbn:range(values.cbn),
+        cbc:range(values.cbc),
+        thcv:range(values.thcv)
+    };
+
+}
+
+/* ---------- CULTIVATION: WEB FIRST, THEN TYPE ESTIMATE ---------- */
+
+function sfCultivation(typeKey, web){
+
+    const grow = SF_TYPE_GROW[typeKey] || SF_TYPE_GROW.hybrid;
+
+    const tag = (value, fromWeb, estimate) =>
+        value
+            ? value + " (WEB SEARCH)"
+            : estimate + " (ESTIMATE FROM TYPE)";
+
+    return {
+
+        flowering:tag(web.flowering, true, "TYPICAL " + grow.flowering),
+
+        height:tag(web.height, true, "TYPICAL " + grow.height),
+
+        yield:tag(web.yield, true, "TYPICAL " + (SF_TYPE_YIELD[typeKey] || SF_TYPE_YIELD.hybrid)),
+
+        photoperiod:web.autoflower
+            ? "NOT PHOTOPERIOD-DEPENDENT (WEB SEARCH)"
+            : "PHOTOPERIOD — 12/12 FLOWER (ESTIMATE)",
+
+        autoflower:web.autoflower
+            ? "YES (WEB SEARCH)"
+            : "NO (ESTIMATE)"
+
+    };
+
+}
+
+function sfNameLineage(name, typeKey, matches){
+
+    for(const [re, text] of SF_NAME_LINEAGE){
+
+        if(re.test(name)){ return text; }
+
+    }
+
+    if(matches.length){
+
+        return [...new Set(matches.map(m => m.origin))].join(" / ") + " LANDRACE-DERIVED";
+
+    }
+
+    if(typeKey === "indica"){ return "AFGHAN / HINDU KUSH LANDRACE-DERIVED INDICA"; }
+    if(typeKey === "sativa"){ return "EQUATORIAL LANDRACE-DERIVED SATIVA"; }
+
+    return "INDICA × SATIVA MODERN HYBRID";
+
+}
+
+function sfKickEnrich(record, slim, name, breeder, refresh){
+
+    const key = sfWebKey(name);
+
+    if(sfWebCache.has(key) || sfWebPending.has(key)){ return; }
+
+    sfWebPending.add(key);
+
+    const done = result => {
+
+        sfWebCache.set(key, result || {});
+        sfWebPending.delete(key);
+
+        if(currentRecord === record){
+
+            renderRecord(record, slim, true);
+
+            setStatus("WIDER WEB SEARCH COMPLETE — FIELDS UPDATED.", false, true);
+
+        }
+
+    };
+
+    setStatus("LIVE SPECIMEN LOADED. SEARCHING THE WIDER WEB FOR ORIGIN, LINEAGE AND CULTIVATION...");
+
+    sfWebResearch(name, breeder).then(done).catch(() => done({}));
+
+}
+
+/* =========================================================
    RENDER RECORD — W2 MULTI-SOURCE FIELD RESOLUTION
 ========================================================= */
 
 function renderRecord(
     record,
-    slim
+    slim,
+    refresh = false
 ){
 
     /*
         Keep the complete live payload.
 
         Do NOT unwrap nested record/data/strain containers here.
-        The CannaLib response may contain useful fields in the
+        The Super Flower Engine response may contain useful fields in the
         wrapper as well as inside the nested specimen object.
         All field resolution is deliberately deep, so preserving
         the complete payload prevents real source data being lost.
@@ -5344,7 +6182,7 @@ function renderRecord(
     /* =====================================================
    GENETICS — MULTI-SOURCE
    -----------------------------------------------------
-   Reads genetics/lineage from the actual CannaLib record.
+   Reads genetics/lineage from the actual Super Flower Engine record.
    Handles direct lineage strings, parent arrays, and
    nested mother/father/parent objects.
 ===================================================== */
@@ -5615,7 +6453,7 @@ genetics =
         The slim search card always carries top_terpenes.
         Use it when the full record has no aroma/flavour,
         and merge it with record terpenes so no terpene
-        reported by CannaLib is dropped.
+        reported by Super Flower Engine is dropped.
     */
 
     {
@@ -5689,14 +6527,20 @@ genetics =
        CODEX ALIGNMENT
     ===================================================== */
 
+    const web =
+        sfWebCache.get(sfWebKey(name)) ||
+        null;
+
     const engine =
         superFlowerEngine(
             record,
             slim,
-            {name, type, genetics, aroma}
+            {name, type, genetics, aroma, thc, cbd, breeder, web}
         );
 
-    if(engine.type){ type = engine.type; }
+    type = engine.type || type;
+
+    if(sfEmpty(genetics) && engine.genetics){ genetics = engine.genetics; }
 
     if(engine.aroma){ aroma = engine.aroma; }
 
@@ -5724,10 +6568,14 @@ genetics =
         );
 
 
-    renderFlower(
-        record,
-        pictures
-    );
+    if(!refresh){
+
+        renderFlower(
+            record,
+            pictures
+        );
+
+    }
 
 
     /* =====================================================
@@ -5815,9 +6663,17 @@ genetics =
             aroma,
             codex,
             type,
-            origin:engine.origin
+            origin:engine.origin,
+            lineage:engine.lineage,
+            lineageNote:engine.lineageNote,
+            chem:engine.chem,
+            cult:engine.cult,
+            web
         }
     );
+
+
+    sfKickEnrich(record, slim, name, breeder, refresh);
 
 }
 
@@ -5853,6 +6709,9 @@ function invalidateFlowerLoad(){
     flowerImage.style.display =
         "none";
 
+
+    flowerReferenceLabel.textContent = "LOADING BUD PHOTOGRAPH...";
+
 }
 
 
@@ -5862,32 +6721,20 @@ function invalidateFlowerLoad(){
 
 function showNoLiveFlower(){
 
-    flowerImage.onload =
-        null;
+    flowerImage.onload = null;
+    flowerImage.onerror = null;
 
-    flowerImage.onerror =
-        null;
+    flowerImage.src =
+        "data:image/svg+xml;charset=utf-8," +
+        encodeURIComponent(ULTIMATE_FLOWER_SVG);
 
-
-    flowerImage.removeAttribute(
-        "src"
-    );
-
-
-    flowerImage.style.display =
-        "none";
-
+    flowerImage.style.display = "block";
 
     flowerReferenceLabel.textContent =
-        "NO LIVE PHOTOGRAPH ON RECORD";
+        "ARCHIVAL BUD — SELECT A STRAIN";
 
-
-    flowerCredit.textContent =
-        "";
-
-
-    flowerCredit.style.display =
-        "none";
+    flowerCredit.textContent = "";
+    flowerCredit.style.display = "none";
 
 }
 
@@ -5898,35 +6745,23 @@ function showNoLiveFlower(){
 
 /*
     These are only used when the selected
-    CannaLib strain has no usable photograph,
+    Super Flower Engine strain has no usable photograph,
     or when its supplied photographs fail.
 
     The strain data itself is still displayed
-    exactly as returned by CannaLib.
+    exactly as returned by Super Flower Engine.
 
-    The reference photograph is clearly labelled
-    as an archival cannabis flower reference
+    Any fallback reference photograph is clearly labelled
     and is NOT presented as the selected strain.
 */
 
-const FALLBACK_FLOWER_IMAGES = [
-
-    "https://upload.wikimedia.org/wikipedia/commons/1/1d/Macro_cannabis_bud.jpg",
-
-    "https://upload.wikimedia.org/wikipedia/commons/4/4c/Marijuana_flower.jpg",
-
-    "https://upload.wikimedia.org/wikipedia/commons/9/91/5_grams_of_cannabis_buds.jpg"
-
-];
+const FALLBACK_FLOWER_IMAGES = [];
 
 
 /*
-    Final browser-local fallback.
-
-    This guarantees that the flower window
-    can still display a cannabis-flower
-    reference even if every external image
-    is unavailable.
+    No generic flower image is substituted here.
+    The Super Flower Engine must provide the
+    selected specimen photograph.
 */
 
 const ULTIMATE_FLOWER_SVG =
@@ -6140,7 +6975,7 @@ const ULTIMATE_FLOWER_SVG =
 
     RULES:
 
-    1. Prefer the actual CannaLib photograph.
+    1. Prefer the Super Flower Engine's selected photograph.
     2. Reject obvious logos / packaging / artwork.
     3. Do NOT reject a photograph merely because it is
        smaller than 700px.
@@ -6471,7 +7306,7 @@ function flowerImageHasGoodDimensions(
 
         Do NOT demand 700x700.
 
-        CannaLib may legitimately return a good photograph
+        Super Flower Engine may legitimately return a good photograph
         through a smaller image endpoint.
 
         We only reject genuinely tiny assets.
@@ -6789,7 +7624,7 @@ function imagePassesFlowerQualityCheck(
 
 
 /* =========================================================
-   SCORE A CANNALIB PHOTO
+   SCORE A SUPER FLOWER ENGINE PHOTO
 ========================================================= */
 
 function scoreFlowerPicture(
@@ -7097,9 +7932,9 @@ function showNoLiveFlowerPhoto(
         name
             ? (
                 name +
-                " — no acceptable CannaLib flower photograph available"
+                " — no acceptable Super Flower Engine flower photograph available"
             )
-            : "No acceptable CannaLib flower photograph available";
+            : "No acceptable Super Flower Engine flower photograph available";
 
 
     flowerCredit.style.display =
@@ -7109,7 +7944,7 @@ function showNoLiveFlowerPhoto(
 
 
 /* =========================================================
-   LOAD NEXT CANNALIB FLOWER PHOTO
+   LOAD NEXT SUPER FLOWER ENGINE FLOWER PHOTO
 ========================================================= */
 
 function loadNextLiveFlower(
@@ -7126,7 +7961,7 @@ function loadNextLiveFlower(
 
 
     /*
-        Every CannaLib candidate has now been tested.
+        Every Super Flower Engine candidate has now been tested.
 
         IMPORTANT:
 
@@ -7157,7 +7992,7 @@ function loadNextLiveFlower(
                 : "Super Flower specimen";
 
 
-        showNoLiveFlowerPhoto(
+        sfWebFlowerFallback(
             token,
             name
         );
@@ -7256,7 +8091,7 @@ function loadNextLiveFlower(
                 picture.source ||
                 picture.attribution ||
                 picture.author ||
-                "CANNALIB SOURCE PHOTOGRAPH";
+                "SUPER FLOWER ENGINE SOURCE PHOTOGRAPH";
 
 
             flowerCredit.style.display =
@@ -7328,7 +8163,7 @@ function renderFlower(
 
 
     /*
-        Use the supplied CannaLib picture collection
+        Use the supplied Super Flower Engine picture collection
         when available.
     */
 
@@ -7853,6 +8688,10 @@ function renderInfo(
 
     children = sfClean(children);
 
+    const chem = summary.chem || {};
+    const cult = summary.cult || {};
+    const chemCalc = [cbg, cbn, cbc, thcv].some(sfEmpty);
+
     const sfD = sfInfoDerive(record, summary);
 
     infoContent.innerHTML = `
@@ -7917,12 +8756,14 @@ function renderInfo(
 
                     ${dataItem("THC",sfPct(summary.thc))}
                     ${dataItem("CBD",sfPct(summary.cbd))}
-                    ${dataItem("CBG",cbg)}
-                    ${dataItem("CBN",cbn)}
-                    ${dataItem("CBC",cbc)}
-                    ${dataItem("THCV",thcv)}
+                    ${dataItem("CBG",sfFill(cbg,chem.cbg))}
+                    ${dataItem("CBN",sfFill(cbn,chem.cbn))}
+                    ${dataItem("CBC",sfFill(cbc,chem.cbc))}
+                    ${dataItem("THCV",sfFill(thcv,chem.thcv))}
 
                 </div>
+
+                ${chemCalc ? sfNote("VALUES MARKED CALCULATED ARE ESTIMATED BY THE SUPER FLOWER CHEMISTRY CALCULATOR FROM TYPE, THC, CBD AND TERPENES — NOT LAB RESULTS.") : ""}
 
             </section>
 
@@ -7965,12 +8806,18 @@ function renderInfo(
                 <div class="lineage">
 
                     ${
-                        parents.length
+                        (parents.length || (summary.lineage || []).length)
                             ? `
-                                <strong>RECORDED PARENTS</strong>
+                                <strong>${parents.length ? "RECORDED PARENTS" : "LINEAGE"}</strong>
                                 <br>
-                                ${escapeHTML(parents.join(" × "))}
-                                <br><br>
+                                ${escapeHTML((parents.length ? parents : summary.lineage).join(" × "))}
+                                <br>
+                                ${
+                                    !parents.length && summary.lineageNote
+                                        ? `<em>${escapeHTML(summary.lineageNote)}</em><br>`
+                                        : ""
+                                }
+                                <br>
                               `
                             : ""
                     }
@@ -7982,12 +8829,6 @@ function renderInfo(
                                 <br>
                                 ${escapeHTML(children.join(" · "))}
                               `
-                            : ""
-                    }
-
-                    ${
-                        !parents.length && !children.length
-                            ? `NO LINEAGE DATA REPORTED.`
                             : ""
                     }
 
@@ -8003,11 +8844,11 @@ function renderInfo(
 
                 <div class="info-data-grid">
 
-                    ${dataItem("FLOWERING",sfFill(flowering,sfD.flowering))}
-                    ${dataItem("HEIGHT",sfFill(height,sfD.height))}
-                    ${dataItem("PHOTOPERIOD",sfMachine(photoperiod))}
-                    ${dataItem("AUTOFLOWER",sfMachine(autoflower))}
-                    ${dataItem("YIELD",yieldValue)}
+                    ${dataItem("FLOWERING",sfFill(flowering,cult.flowering || sfD.flowering))}
+                    ${dataItem("HEIGHT",sfFill(height,cult.height || sfD.height))}
+                    ${dataItem("PHOTOPERIOD",sfFill(sfMachine(photoperiod),cult.photoperiod))}
+                    ${dataItem("AUTOFLOWER",sfFill(sfMachine(autoflower),cult.autoflower))}
+                    ${dataItem("YIELD",sfFill(yieldValue,cult.yield))}
                     ${dataItem("ORIGIN",sfFill(origin,summary.origin))}
 
                 </div>
@@ -8032,24 +8873,14 @@ function renderInfo(
                         summary.codex?.planet || "NOT ASSIGNED"
                     )}
 
-                    <div class="info-data-grid">
+                    ${dataItem("CODEX FREQUENCY", summary.codex?.frequency ? summary.codex.frequency + " Hz" : "NOT ASSIGNED")}
 
-    ${dataItem(
-        "RAW CHAKRA",
-        summary.codex?.chakra || "NOT ASSIGNED"
-    )}
-
-    ${dataItem(
-        "RAW PLANET",
-        summary.codex?.planet || "NOT ASSIGNED"
-    )}
-
-</div>
+                </div>
 
                 <div class="info-panel-note">
                     CHAKRA / PLANET / FREQUENCY ARE
                     SUPER FLOWER CODEX REFERENCE
-                    ALIGNMENTS, NOT CANNALIB SOURCE FIELDS.
+                    ALIGNMENTS, NOT SUPER FLOWER ENGINE SOURCE FIELDS.
                     <br><br>
                     ${escapeHTML(
                         summary.codex?.basis ||
@@ -8257,7 +9088,7 @@ function renderPhotos(
 
             <div class="data-value">
 
-                NO CANNALIB CULTIVAR
+                NO SUPER FLOWER ENGINE CULTIVAR
                 PHOTOGRAPHS REPORTED.
 
             </div>
@@ -8553,7 +9384,7 @@ function normalizePictureURL(
 
 
     /*
-        CannaLib media paths.
+        Super Flower Engine media paths.
     */
 
     if(
@@ -8845,7 +9676,7 @@ function extractURLFromPictureObject(
 
 
 /* =========================================================
-   EXTRACT REAL CANNALIB PICTURES
+   EXTRACT REAL SUPER FLOWER ENGINE PICTURES
 ========================================================= */
 
 function extractPictures(
@@ -9237,7 +10068,7 @@ function normalizeList(
 /* =========================================================
    FIRST VALUE — ALIAS ORDERED + DEEP SOURCE RESOLUTION
    ---------------------------------------------------------
-   Handles CannaLib fields regardless of whether they are:
+   Handles Super Flower Engine fields regardless of whether they are:
    - top-level
    - nested
    - camelCase
@@ -9931,7 +10762,7 @@ function resolveSourceDisplayValue(
            FIRST — HUMAN / STRAIN / LINEAGE KEYS
 
            These are deliberately checked before generic
-           display keys because CannaLib can return structured
+           display keys because Super Flower Engine can return structured
            objects such as:
 
              {
@@ -10784,6 +11615,8 @@ resetSpecimen();
 /* =========================================================
    START HASH SEARCH
 ========================================================= */
+
+renderPagination();
 
 loadFromHash();
 
