@@ -2346,7 +2346,18 @@ searchInput.addEventListener(
 ========================================================= */
 
 allFilterControls.forEach(select => {
-    select.addEventListener("change", applyFilters);
+    select.addEventListener("change", () => {
+        const query = searchInput.value.trim();
+
+        // With no strain name entered, a filter selection starts a catalog search.
+        // With a typed query, narrow the strains returned by that search.
+        if(!query && allFilterControls.some(control => control.value)){
+            performFilterSearch();
+            return;
+        }
+
+        applyFilters();
+    });
 });
 
 
@@ -2361,6 +2372,12 @@ clearFiltersButton.addEventListener(
         allFilterControls.forEach(select => {
             select.value = "";
         });
+
+        if(!searchInput.value.trim()){
+            loadBrowsePage(browseIndex >= 0 ? browseIndex : 0);
+            setStatus("FILTERS CLEARED. A–Z BROWSE RESTORED.");
+            return;
+        }
 
         applyFilters();
 
@@ -3564,8 +3581,46 @@ function matchesCannabinoidFilter(value, mode, highThreshold, mediumThreshold = 
     return true;
 }
 
-function applyFilters(){
-    const filtered = currentResults.filter(record => {
+async function performFilterSearch(){
+    const controller = startController();
+    browseMode = false;
+    retryAction = () => performFilterSearch();
+
+    setStatus("SEARCHING THE CATALOG USING YOUR SELECTED FILTERS...");
+    results.classList.add("visible");
+    results.innerHTML = `<div class="loading"><span class="spinner"></span><br><br>LOADING CATALOG RECORDS FOR FILTER SEARCH...</div>`;
+
+    try{
+        // Ask the configured catalog for a broad, un-named result set.
+        // Filters are then applied locally to these records.
+        const raw = await fetchSearchPage("", controller.signal, 100);
+        if(controller !== searchController) return;
+
+        currentResults = prepareResults(Array.isArray(raw) ? raw : []);
+        populateFilters(currentResults);
+        const filtered = filterRecords(currentResults);
+        renderResults(filtered);
+        renderPagination();
+
+        setStatus(filtered.length
+            ? `${filtered.length} MATCHES FROM ${currentResults.length} CATALOG RECORDS LOADED. REFINE FILTERS OR ADD A STRAIN NAME.`
+            : `NO MATCHES IN THE ${currentResults.length} CATALOG RECORDS LOADED. THE CATALOG ENDPOINT MUST SUPPORT A BROADER DATASET FOR A FULL-CATALOG FILTER SEARCH.`);
+    }catch(error){
+        if(error && error.name === "AbortError") return;
+        showError(error);
+    }
+}
+
+function filterRecords(records){
+    const original = currentResults;
+    currentResults = records;
+    const filtered = getFilteredRecords();
+    currentResults = original;
+    return filtered;
+}
+
+function getFilteredRecords(){
+    return currentResults.filter(record => {
         if(typeFilter.value && String(record.type || "") !== typeFilter.value) return false;
         if(breederFilter.value && String(record.breeder || "") !== breederFilter.value) return false;
         if(geneticsFilter.value && !matchesTextFilter(record, geneticsFilter, ["genetics","parents","parent_strains","lineage","cross","crosses","genetic_lineage"])) return false;
@@ -3635,6 +3690,11 @@ function applyFilters(){
         return true;
     });
 
+    return filtered;
+}
+
+function applyFilters(){
+    const filtered = getFilteredRecords();
     renderResults(filtered);
     setStatus(`${filtered.length} MATCHES AFTER FILTERS.`);
 }
