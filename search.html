@@ -3674,8 +3674,13 @@ async function performFilterSearch(){
         // Missing evidence earns no points; it is not fabricated as a match.
         const ranked = candidates.map(record => ({
             record,
-            score: scoreFilterCandidate(record, selected, queryText)
-        })).sort((a,b) => b.score - a.score || String(a.record.name).localeCompare(String(b.record.name)));
+            score: scoreFilterCandidate(record, selected, queryText),
+            amountScore: scoreFilterMagnitude(record, selected)
+        })).sort((a,b) =>
+            b.score - a.score ||
+            b.amountScore - a.amountScore ||
+            String(a.record.name).localeCompare(String(b.record.name))
+        );
 
         const topFive = ranked.slice(0, 5).map(item => ({
             ...item.record,
@@ -3733,6 +3738,39 @@ function scoreFilterCandidate(record, selected, queryText){
         add(weight, pass);
     });
     return possible ? Math.round(earned / possible * 100) : 0;
+}
+
+/*
+ * SECONDARY RANKING: prefer the highest measured amount for quantitative
+ * filters when compatibility scores tie. Alphabetical order is only the final
+ * deterministic tie-breaker, never the primary ranking criterion.
+ */
+function scoreFilterMagnitude(record, selected){
+    const values = [];
+    const addNumbers = value => {
+        const nums = extractNumbers(value);
+        if(nums.length) values.push(Math.max(...nums));
+    };
+
+    selected.forEach(control => {
+        if(control === thcFilter){
+            addNumbers(record.thc_range || filterField(record,["thc","thc_percent","thc_percentage","total_thc"]));
+        }else if(control === cbdFilter){
+            addNumbers(record.cbd_range || filterField(record,["cbd","cbd_percent","cbd_percentage","total_cbd"]));
+        }else if(control === cbgFilter){
+            addNumbers(filterField(record,["cbg","cbg_percent","cbg_percentage","total_cbg"]));
+        }else if(control === relaxationFilter || control === focusFilter || control === creativityFilter || control === meditationFilter){
+            const profile = sfResonance(record, record, record.type || record.strain_type || "");
+            const key = control === relaxationFilter ? "RELAXATION"
+                : control === focusFilter ? "FOCUS"
+                : control === creativityFilter ? "CREATIVITY" : "MEDITATION";
+            const n = Number(profile?.[key]);
+            if(Number.isFinite(n)) values.push(n);
+        }
+    });
+
+    if(!values.length) return 0;
+    return values.reduce((sum,n) => sum + n, 0) / values.length;
 }
 
 function filterRecords(records){
