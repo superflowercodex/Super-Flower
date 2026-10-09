@@ -2373,16 +2373,13 @@ searchInput.addEventListener(
 
 allFilterControls.forEach(select => {
     select.addEventListener("change", () => {
-        const query = searchInput.value.trim();
-
-        // With no strain name entered, a filter selection starts a catalog search.
-        // With a typed query, narrow the strains returned by that search.
-        if(!query && allFilterControls.some(control => control.value)){
-            performFilterSearch();
-            return;
-        }
-
-        applyFilters();
+        // Filter selections define the target profile for analysis.
+        // Do not search for, load, or select a strain until the user explicitly
+        // presses SEARCH FILTERS. The analysis can then use this profile.
+        const selectedCount = allFilterControls.filter(control => control.value).length;
+        setStatus(selectedCount
+            ? `${selectedCount} ANALYSIS CRITERIA SET · PRESS SEARCH FILTERS TO CALCULATE MATCHES.`
+            : "FILTER CRITERIA CLEARED · NO STRAIN SELECTED.");
     });
 });
 
@@ -4684,16 +4681,6 @@ async function loadRecord(
         renderRecord(
             record,
             slim
-        );
-
-
-        history.replaceState(
-            null,
-            "",
-            "#strain=" +
-            encodeURIComponent(
-                id
-            )
         );
 
 
@@ -12067,65 +12054,14 @@ function escapeAttribute(
 
 
 /* =========================================================
-   HASH LOAD
+   NO AUTOMATIC STRAIN RESTORE
+   ---------------------------------------------------------
+   A strain is loaded only after the visitor explicitly clicks a result.
+   Stale #strain=... links must not preselect a specimen on page load.
 ========================================================= */
-
-async function loadFromHash(){
-
-    const hash =
-        location.hash.replace(
-            /^#/,
-            ""
-        );
-
-
-    if(!hash){
-        // Start with no A–Z letter selected. The visitor chooses a letter or searches.
-        return;
-    }
-
-
-    const params =
-        new URLSearchParams(
-            hash
-        );
-
-
-    const strain =
-        params.get(
-            "strain"
-        );
-
-
-    if(!strain){
-        // Do not auto-select the A bank when there is no strain hash.
-        return;
-    }
-
-
-    searchInput.value =
-        strain;
-
-
-    await performSearch(
-        strain
-    );
-
+if (location.hash) {
+    history.replaceState(null, "", location.pathname + location.search);
 }
-
-
-/* =========================================================
-   HASH CHANGE
-========================================================= */
-
-window.addEventListener(
-    "hashchange",
-    () => {
-
-        loadFromHash();
-
-    }
-);
 
 
 /* =========================================================
@@ -12139,12 +12075,10 @@ setStatus("CHOOSE A–Z, ENTER A STRAIN, OR SELECT FILTERS.");
 
 
 /* =========================================================
-   START HASH SEARCH
+   START WITH NO STRAIN SELECTED
 ========================================================= */
 
 renderPagination();
-
-loadFromHash();
 
 
 })();
