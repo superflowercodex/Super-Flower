@@ -12,1223 +12,273 @@
 
 <meta
     name="description"
-    content="SEARCH THE LIVING SUPER FLOWER RECORD — the living searchable Super Flower Cannabis Codex."
+    content="Search the Living Super Flower Record: the searchable Super Flower Cannabis Codex."
 >
 
-<meta
-    name="theme-color"
-    content="#000000"
->
+<meta name="theme-color" content="#0a0907">
 
-<title>SEARCH THE LIVING SUPER FLOWER RECORD</title>
+<title>Search the Living Super Flower Record | Super Flower Codex</title>
+<link rel="canonical" href="https://superflowercodex.com/search.html">
 
-<link
-    rel="icon"
-    href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%23000'/%3E%3Ctext x='50' y='68' text-anchor='middle' font-size='58' fill='%23ffd21a'%3ESF%3C/text%3E%3C/svg%3E"
->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%230a0907'/%3E%3Ctext x='50' y='66' text-anchor='middle' font-family='Georgia,serif' font-size='52' font-weight='bold' fill='%23d8b65a'%3ESF%3C/text%3E%3C/svg%3E">
 
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap">
 <style>
-
-/* =========================================================
-   SUPER FLOWER
-   SEARCH THE LIVING SUPER FLOWER RECORD
-========================================================= */
-
+/* SUPER FLOWER CODEX — SEARCH  ·  Gallery edition
+   Palette: gallery black #0a0907 · vault #12100c · gold leaf (gradient) · ivory #ece3cd
+   Type: Cinzel (inscription, titles) + Cormorant Garamond (text) */
 :root{
-    --black:#000;
-    --black-soft:#050505;
-    --black-panel:#090909;
+  --wall:#0a0907; --vault:#12100c; --vault-2:#181510;
+  --ivory:#ece3cd; --ivory-dim:rgba(236,227,205,.70); --ivory-faint:rgba(236,227,205,.55);
+  --gold:#d8b65a; --gold-hi:#f4de96; --gold-lo:#a07f2f; --gold-deep:#6e5216;
+  --hair:rgba(216,182,90,.30); --hair-strong:rgba(216,182,90,.62);
+  --red:#ff8a80; --green:#9fdc9a;
+  --leaf:linear-gradient(135deg,#6e5216 0%,#b98f2f 14%,#f4de96 27%,#fff7d0 33%,#d8b65a 44%,#8f6a17 58%,#c9a13b 72%,#f1d77f 86%,#8a6416 100%);
+  --leaf-v:linear-gradient(180deg,#fff7d0 0%,#f4de96 22%,#d8b65a 48%,#9a752a 70%,#e9cb73 88%,#b08a2e 100%);
+  --serif:"Cormorant Garamond","Cormorant",Georgia,"Times New Roman",serif;
+  --inscr:"Cinzel","Trajan Pro",Georgia,serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{margin:0;min-height:100vh;background:var(--wall);color:var(--ivory);font-family:var(--serif);font-size:18px;line-height:1.5;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:radial-gradient(ellipse 70% 38% at 50% 0%,rgba(244,222,150,.13),transparent 70%),radial-gradient(ellipse 120% 80% at 50% 100%,rgba(0,0,0,.6),transparent 60%),var(--wall)}
+button,input,select{font:inherit;color:inherit}
+button{-webkit-tap-highlight-color:transparent}
+a{color:var(--gold)}
+:focus-visible{outline:2px solid var(--gold-hi);outline-offset:3px}
+.skip{position:absolute;left:12px;top:-60px;z-index:100;padding:10px 16px;background:var(--gold);color:#1a1405;text-decoration:none;font-weight:600}
+.skip:focus{top:12px}
 
-    --gold:#ffd21a;
-    --gold-soft:#d4af37;
-    --gold-hot:#fff3a3;
-    --gold-dark:#715d08;
-
-    --white:#fff;
-    --white-soft:rgba(255,255,255,.72);
-    --white-dim:rgba(255,255,255,.42);
-
-    --red:#ff5757;
-    --green:#78e08f;
-
-    --line:rgba(255,210,26,.78);
-    --line-soft:rgba(255,210,26,.28);
-
-    --shadow:
-        0 0 8px rgba(255,210,26,.45),
-        0 0 28px rgba(255,210,26,.12);
+/* GOLD LEAF EDGE — reusable: gradient border on a dark panel */
+.framed,.search-panel,.specimen,.info,.filter-menu,.results,.search-input,.filter-select,.search-button,.filter-toggle,.info-panel{
+  border:1px solid transparent;
+  background:linear-gradient(var(--vault),var(--vault)) padding-box,var(--leaf) border-box;
 }
 
-*{
-    box-sizing:border-box;
-}
+/* NAVIGATION */
+.site-nav{position:sticky;top:0;z-index:50;background:rgba(10,9,7,.94);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--hair)}
+.site-nav::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;background:var(--leaf);opacity:.85}
+.nav-list{list-style:none;margin:0 auto;padding:0 14px;max-width:1100px;display:flex;justify-content:center;flex-wrap:wrap}
+.nav-list a{display:block;padding:16px clamp(10px,2.2vw,26px);font-family:var(--inscr);font-size:.78rem;letter-spacing:.16em;text-decoration:none;color:var(--ivory-dim);position:relative;transition:color .25s}
+.nav-list a:hover{color:var(--gold-hi)}
+.nav-list a[aria-current="page"]{color:var(--gold-hi)}
+.nav-list a[aria-current="page"]::after{content:"";position:absolute;left:clamp(10px,2.2vw,26px);right:clamp(10px,2.2vw,26px);bottom:9px;height:2px;background:var(--leaf)}
 
-html{
-    scroll-behavior:smooth;
-}
+.page{width:min(1380px,calc(100% - 32px));margin:0 auto;padding:30px 0 70px}
 
-body{
-    margin:0;
-    min-height:100vh;
-    background:#000;
-    color:#fff;
-    font-family:"Courier New",Courier,monospace;
-    overflow-x:hidden;
-}
+/* HEADER */
+.search-header{text-align:center;padding:44px 0 36px}
+.search-crest{display:block;margin:0 auto 18px;width:46px;height:1px;background:var(--leaf)}
+.search-title{margin:0 auto;font-family:var(--inscr);font-weight:600;font-size:clamp(1.7rem,5.2vw,3.5rem);line-height:1.18;letter-spacing:.09em;text-wrap:balance;
+  background:linear-gradient(105deg,#8a6416 0%,#d8b65a 18%,#f4de96 30%,#fffbe3 38%,#e3c26a 46%,#a67c1f 62%,#e9cb73 80%,#9a752a 100%);background-size:220% 100%;background-position:0 0;
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:#d8b65a;
+  filter:drop-shadow(0 1px 0 rgba(0,0,0,.7)) drop-shadow(0 0 18px rgba(216,182,90,.18));animation:sheen 2.6s .4s ease-out 1 forwards}
+@keyframes sheen{to{background-position:100% 0}}
+.search-subtitle{margin:20px 0 0;font-style:italic;font-size:1.22rem;color:var(--ivory-dim);letter-spacing:.03em}
+.search-subtitle::before,.search-subtitle::after{content:"";display:inline-block;width:38px;height:1px;background:var(--leaf);vertical-align:middle;margin:0 16px}
 
-button,
-input,
-select{
-    font:inherit;
-}
+/* SEARCH PANEL */
+.search-panel{padding:22px;margin-bottom:34px;box-shadow:0 0 0 5px var(--wall),0 0 0 6px var(--hair),0 24px 60px rgba(0,0,0,.55)}
+.search-row{display:grid;grid-template-columns:minmax(0,1fr) auto auto;gap:12px}
+.search-input{width:100%;min-width:0;height:60px;padding:0 20px;outline:none;font-size:1.2rem;letter-spacing:.02em;color:var(--gold-hi);background:linear-gradient(#0c0a07,#0c0a07) padding-box,var(--leaf) border-box}
+.search-input::placeholder{color:var(--ivory-faint);font-style:italic}
+.search-input:focus{box-shadow:0 0 0 3px rgba(216,182,90,.28)}
+.search-button,.filter-toggle{height:60px;padding:0 26px;cursor:pointer;font-family:var(--inscr);font-size:.82rem;font-weight:600;letter-spacing:.16em;color:var(--gold-hi);transition:color .2s,background .2s}
+.search-button:hover,.filter-toggle:hover{color:#1a1405;background:var(--leaf) border-box;background-size:200% 200%}
+.search-button:active,.filter-toggle:active{filter:brightness(.92)}
 
-button{
-    -webkit-tap-highlight-color:transparent;
-}
+/* FILTERS */
+.filter-menu{margin-top:14px;padding:20px;background:linear-gradient(var(--vault-2),var(--vault-2)) padding-box,var(--hair-strong) border-box;border-color:var(--hair-strong)}
+.filter-menu[hidden]{display:none}
+.filter-menu-header{display:flex;justify-content:space-between;align-items:baseline;gap:14px;margin-bottom:16px;padding-bottom:12px;border-bottom:1px solid var(--hair);font-family:var(--inscr);font-size:.82rem;letter-spacing:.12em;color:var(--gold)}
+.filter-menu-header span{font-family:var(--serif);font-style:italic;font-size:1rem;letter-spacing:0;color:var(--ivory-faint)}
+.filters{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+.filter-group{display:flex;flex-direction:column;gap:6px}
+.filter-label{font-size:1rem;font-style:italic;color:var(--gold);text-transform:lowercase}
+.filter-label::first-letter{text-transform:uppercase}
+.filter-select{width:100%;height:46px;padding:0 10px;outline:none;font-size:.95rem;color:var(--ivory);background:linear-gradient(#0c0a07,#0c0a07) padding-box,var(--hair-strong) border-box;border-color:var(--hair-strong)}
+.filter-select:focus{box-shadow:0 0 0 3px rgba(216,182,90,.28)}
+.filter-bottom{margin-top:18px;padding-top:16px;border-top:1px solid var(--hair)}
+.filter-bottom-actions{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.filter-search-button{height:48px}
+.clear-filters-button{height:44px;padding:0 20px;background:transparent;border:1px solid var(--hair-strong);color:var(--ivory-dim);cursor:pointer;font-size:1rem;font-style:italic}
+.clear-filters-button:hover{color:var(--gold-hi);border-color:var(--gold)}
 
-body::before{
-    content:"";
-    position:fixed;
-    inset:0;
-    pointer-events:none;
-    z-index:-10;
-    background:
-        radial-gradient(
-            circle at 50% 8%,
-            rgba(255,210,26,.10),
-            transparent 35%
-        ),
-        radial-gradient(
-            circle at 10% 65%,
-            rgba(255,255,255,.035),
-            transparent 30%
-        ),
-        radial-gradient(
-            circle at 90% 80%,
-            rgba(255,210,26,.05),
-            transparent 30%
-        ),
-        #000;
-}
+/* STATUS */
+.search-status{min-height:26px;margin-top:16px;font-style:italic;font-size:1.05rem;color:var(--ivory-dim)}
+.search-status.error{color:var(--red)}
+.search-status.success{color:var(--green)}
 
+/* RESULTS */
+.results{display:none;margin-top:14px;max-height:480px;overflow-y:auto;background:linear-gradient(#0c0a07,#0c0a07) padding-box,var(--hair-strong) border-box;border-color:var(--hair-strong)}
+.results.visible{display:block}
+.result{width:100%;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:16px;text-align:left;padding:15px 18px;background:transparent;border:0;border-bottom:1px solid var(--hair);cursor:pointer;color:var(--ivory)}
+.result:last-child{border-bottom:0}
+.result:hover{background:rgba(216,182,90,.07)}
+.result:focus-visible{outline-offset:-3px}
+.result-name{font-size:1.25rem;font-weight:600;color:var(--gold-hi)}
+.result-meta{margin-top:3px;font-size:.95rem;line-height:1.45;color:var(--ivory-faint)}
+.result-right{text-align:right;font-size:.95rem;color:var(--gold)}
+.result-badge{display:inline-block;margin-top:5px;padding:2px 8px;border:1px solid var(--hair-strong);font-size:.8rem;color:var(--gold)}
+.no-results{padding:30px;text-align:center;font-style:italic;font-size:1.05rem;color:var(--ivory-dim)}
 
-/* =========================================================
-   PAGE
-========================================================= */
+/* PAGINATION */
+.results-pagination{display:none;align-items:center;justify-content:space-between;gap:12px;margin-top:14px;padding:4px 0}
+.results-pagination.visible{display:flex}
+.results-page-button{flex:0 0 auto;min-width:110px;min-height:42px;padding:8px 16px;background:transparent;border:1px solid var(--hair-strong);color:var(--gold-hi);font-family:var(--inscr);font-size:.78rem;font-weight:600;letter-spacing:.12em;cursor:pointer}
+.results-page-button:hover:not(:disabled){background:rgba(216,182,90,.12);border-color:var(--gold)}
+.results-page-button:disabled{opacity:.3;cursor:not-allowed}
+.results-page-status{flex:1;text-align:center;font-style:italic;font-size:1rem;color:var(--ivory-dim)}
+.results-page-status strong{color:var(--gold-hi);font-weight:600}
 
-.page{
-    width:min(1450px,calc(100% - 28px));
-    margin:0 auto;
-    padding:28px 0 90px;
-}
+/* A–Z */
+.az-bar{display:none;flex-wrap:wrap;gap:5px;margin:14px 0}
+.az-bar.visible{display:flex}
+.az-letter{flex:1 0 34px;min-width:34px;min-height:38px;padding:4px 0;background:transparent;border:1px solid var(--hair);color:var(--ivory-dim);font-family:var(--inscr);font-size:.85rem;font-weight:600;cursor:pointer;transition:color .2s,border-color .2s}
+.az-letter:hover{border-color:var(--gold);color:var(--gold-hi)}
+.az-letter.active{background:var(--leaf);border-color:transparent;color:#1a1405}
 
+/* LOADING */
+.loading{text-align:center;padding:48px;font-style:italic;color:var(--gold);font-size:1.05rem}
+.spinner{display:inline-block;width:18px;height:18px;border:2px solid rgba(216,182,90,.25);border-top-color:var(--gold-hi);border-radius:50%;animation:spin .8s linear infinite;vertical-align:-3px;margin-right:8px}
+@keyframes spin{to{transform:rotate(360deg)}}
 
-/* =========================================================
-   HEADER
-========================================================= */
+/* SPECIMEN — the framed exhibit */
+.specimen{width:100%;border-width:5px;box-shadow:0 0 0 1px #000,0 0 0 7px var(--wall),0 0 0 8px var(--hair),0 30px 80px rgba(0,0,0,.6);position:relative}
+.specimen::before{content:"";position:absolute;inset:0;border:1px solid rgba(0,0,0,.65);pointer-events:none;z-index:6}
+.specimen-header{display:grid;grid-template-columns:minmax(0,1fr) 280px;border-bottom:1px solid var(--hair-strong)}
+.specimen-header-main{padding:16px 24px;border-right:1px solid var(--hair);font-family:var(--inscr);font-weight:600;font-size:clamp(.9rem,2vw,1.2rem);letter-spacing:.1em;color:var(--gold-hi)}
+.specimen-header-lock{display:flex;align-items:center;padding:10px 16px;font-style:italic;font-size:1rem;color:var(--ivory-faint)}
+.specimen-main{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(300px,.72fr)}
+.flower-window{min-height:660px;border-right:1px solid var(--hair-strong);position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;background:radial-gradient(ellipse at 50% 42%,#2a241a 0%,#14110c 55%,#0a0907 100%)}
+.flower-window::before{content:"";position:absolute;inset:22px;border:1px solid var(--hair);pointer-events:none}
+.flower-image{max-width:90%;max-height:620px;width:auto;height:auto;object-fit:contain;display:none;position:relative;z-index:2;box-shadow:0 18px 50px rgba(0,0,0,.65)}
+.flower-reference-label{position:absolute;left:34px;bottom:32px;z-index:4;padding:7px 14px;border:1px solid var(--hair-strong);background:rgba(10,9,7,.9);font-style:italic;font-size:.95rem;color:var(--gold)}
+.flower-credit{position:absolute;right:34px;bottom:32px;z-index:4;max-width:44%;text-align:right;font-size:.85rem;line-height:1.35;color:var(--ivory-faint)}
+.specimen-fields{display:grid;grid-template-columns:1fr}
+.specimen-field{min-height:76px;padding:12px 20px;border-bottom:1px solid var(--hair)}
+.specimen-field:last-child{border-bottom:0}
+.field-label{margin-bottom:4px;font-style:italic;font-size:.95rem;color:var(--ivory-faint);text-transform:lowercase}
+.field-label::first-letter{text-transform:uppercase}
+.field-value{min-height:18px;font-size:1.15rem;line-height:1.35;color:var(--gold-hi);word-break:break-word}
+.field-value.empty{color:rgba(216,182,90,.28)}
 
-.search-header{
-    text-align:center;
-    padding:25px 0 20px;
-}
+/* RESONANCE */
+.resonance{border-top:1px solid var(--hair-strong);padding:18px 22px 22px}
+.resonance-title{font-family:var(--inscr);font-size:.85rem;font-weight:600;letter-spacing:.14em;color:var(--gold);margin-bottom:6px}
+.resonance-note{margin-bottom:14px;font-style:italic;font-size:.95rem;color:var(--ivory-faint);text-transform:lowercase}
+.resonance-note::first-letter{text-transform:uppercase}
+.resonance-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.resonance-box{border:1px solid var(--hair-strong);min-height:98px;padding:10px;text-align:center;background:rgba(216,182,90,.03)}
+.resonance-name{font-size:.9rem;font-style:italic;color:var(--ivory-dim)}
+.resonance-number{margin:6px 0;font-family:var(--inscr);font-size:1.5rem;font-weight:600;color:var(--gold-hi)}
+.resonance-graph{height:24px;display:flex;align-items:flex-end;justify-content:center;gap:2px}
+.resonance-graph i{display:block;width:3px;min-height:3px;background:rgba(216,182,90,.4)}
 
-.search-title{
-    margin:0 auto;
-    max-width:100%;
-    color:#f9e7a0;
-    font-family:Georgia,"Times New Roman",serif;
-    font-size:clamp(1.65rem,5.5vw,3.6rem);
-    font-weight:700;
-    line-height:1.12;
-    letter-spacing:.055em;
-    text-align:center;
-    text-transform:uppercase;
-    text-wrap:balance;
-    background:linear-gradient(
-        180deg,
-        #fffdf0 0%,
-        #fff0a3 15%,
-        #ffd21a 38%,
-        #d4a62b 58%,
-        #fff0a3 72%,
-        #b8860b 100%
-    );
-    -webkit-background-clip:text;
-    background-clip:text;
-    -webkit-text-fill-color:transparent;
-    filter:drop-shadow(0 0 2px rgba(255,255,220,.8));
-    animation:sfDiamondPulse 3.6s ease-in-out infinite;
-}
+/* PLAQUE (specimen foot) */
+.specimen-foot{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--hair-strong)}
+.specimen-foot div{padding:12px 8px;text-align:center;font-style:italic;font-size:1rem;color:var(--gold);border-right:1px solid var(--hair)}
+.specimen-foot div:last-child{border-right:0}
 
-@keyframes sfDiamondPulse{
-    0%,100%{
-        filter:
-            drop-shadow(0 0 2px rgba(255,255,220,.65))
-            drop-shadow(0 0 7px rgba(255,210,26,.45));
-    }
-    50%{
-        filter:
-            drop-shadow(0 0 4px rgba(255,255,245,1))
-            drop-shadow(0 0 12px rgba(255,210,26,.95))
-            drop-shadow(0 0 25px rgba(255,190,0,.55));
-    }
-}
+/* INFO */
+.info{margin-top:40px;border-width:3px;min-height:380px;box-shadow:0 0 0 1px #000,0 24px 60px rgba(0,0,0,.5)}
+.info-header{padding:16px 24px;border-bottom:1px solid var(--hair-strong);font-family:var(--inscr);font-size:1.15rem;font-weight:600;letter-spacing:.2em;color:var(--gold-hi)}
+.info-empty{min-height:300px;display:flex;align-items:center;justify-content:center;padding:30px;text-align:center;font-style:italic;font-size:1.15rem;color:var(--ivory-faint)}
+.info-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;padding:20px}
+.info-panel{padding:18px;border-width:1px;background:linear-gradient(var(--vault-2),var(--vault-2)) padding-box,var(--hair-strong) border-box;border-color:var(--hair-strong)}
+.info-panel.full{grid-column:1/-1}
+.info-panel-title{padding-bottom:10px;margin-bottom:14px;border-bottom:1px solid var(--hair);font-family:var(--inscr);font-size:.85rem;font-weight:600;letter-spacing:.12em;color:var(--gold)}
+.info-panel-note{margin-top:10px;font-style:italic;font-size:.9rem;line-height:1.45;color:var(--ivory-faint)}
+.info-data-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.data-item{padding:10px 12px;border:1px solid var(--hair)}
+.data-key{font-style:italic;font-size:.9rem;color:var(--ivory-faint)}
+.data-value{margin-top:3px;font-size:1.05rem;line-height:1.4;color:var(--ivory);word-break:break-word}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{padding:4px 12px;border:1px solid var(--hair-strong);font-size:1rem;color:var(--gold-hi)}
+.lineage{font-size:1.05rem;line-height:1.65;color:var(--ivory)}
+.lineage strong{color:var(--gold-hi)}
+.photo-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px}
+.photo-card{border:1px solid var(--hair-strong);background:#0c0a07}
+.photo-card img{display:block;width:100%;height:160px;object-fit:cover}
+.photo-credit{padding:8px;font-size:.82rem;line-height:1.35;color:var(--ivory-faint)}
+.source-list{margin:0;padding-left:22px}
+.source-list li{margin:8px 0;font-size:.95rem;line-height:1.45;color:var(--ivory-dim)}
+.source-list a{word-break:break-all}
+.raw-data{border:1px solid var(--hair)}
+.raw-data summary{padding:12px 14px;cursor:pointer;font-style:italic;color:var(--gold)}
+.raw-data pre{max-height:600px;overflow:auto;margin:0;padding:14px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.78rem;line-height:1.55;color:#cdbf92;background:#070605}
 
-@media(prefers-reduced-motion:reduce){
-    .search-title{
-        animation:none;
-    }
-}
+/* FOOTER */
+.credit{margin-top:56px;padding-top:28px;text-align:center;font-size:1rem;line-height:1.8;color:var(--ivory-faint);position:relative}
+.credit::before{content:"";position:absolute;top:0;left:50%;width:min(320px,60%);height:1px;transform:translateX(-50%);background:var(--leaf)}
+.foot-nav{list-style:none;margin:0 0 14px;padding:0;display:flex;justify-content:center;flex-wrap:wrap;gap:4px 22px}
+.foot-nav a{font-family:var(--inscr);font-size:.74rem;letter-spacing:.14em;text-decoration:none;color:var(--ivory-dim)}
+.foot-nav a:hover{color:var(--gold-hi)}
 
-.search-subtitle{
-    margin:12px 0 0;
-    color:var(--white-soft);
-    font-size:.72rem;
-    letter-spacing:.20em;
-    text-transform:uppercase;
-}
-
-
-/* =========================================================
-   SEARCH PANEL
-========================================================= */
-
-.search-panel{
-    border:1px solid var(--gold);
-    background:rgba(0,0,0,.94);
-    box-shadow:var(--shadow);
-    padding:18px;
-    margin-bottom:24px;
-}
-
-.search-row{
-    display:grid;
-    grid-template-columns:minmax(0,1fr) auto auto;
-    gap:10px;
-    align-items:stretch;
-}
-
-.search-input{
-    width:100%;
-    min-width:0;
-    height:58px;
-    padding:0 18px;
-    border:1px solid var(--gold);
-    outline:none;
-    background:#000;
-    color:var(--gold-hot);
-    font-size:1.02rem;
-    letter-spacing:.05em;
-}
-
-.search-input::placeholder{
-    color:rgba(255,255,255,.40);
-}
-
-.search-input:focus{
-    box-shadow:
-        0 0 8px rgba(255,210,26,.8),
-        inset 0 0 18px rgba(255,210,26,.06);
-}
-
-.search-button,
-.filter-toggle{
-    height:58px;
-    padding:0 20px;
-    border:1px solid var(--gold);
-    background:#000;
-    color:var(--gold);
-    font-weight:bold;
-    letter-spacing:.08em;
-    cursor:pointer;
-    transition:
-        background .2s ease,
-        color .2s ease,
-        box-shadow .2s ease;
-}
-
-.search-button:hover,
-.filter-toggle:hover{
-    background:var(--gold);
-    color:#000;
-    box-shadow:0 0 18px rgba(255,210,26,.5);
-}
-
-.search-button:focus-visible,
-.filter-toggle:focus-visible,
-.result:focus-visible{
-    outline:2px solid var(--gold-hot);
-    outline-offset:2px;
-}
-
-
-/* =========================================================
-   FILTER MENU
-========================================================= */
-
-.filter-menu{
-    margin-top:10px;
-    padding:15px;
-    border:1px solid rgba(255,210,26,.55);
-    background:rgba(0,0,0,.98);
-}
-
-.filter-menu[hidden]{
-    display:none;
-}
-
-.filter-menu-header{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    gap:15px;
-    margin-bottom:12px;
-    color:var(--gold);
-    font-size:.65rem;
-    letter-spacing:.12em;
-}
-
-.filter-menu-header span{
-    color:rgba(255,255,255,.35);
-    font-size:.52rem;
-    letter-spacing:.08em;
-}
-
-.filters{
-    display:grid;
-    grid-template-columns:repeat(4,minmax(0,1fr));
-    gap:9px;
-}
-
+/* RESPONSIVE */
 @media(max-width:1000px){
-    .filters{
-        grid-template-columns:repeat(2,minmax(0,1fr));
-    }
+  .filters{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .specimen-main{grid-template-columns:1fr}
+  .flower-window{border-right:0;border-bottom:1px solid var(--hair-strong);min-height:500px}
+  .info-grid{grid-template-columns:1fr}.info-panel.full{grid-column:auto}
 }
-
-@media(max-width:520px){
-    .filters{
-        grid-template-columns:1fr;
-    }
-}
-
-.filter-group{
-    display:flex;
-    flex-direction:column;
-    gap:5px;
-}
-
-.filter-label{
-    color:var(--gold-soft);
-    font-size:.58rem;
-    letter-spacing:.13em;
-    text-transform:uppercase;
-}
-
-.filter-select{
-    width:100%;
-    height:42px;
-    padding:0 10px;
-    background:#000;
-    color:#fff;
-    border:1px solid rgba(255,210,26,.6);
-    outline:none;
-}
-
-.filter-select:focus{
-    border-color:var(--gold);
-    box-shadow:0 0 8px rgba(255,210,26,.35);
-}
-
-.filter-bottom{
-    display:flex;
-    flex-direction:column;
-    gap:12px;
-    margin-top:14px;
-    padding-top:12px;
-    border-top:1px solid rgba(255,210,26,.16);
-}
-
-.filter-bottom-actions{
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    flex-wrap:wrap;
-    gap:12px;
-}
-
-.filter-search-button{
-    min-height:38px;
-    padding:0 18px;
-}
-
-.clear-filters-button{
-    align-self:flex-start;
-    height:34px;
-    padding:0 12px;
-    background:#000;
-    border:1px solid rgba(255,210,26,.45);
-    color:var(--gold);
-    cursor:pointer;
-    font-size:.58rem;
-    letter-spacing:.08em;
-}
-
-.clear-filters-button:hover{
-    background:var(--gold);
-    color:#000;
-}
-
-
-/* =========================================================
-   STATUS
-========================================================= */
-
-.search-status{
-    min-height:22px;
-    margin-top:12px;
-    color:var(--white-soft);
-    font-size:.68rem;
-    letter-spacing:.08em;
-}
-
-.search-status.error{
-    color:var(--red);
-}
-
-.search-status.success{
-    color:var(--green);
-}
-
-
-/* =========================================================
-   RESULTS
-========================================================= */
-
-.results{
-    display:none;
-    border:1px solid rgba(255,210,26,.5);
-    margin-top:14px;
-    max-height:460px;
-    overflow-y:auto;
-    background:#000;
-}
-
-.results.visible{
-    display:block;
-}
-
-.result{
-    width:100%;
-    display:grid;
-    grid-template-columns:minmax(0,1fr) auto;
-    gap:15px;
-    text-align:left;
-    padding:13px 14px;
-    background:#000;
-    border:0;
-    border-bottom:1px solid rgba(255,210,26,.18);
-    color:#fff;
-    cursor:pointer;
-}
-
-.result:last-child{
-    border-bottom:0;
-}
-
-.result:hover{
-    background:rgba(255,210,26,.055);
-}
-
-.result-name{
-    color:var(--gold);
-    font-size:.9rem;
-    font-weight:bold;
-}
-
-.result-meta{
-    margin-top:5px;
-    color:rgba(255,255,255,.48);
-    font-size:.6rem;
-    line-height:1.5;
-}
-
-.result-right{
-    text-align:right;
-    color:var(--gold-soft);
-    font-size:.62rem;
-}
-
-.result-badge{
-    display:inline-block;
-    margin-top:5px;
-    padding:3px 5px;
-    border:1px solid rgba(255,210,26,.35);
-    color:rgba(255,210,26,.65);
-    font-size:.44rem;
-    letter-spacing:.06em;
-}
-
-.no-results{
-    padding:25px;
-    text-align:center;
-    color:rgba(255,255,255,.45);
-    font-size:.7rem;
-    line-height:1.7;
-}
-
-
-/* =========================================================
-   SUPER FLOWER ENGINE PAGINATION
-   10 LIVE STRAINS PER PAGE — SUPER FLOWER ENGINE
-========================================================= */
-
-.results-pagination{
-    display:none;
-    align-items:center;
-    justify-content:space-between;
-    gap:10px;
-    margin-top:10px;
-    padding:10px 0 2px;
-}
-
-.results-pagination.visible{
-    display:flex;
-}
-
-.results-page-button{
-    flex:0 0 auto;
-    min-width:92px;
-    padding:9px 12px;
-    background:#000;
-    border:1px solid rgba(255,210,26,.45);
-    color:var(--gold);
-    font-family:inherit;
-    font-size:.58rem;
-    font-weight:bold;
-    letter-spacing:.08em;
-    cursor:pointer;
-}
-
-.results-page-button:hover:not(:disabled){
-    background:rgba(255,210,26,.08);
-    border-color:rgba(255,210,26,.8);
-}
-
-.results-page-button:disabled{
-    opacity:.25;
-    cursor:not-allowed;
-}
-
-.results-page-status{
-    flex:1;
-    text-align:center;
-    color:rgba(255,255,255,.5);
-    font-size:.56rem;
-    letter-spacing:.06em;
-    line-height:1.4;
-}
-
-.results-page-status strong{
-    color:var(--gold);
-    font-weight:bold;
-}
-
-
-/* =========================================================
-   A-Z BAR
-========================================================= */
-
-.az-bar{
-    display:none;
-    flex-wrap:wrap;
-    gap:4px;
-    margin:10px 0;
-}
-
-.az-bar.visible{
-    display:flex;
-}
-
-.az-letter{
-    flex:1 0 28px;
-    min-width:28px;
-    padding:6px 0;
-    background:#000;
-    border:1px solid rgba(255,210,26,.3);
-    color:rgba(255,255,255,.6);
-    font-family:inherit;
-    font-size:.55rem;
-    font-weight:bold;
-    cursor:pointer;
-}
-
-.az-letter:hover{
-    border-color:rgba(255,210,26,.8);
-    color:var(--gold);
-}
-
-.az-letter.active{
-    background:var(--gold);
-    border-color:var(--gold);
-    color:#000;
-}
-
-
-/* =========================================================
-   MOBILE PAGINATION
-========================================================= */
-
-@media (max-width:600px){
-
-    .results-pagination{
-        gap:7px;
-    }
-
-    .results-page-button{
-        min-width:78px;
-        padding:8px 8px;
-        font-size:.52rem;
-    }
-
-    .results-page-status{
-        font-size:.5rem;
-    }
-
-}
-
-
-/* =========================================================
-   LOADING
-========================================================= */
-
-.loading{
-    text-align:center;
-    padding:45px;
-    color:var(--gold-soft);
-    font-size:.7rem;
-    line-height:1.5;
-}
-
-.spinner{
-    display:inline-block;
-    width:16px;
-    height:16px;
-    border:2px solid rgba(255,210,26,.2);
-    border-top-color:var(--gold);
-    border-radius:50%;
-    animation:spin .7s linear infinite;
-}
-
-@keyframes spin{
-    to{
-        transform:rotate(360deg);
-    }
-}
-
-
-/* =========================================================
-   SPECIMEN
-========================================================= */
-
-.specimen{
-    width:100%;
-    border:2px solid var(--gold);
-    background:#000;
-    box-shadow:0 0 12px rgba(255,210,26,.18);
-}
-
-.specimen-header{
-    display:grid;
-    grid-template-columns:minmax(0,1fr) 250px;
-    border-bottom:2px solid var(--gold);
-}
-
-.specimen-header-main{
-    padding:12px 18px;
-    border-right:1px solid var(--gold);
-    color:var(--gold);
-    font-weight:bold;
-    font-size:clamp(.85rem,2vw,1.2rem);
-    letter-spacing:.05em;
-}
-
-.specimen-header-lock{
-    display:flex;
-    align-items:center;
-    padding:8px 12px;
-    color:var(--gold-soft);
-    font-size:.55rem;
-    letter-spacing:.05em;
-}
-
-.specimen-main{
-    display:grid;
-    grid-template-columns:minmax(0,1.45fr) minmax(290px,.72fr);
-}
-
-
-/* =========================================================
-   FLOWER WINDOW
-========================================================= */
-
-.flower-window{
-    min-height:670px;
-    border-right:2px solid var(--gold);
-    position:relative;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    overflow:hidden;
-    background:
-        radial-gradient(
-            circle at 50% 50%,
-            rgba(255,210,26,.045),
-            transparent 48%
-        ),
-        #000;
-}
-
-.flower-window::before{
-    content:"";
-    position:absolute;
-    inset:20px;
-    border:1px solid rgba(255,210,26,.10);
-    pointer-events:none;
-}
-
-.flower-window::after{
-    content:"";
-    position:absolute;
-    inset:30px;
-    background:
-        linear-gradient(
-            90deg,
-            transparent 49.8%,
-            rgba(255,210,26,.035) 50%,
-            transparent 50.2%
-        ),
-        linear-gradient(
-            0deg,
-            transparent 49.8%,
-            rgba(255,210,26,.035) 50%,
-            transparent 50.2%
-        );
-    pointer-events:none;
-}
-
-.flower-image{
-    max-width:94%;
-    max-height:650px;
-    width:auto;
-    height:auto;
-    object-fit:contain;
-    display:none;
-    position:relative;
-    z-index:2;
-    filter:contrast(1.04) saturate(1.04);
-}
-
-.flower-reference-label{
-    position:absolute;
-    left:30px;
-    bottom:28px;
-    z-index:4;
-    padding:7px 10px;
-    border:1px solid rgba(255,210,26,.55);
-    background:rgba(0,0,0,.86);
-    color:var(--gold);
-    font-size:.5rem;
-    letter-spacing:.10em;
-    text-transform:uppercase;
-}
-
-.flower-credit{
-    position:absolute;
-    right:20px;
-    bottom:20px;
-    z-index:4;
-    max-width:48%;
-    text-align:right;
-    color:rgba(255,255,255,.38);
-    font-size:.44rem;
-    line-height:1.4;
-}
-
-
-/* =========================================================
-   TECHNICAL SIDE
-========================================================= */
-
-.specimen-fields{
-    display:grid;
-    grid-template-columns:1fr;
-}
-
-.specimen-field{
-    min-height:72px;
-    padding:10px 14px;
-    border-bottom:1px solid var(--gold);
-}
-
-.specimen-field:last-child{
-    border-bottom:0;
-}
-
-.field-label{
-    color:var(--gold-soft);
-    font-size:.58rem;
-    letter-spacing:.07em;
-    margin-bottom:8px;
-}
-
-.field-value{
-    color:var(--gold);
-    font-size:.78rem;
-    min-height:14px;
-    line-height:1.4;
-    word-break:break-word;
-}
-
-.field-value.empty{
-    color:rgba(255,210,26,.16);
-}
-
-
-/* =========================================================
-   RESONANCE
-========================================================= */
-
-.resonance{
-    border-top:2px solid var(--gold);
-    padding:10px 14px 12px;
-}
-
-.resonance-title{
-    color:var(--gold-soft);
-    font-size:.68rem;
-    letter-spacing:.08em;
-    margin-bottom:9px;
-}
-
-.resonance-note{
-    color:rgba(255,255,255,.28);
-    font-size:.48rem;
-    margin-bottom:9px;
-}
-
-.resonance-grid{
-    display:grid;
-    grid-template-columns:repeat(5,1fr);
-    gap:8px;
-}
-
-.resonance-box{
-    border:1px solid var(--gold);
-    min-height:86px;
-    padding:7px;
-    text-align:center;
-}
-
-.resonance-name{
-    color:var(--gold-soft);
-    font-size:.5rem;
-}
-
-.resonance-number{
-    margin:8px 0;
-    color:var(--gold);
-    font-size:1.4rem;
-}
-
-.resonance-graph{
-    height:22px;
-    display:flex;
-    align-items:flex-end;
-    justify-content:center;
-    gap:2px;
-}
-
-.resonance-graph i{
-    display:block;
-    width:3px;
-    min-height:3px;
-    background:rgba(255,210,26,.25);
-}
-
-
-/* =========================================================
-   FOOT
-========================================================= */
-
-.specimen-foot{
-    display:grid;
-    grid-template-columns:1fr 1fr 1fr;
-    border-top:2px solid var(--gold);
-}
-
-.specimen-foot div{
-    padding:8px;
-    color:var(--gold-soft);
-    text-align:center;
-    font-size:.55rem;
-    border-right:1px solid var(--gold);
-}
-
-.specimen-foot div:last-child{
-    border-right:0;
-}
-
-
-/* =========================================================
-   INFO
-========================================================= */
-
-.info{
-    margin-top:24px;
-    border:2px solid var(--gold);
-    min-height:430px;
-    background:#000;
-}
-
-.info-header{
-    padding:12px 18px;
-    border-bottom:1px solid var(--gold);
-    color:var(--gold);
-    font-size:1.3rem;
-    letter-spacing:.12em;
-    font-weight:bold;
-}
-
-.info-empty{
-    min-height:360px;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-    padding:30px;
-    color:rgba(255,255,255,.18);
-    text-align:center;
-    letter-spacing:.14em;
-    font-size:.7rem;
-}
-
-.info-grid{
-    display:grid;
-    grid-template-columns:repeat(2,minmax(0,1fr));
-    gap:12px;
-    padding:14px;
-}
-
-.info-panel{
-    border:1px solid rgba(255,210,26,.65);
-    padding:13px;
-    background:rgba(255,210,26,.015);
-}
-
-.info-panel.full{
-    grid-column:1/-1;
-}
-
-.info-panel-title{
-    color:var(--gold);
-    font-size:.7rem;
-    letter-spacing:.08em;
-    border-bottom:1px solid rgba(255,210,26,.3);
-    padding-bottom:8px;
-    margin-bottom:10px;
-}
-
-.info-panel-note{
-    margin-top:8px;
-    color:rgba(255,255,255,.30);
-    font-size:.48rem;
-    line-height:1.5;
-}
-
-.info-data-grid{
-    display:grid;
-    grid-template-columns:repeat(2,minmax(0,1fr));
-    gap:7px;
-}
-
-.data-item{
-    border:1px solid rgba(255,210,26,.18);
-    padding:8px;
-}
-
-.data-key{
-    color:var(--gold-soft);
-    font-size:.5rem;
-}
-
-.data-value{
-    margin-top:5px;
-    color:#ddd;
-    font-size:.65rem;
-    line-height:1.45;
-    word-break:break-word;
-}
-
-.chips{
-    display:flex;
-    flex-wrap:wrap;
-    gap:6px;
-}
-
-.chip{
-    border:1px solid rgba(255,210,26,.65);
-    padding:5px 7px;
-    color:var(--gold);
-    font-size:.55rem;
-}
-
-.lineage{
-    color:#ddd;
-    font-size:.65rem;
-    line-height:1.6;
-}
-
-.lineage strong{
-    color:var(--gold);
-}
-
-.photo-grid{
-    display:grid;
-    grid-template-columns:repeat(auto-fill,minmax(130px,1fr));
-    gap:9px;
-}
-
-.photo-card{
-    border:1px solid rgba(255,210,26,.3);
-    background:#000;
-}
-
-.photo-card img{
-    display:block;
-    width:100%;
-    height:150px;
-    object-fit:cover;
-}
-
-.photo-credit{
-    padding:6px;
-    color:rgba(255,255,255,.45);
-    font-size:.45rem;
-    line-height:1.4;
-}
-
-.source-list{
-    margin:0;
-    padding-left:18px;
-}
-
-.source-list li{
-    margin:7px 0;
-    color:#aaa;
-    font-size:.58rem;
-    line-height:1.4;
-}
-
-.source-list a{
-    color:var(--gold);
-    word-break:break-all;
-}
-
-.raw-data{
-    border:1px solid rgba(255,210,26,.3);
-}
-
-.raw-data summary{
-    padding:10px;
-    cursor:pointer;
-    color:var(--gold);
-    font-size:.6rem;
-}
-
-.raw-data pre{
-    max-height:600px;
-    overflow:auto;
-    margin:0;
-    padding:12px;
-    color:#c8bd95;
-    background:#020202;
-    font-size:.52rem;
-    line-height:1.5;
-}
-
-
-/* =========================================================
-   CREDIT
-========================================================= */
-
-.credit{
-    margin-top:20px;
-    text-align:center;
-    color:rgba(255,255,255,.38);
-    font-size:.55rem;
-    line-height:1.7;
-}
-
-.credit a{
-    color:var(--gold);
-}
-
-
-/* =========================================================
-   TABLET
-========================================================= */
-
-@media(max-width:1000px){
-
-    .filters{
-        grid-template-columns:repeat(2,1fr);
-    }
-
-    .specimen-main{
-        grid-template-columns:1fr;
-    }
-
-    .flower-window{
-        border-right:0;
-        border-bottom:2px solid var(--gold);
-        min-height:500px;
-    }
-
-    .info-grid{
-        grid-template-columns:1fr;
-    }
-
-    .info-panel.full{
-        grid-column:auto;
-    }
-
-}
-
-
-/* =========================================================
-   MOBILE
-========================================================= */
-
 @media(max-width:650px){
-
-    .page{
-        width:calc(100% - 12px);
-        padding-top:15px;
-    }
-
-    .search-row{
-        grid-template-columns:1fr 1fr;
-    }
-
-    .search-input{
-        grid-column:1/-1;
-    }
-
-    .search-button,
-    .filter-toggle{
-        width:100%;
-        padding:0 10px;
-        font-size:.62rem;
-    }
-
-    .filter-menu-header{
-        flex-direction:column;
-        align-items:flex-start;
-    }
-
-    .filters{
-        grid-template-columns:1fr;
-    }
-
-    .specimen-header{
-        grid-template-columns:1fr;
-    }
-
-    .specimen-header-main{
-        border-right:0;
-        border-bottom:1px solid var(--gold);
-    }
-
-    .flower-window{
-        min-height:430px;
-    }
-
-    .flower-reference-label{
-        left:15px;
-        bottom:15px;
-        font-size:.42rem;
-    }
-
-    .flower-credit{
-        right:15px;
-        bottom:15px;
-        max-width:45%;
-        font-size:.38rem;
-    }
-
-    .resonance-grid{
-        grid-template-columns:repeat(2,1fr);
-    }
-
-    .resonance-box:last-child{
-        grid-column:1/-1;
-    }
-
-    .specimen-foot{
-        grid-template-columns:1fr;
-    }
-
-    .specimen-foot div{
-        border-right:0;
-        border-bottom:1px solid var(--gold);
-    }
-
-    .specimen-foot div:last-child{
-        border-bottom:0;
-    }
-
-    .info-data-grid{
-        grid-template-columns:1fr;
-    }
-
-    .result{
-        grid-template-columns:minmax(0,1fr) 42px;
-    }
-
+  body{font-size:17px}
+  .nav-list a{padding:13px 9px;font-size:.68rem;letter-spacing:.1em}
+  .nav-list a[aria-current="page"]::after{left:9px;right:9px;bottom:6px}
+  .page{width:calc(100% - 20px);padding-top:14px}
+  .search-header{padding:30px 0 26px}
+  .search-subtitle::before,.search-subtitle::after{display:none}
+  .search-panel{padding:14px}
+  .search-row{grid-template-columns:1fr 1fr}
+  .search-input{grid-column:1/-1}
+  .search-button,.filter-toggle{width:100%;padding:0 10px;font-size:.74rem}
+  .filter-menu-header{flex-direction:column;align-items:flex-start;gap:4px}
+  .filters{grid-template-columns:1fr}
+  .specimen{border-width:4px}
+  .specimen-header{grid-template-columns:1fr}
+  .specimen-header-main{border-right:0;border-bottom:1px solid var(--hair)}
+  .flower-window{min-height:400px}
+  .flower-window::before{inset:12px}
+  .flower-reference-label{left:18px;bottom:18px}
+  .flower-credit{right:18px;bottom:18px;max-width:42%}
+  .resonance-grid{grid-template-columns:repeat(2,1fr)}
+  .resonance-box:last-child{grid-column:1/-1}
+  .specimen-foot{grid-template-columns:1fr}
+  .specimen-foot div{border-right:0;border-bottom:1px solid var(--hair)}
+  .specimen-foot div:last-child{border-bottom:0}
+  .info-data-grid{grid-template-columns:1fr}
+  .result{grid-template-columns:minmax(0,1fr) 48px}
+  .results-pagination{gap:8px}
+  .results-page-button{min-width:84px;padding:8px}
 }
-
-
-/* =========================================================
-   VERY SMALL
-========================================================= */
-
-@media(max-width:390px){
-
-    .search-title{
-        font-size:1.35rem;
-    }
-
-    .search-subtitle{
-        font-size:.55rem;
-    }
-
-    .search-panel{
-        padding:10px;
-    }
-
-    .specimen-header-main{
-        font-size:.75rem;
-    }
-
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .search-title{animation:none;background-position:60% 0}
+  .spinner{animation-duration:2s}
 }
-
-
 </style>
 
 </head>
 
 
 <body>
+<a class="skip" href="#main">Skip to search</a>
+<nav class="site-nav" aria-label="Super Flower Codex">
+  <ul class="nav-list">
+    <li><a href="https://superflowercodex.com/">Home</a></li>
+    <li><a href="https://superflowercodex.com/search.html" aria-current="page">Search</a></li>
+    <li><a href="https://a.co/d/08ixcVcI" target="_blank" rel="noopener noreferrer">Book</a></li>
+    <li><a href="https://superflower.glide.page/dl/9e8302" target="_blank" rel="noopener noreferrer">App</a></li>
+    <li><a href="https://ebay.io/m/w8uod1" target="_blank" rel="noopener noreferrer">Apparel</a></li>
+    <li><a href="https://superflowercodex.com/contact.html">Contact</a></li>
+    <li><a href="https://superflowercodex.com/about.html">About</a></li>
+  </ul>
+</nav>
+
 
 <div class="page">
 
@@ -1238,26 +288,19 @@ body::before{
 ======================================================== -->
 
 <header class="search-header">
-
-    <h1 class="search-title">
-    SEARCH THE LIVING
-    <br>
-    SUPER FLOWER RECORD
-</h1>
-
-    <p class="search-subtitle">
-        SUPER FLOWER — CANNABIS CODEX
-        / LIVE ARCHIVAL SEARCH
-    </p>
-
+    <span class="search-crest" aria-hidden="true"></span>
+    <h1 class="search-title">Search the Living<br>Super Flower Record</h1>
+    <p class="search-subtitle">The Super Flower Cannabis Codex &mdash; live archival search</p>
 </header>
+<main id="main">
+<noscript><p class="no-results">The archive search needs JavaScript. Please enable it to continue.</p></noscript>
 
 
 <!-- =======================================================
      SEARCH ENGINE
 ======================================================== -->
 
-<section class="search-panel">
+<section class="search-panel" aria-label="Search">
 
     <div class="search-row">
 
@@ -1267,7 +310,7 @@ body::before{
             type="search"
             autocomplete="off"
             spellcheck="false"
-            placeholder="SEARCH THE LIVING SUPER FLOWER RECORD..."
+            placeholder="Search the living Super Flower record…"
             aria-label="Search the Living Super Flower Record"
         >
 
@@ -1275,9 +318,7 @@ body::before{
             id="searchButton"
             class="search-button"
             type="button"
-        >
-            SEARCH
-        </button>
+        >Search</button>
 
         <button
             id="filterToggle"
@@ -1285,9 +326,7 @@ body::before{
             type="button"
             aria-expanded="false"
             aria-controls="filterMenu"
-        >
-            FILTERS ▾
-        </button>
+        >Filters ▾</button>
 
     </div>
 
@@ -1300,13 +339,9 @@ body::before{
 
         <div class="filter-menu-header">
 
-            <strong>
-                OPTIONAL SEARCH FILTERS
-            </strong>
+            <strong>Optional filters</strong>
 
-            <span>
-                REFINE THE CURRENT LIVE RESULTS
-            </span>
+            <span>Refine the current live results</span>
 
         </div>
 
@@ -1510,7 +545,7 @@ body::before{
                 class="clear-filters-button"
                 type="button"
             >
-                CLEAR FILTERS
+                Clear filters
                 </button>
 
                 <button
@@ -1518,8 +553,7 @@ body::before{
                     class="search-button filter-search-button"
                     type="button"
                 >
-                    SEARCH FILTERS
-                </button>
+                    Search filters</button>
             </div>
 
         </div>
@@ -1527,11 +561,8 @@ body::before{
     </div>
 
 
-    <div
-        id="searchStatus"
-        class="search-status"
-    >
-        SEARCH THE LIVING RECORD.
+    <div id="searchStatus" class="search-status" role="status" aria-live="polite">
+        Search the living record.
     </div>
 
 
@@ -1556,11 +587,8 @@ body::before{
     <div class="specimen-header">
 
         <div class="specimen-header-main">
-            SUPER FLOWER — CANNABIS CODEX
-        </div>
-
-        <div class="specimen-header-lock">
-            MASTER LOCK — FINAL ARCHIVAL SYSTEM
+            Super Flower Cannabis Codex</div>
+        <div class="specimen-header-lock">Master record &mdash; final archival system
         </div>
 
     </div>
@@ -1591,7 +619,7 @@ body::before{
                 id="flowerReferenceLabel"
                 class="flower-reference-label"
             >
-                NO LIVE PHOTOGRAPH ON RECORD
+                No live photograph on record
             </div>
 
 
@@ -1622,12 +650,11 @@ body::before{
     <div class="resonance">
 
         <div class="resonance-title">
-            RESONANCE PROFILE:
+            Resonance profile
         </div>
 
         <div class="resonance-note">
-            SUPER FLOWER CODEX RESONANCE VALUES ARE SHOWN ONLY
-            WHEN AN ACTUAL SOURCE VALUE IS AVAILABLE.
+            Super Flower Codex resonance values are shown only when an actual source value is available.
         </div>
 
         <div
@@ -1644,17 +671,11 @@ body::before{
 
     <div class="specimen-foot">
 
-        <div>
-            ONE ARCHIVAL SYSTEM
-        </div>
+        <div>One archival system</div>
 
-        <div>
-            ALL SPECIMENS — ALL TRUTHS
-        </div>
+        <div>All specimens &mdash; all truths</div>
 
-        <div>
-            ONE CODEX
-        </div>
+        <div>One codex</div>
 
     </div>
 
@@ -1667,52 +688,35 @@ body::before{
 
 <section class="info">
 
-    <div class="info-header">
-        INFO
-    </div>
+    <h2 class="info-header">Info</h2>
 
     <div
         id="infoContent"
         class="info-empty"
     >
-        SPECIMEN INFORMATION WILL APPEAR HERE
-        AFTER A STRAIN IS SELECTED.
+        Specimen information will appear here after a strain is selected.
     </div>
 
 </section>
 
 
-<!-- =======================================================
-     CREDIT
-======================================================== -->
+</main>
 
-<div class="credit">
-
-    <span>
-        POWERED BY SUPER FLOWER ENGINE
-    </span>
-
-    <br>
-
-    <a
-        href="https://cannalib.org"
-        target="_blank"
-        rel="noopener noreferrer"
-    >
-        Data by CannaLib
-    </a>
-
-    <br>
-
-    SUPER FLOWER CODEX —
-    SEARCH THE LIVING SUPER FLOWER RECORD
-
+<footer class="credit">
+    <ul class="foot-nav">
+    <li><a href="https://superflowercodex.com/">Home</a></li>
+    <li><a href="https://superflowercodex.com/search.html" aria-current="page">Search</a></li>
+    <li><a href="https://a.co/d/08ixcVcI" target="_blank" rel="noopener noreferrer">Book</a></li>
+    <li><a href="https://superflower.glide.page/dl/9e8302" target="_blank" rel="noopener noreferrer">App</a></li>
+    <li><a href="https://ebay.io/m/w8uod1" target="_blank" rel="noopener noreferrer">Apparel</a></li>
+    <li><a href="https://superflowercodex.com/contact.html">Contact</a></li>
+    <li><a href="https://superflowercodex.com/about.html">About</a></li>
+    </ul>
+    <span>Powered by Super Flower Engine</span><br>
+    <a href="https://cannalib.org" target="_blank" rel="noopener noreferrer">Data by CannaLib</a><br>
+    Super Flower Codex &mdash; Search the Living Super Flower Record
+</footer>
 </div>
-
-
-</div>
-
-
 <script>
 
 (() => {
@@ -12127,5 +11131,6 @@ renderPagination();
 </body>
 
 </html>
+
 
 
