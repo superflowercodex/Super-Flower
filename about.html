@@ -1,174 +1,211 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<title>About - Super Flower</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="About the Super Flower Cannabis Codex: the story, how the data and images work, credits, privacy policy, terms of use and disclaimer.">
+<meta name="theme-color" content="#0a0907">
+<title>About | Super Flower Codex</title>
+<link rel="canonical" href="https://superflowercodex.com/about.html">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' fill='%230a0907'/%3E%3Ctext x='50' y='66' text-anchor='middle' font-family='Georgia,serif' font-size='52' font-weight='bold' fill='%23d8b65a'%3ESF%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@500;600&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400;1,500&display=swap">
 <style>
+/* SUPER FLOWER CODEX — ABOUT · Gallery edition
+   Palette: gallery black #0a0907 · vault #12100c · gold leaf (gradient) · ivory #ece3cd
+   Type: Cinzel (inscription) + Cormorant Garamond (text) */
+:root{
+  --wall:#0a0907; --vault:#12100c; --vault-2:#181510;
+  --ivory:#ece3cd; --ivory-dim:rgba(236,227,205,.72); --ivory-faint:rgba(236,227,205,.58);
+  --gold:#d8b65a; --gold-hi:#f4de96;
+  --hair:rgba(216,182,90,.30); --hair-strong:rgba(216,182,90,.62);
+  --leaf:linear-gradient(135deg,#6e5216 0%,#b98f2f 14%,#f4de96 27%,#fff7d0 33%,#d8b65a 44%,#8f6a17 58%,#c9a13b 72%,#f1d77f 86%,#8a6416 100%);
+  --serif:"Cormorant Garamond","Cormorant",Georgia,"Times New Roman",serif;
+  --inscr:"Cinzel","Trajan Pro",Georgia,serif;
+}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
+body{margin:0;min-height:100vh;background:var(--wall);color:var(--ivory);font-family:var(--serif);font-size:18px;line-height:1.5;overflow-x:hidden}
+body::before{content:"";position:fixed;inset:0;z-index:-1;pointer-events:none;
+  background:radial-gradient(ellipse 70% 42% at 50% 0%,rgba(244,222,150,.14),transparent 70%),radial-gradient(ellipse 120% 80% at 50% 100%,rgba(0,0,0,.6),transparent 60%),var(--wall)}
+a{color:var(--gold)}
+:focus-visible{outline:2px solid var(--gold-hi);outline-offset:3px}
+.sr-only{position:absolute;width:1px;height:1px;margin:-1px;padding:0;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap;border:0}
+.skip{position:absolute;left:12px;top:-60px;z-index:100;padding:10px 16px;background:var(--gold);color:#1a1405;text-decoration:none;font-weight:600}
+.skip:focus{top:12px}
 
-body{
-    margin:0;
-    background:#000;
-    color:white;
-    font-family:Arial,sans-serif;
-    text-align:center;
+/* NAVIGATION */
+.site-nav{position:sticky;top:0;z-index:50;background:rgba(10,9,7,.94);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-bottom:1px solid var(--hair)}
+.site-nav::after{content:"";position:absolute;left:0;right:0;bottom:-1px;height:1px;background:var(--leaf);opacity:.85}
+.nav-list{list-style:none;margin:0 auto;padding:0 14px;max-width:1100px;display:flex;justify-content:center;flex-wrap:wrap}
+.nav-list a{display:block;padding:16px clamp(10px,2.2vw,26px);font-family:var(--inscr);font-size:.78rem;letter-spacing:.16em;text-decoration:none;color:var(--ivory-dim);position:relative;transition:color .25s}
+.nav-list a:hover,.nav-list a[aria-current="page"]{color:var(--gold-hi)}
+.nav-list a[aria-current="page"]::after{content:"";position:absolute;left:clamp(10px,2.2vw,26px);right:clamp(10px,2.2vw,26px);bottom:9px;height:2px;background:var(--leaf)}
+
+.page{width:min(820px,calc(100% - 32px));margin:0 auto;padding:44px 0 64px}
+
+/* FOOTER */
+.footer{margin:56px 0 0;padding-top:26px;position:relative;font-style:italic;font-size:1.05rem;color:var(--ivory-faint)}
+.footer::before{content:"";position:absolute;top:0;left:50%;width:min(320px,60%);height:1px;transform:translateX(-50%);background:var(--leaf)}
+
+@media(max-width:650px){
+  body{font-size:17px}
+  .nav-list a{padding:13px 9px;font-size:.68rem;letter-spacing:.1em}
+  .nav-list a[aria-current="page"]::after{left:9px;right:9px;bottom:6px}
+  .page{width:calc(100% - 20px);padding-top:26px}
+  .rooms{grid-template-columns:1fr;gap:16px}
+  .room{min-height:100px;padding:18px 20px}
+  .plaque{margin:34px 0 28px;letter-spacing:.22em;font-size:.72rem}
+}
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{transition:none!important}
 }
 
-.container{
-    max-width:900px;
-    margin:auto;
-    padding:40px 20px 60px 20px;
-}
-
-h1{
-    color:#d4af37;
-    margin-bottom:30px;
-}
-
-h2{
-    color:#d4af37;
-    margin-top:40px;
-}
-
-.section{
-    margin:30px 0;
-    line-height:1.7;
-}
-
-.button{
-    display:block;
-    background:transparent;
-    border:2px solid #d4af37;
-    color:#ffffff;
-    padding:18px;
-    margin:40px auto 20px auto;
-    width:280px;
-    text-decoration:none;
-    border-radius:10px;
-    font-weight:bold;
-    font-size:1.1rem;
-}
-
-.button:hover{
-    background:rgba(212,175,55,0.15);
-}
-
-.footer{
-    margin-top:40px;
-    font-size:0.95rem;
-    color:#cccccc;
-}
-
+/* ABOUT PAGE */
+.page-head{text-align:center;padding:34px 0 26px}
+.crest{display:block;margin:0 auto 18px;width:46px;height:1px;background:var(--leaf)}
+.page-title{margin:0;font-family:var(--inscr);font-weight:600;font-size:clamp(1.8rem,5.4vw,3.2rem);line-height:1.15;letter-spacing:.09em;text-wrap:balance;
+  background:linear-gradient(105deg,#8a6416 0%,#d8b65a 18%,#f4de96 30%,#fffbe3 38%,#e3c26a 46%,#a67c1f 62%,#e9cb73 80%,#9a752a 100%);background-size:220% 100%;background-position:0 0;
+  -webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:var(--gold);filter:drop-shadow(0 1px 0 rgba(0,0,0,.7)) drop-shadow(0 0 18px rgba(216,182,90,.18));animation:sheen 2.6s .4s ease-out 1 forwards}
+@keyframes sheen{to{background-position:100% 0}}
+.page-sub{margin:18px 0 0;font-style:italic;font-size:1.2rem;color:var(--ivory-dim)}
+.jump{list-style:none;margin:30px 0 8px;padding:0;display:flex;flex-wrap:wrap;justify-content:center;gap:6px 22px}
+.jump a{font-family:var(--inscr);font-size:.74rem;letter-spacing:.14em;text-decoration:none;color:var(--ivory-dim)}
+.jump a:hover{color:var(--gold-hi)}
+.panel{margin-top:30px;padding:clamp(22px,4vw,38px);border:1px solid transparent;
+  background:linear-gradient(var(--vault),var(--vault)) padding-box,var(--leaf) border-box;box-shadow:0 18px 40px rgba(0,0,0,.45);scroll-margin-top:76px}
+.panel h2{margin:0 0 18px;padding-bottom:12px;border-bottom:1px solid var(--hair);font-family:var(--inscr);font-weight:600;font-size:clamp(1rem,2.4vw,1.25rem);letter-spacing:.14em;
+  background:linear-gradient(180deg,#fff7d0 0%,#f4de96 30%,#d8b65a 60%,#b08a2e 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:var(--gold-hi)}
+.panel p{margin:0 0 1em;font-size:1.12rem;line-height:1.7;color:var(--ivory)}
+.panel p:last-child{margin-bottom:0}
+.panel strong{color:var(--gold-hi);font-weight:600}
+.lead{font-size:1.25rem!important}
+.ways{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.ways a{display:block;height:100%;padding:14px 16px;text-decoration:none;border:1px solid var(--hair-strong);color:var(--ivory);transition:background .25s,border-color .25s}
+.ways a:hover{background:rgba(216,182,90,.08);border-color:var(--gold)}
+.ways b{display:block;font-family:var(--inscr);font-weight:600;font-size:.82rem;letter-spacing:.12em;color:var(--gold-hi)}
+.ways span{display:block;margin-top:4px;font-style:italic;font-size:1.02rem;color:var(--ivory-dim)}
+.home-link{display:block;width:max-content;max-width:100%;margin:42px auto 0;padding:16px 38px;text-align:center;text-decoration:none;font-family:var(--inscr);font-weight:600;font-size:.82rem;letter-spacing:.16em;color:var(--gold-hi);
+  border:1px solid transparent;background:linear-gradient(var(--vault),var(--vault)) padding-box,var(--leaf) border-box;transition:color .2s}
+.home-link:hover{color:#1a1405;background:var(--leaf) border-box}
+.footer{text-align:center}
+.foot-nav{list-style:none;margin:0 0 14px;padding:0;display:flex;justify-content:center;flex-wrap:wrap;gap:4px 22px}
+.foot-nav a{font-family:var(--inscr);font-size:.74rem;letter-spacing:.14em;text-decoration:none;color:var(--ivory-dim)}
+.foot-nav a:hover{color:var(--gold-hi)}
+@media(max-width:650px){.ways{grid-template-columns:1fr}.panel p{font-size:1.06rem}}
+@media(prefers-reduced-motion:reduce){.page-title{animation:none;background-position:60% 0}}
 </style>
 </head>
 
 <body>
 
-<div class="container">
+<a class="skip" href="#main">Skip to content</a>
 
-<h1>About Super Flower</h1>
+<nav class="site-nav" aria-label="Super Flower Codex">
+  <ul class="nav-list">
+    <li><a href="https://superflowercodex.com/">Home</a></li>
+    <li><a href="https://superflowercodex.com/search.html">Search</a></li>
+    <li><a href="https://a.co/d/08ixcVcI" target="_blank" rel="noopener noreferrer">Book</a></li>
+    <li><a href="https://superflower.glide.page/dl/9e8302" target="_blank" rel="noopener noreferrer">App</a></li>
+    <li><a href="https://ebay.io/m/w8uod1" target="_blank" rel="noopener noreferrer">Apparel</a></li>
+    <li><a href="https://superflowercodex.com/contact.html">Contact</a></li>
+    <li><a href="https://superflowercodex.com/about.html" aria-current="page">About</a></li>
+  </ul>
+</nav>
 
-<div class="section">
-<p>
-The Super Flower Cannabis Codex is a living cannabis classification system
-designed to catalogue, compare, and explore cannabis genetics through
-standardized specimen profiles.
-</p>
+<div class="page">
 
-<p>
-Each specimen is assigned a unique Codex entry and evaluated across multiple
-attributes, creating a structured reference system for collectors,
-enthusiasts, patients, cultivators, and competitors.
-</p>
+  <header class="page-head">
+    <span class="crest" aria-hidden="true"></span>
+    <h1 class="page-title">About Super Flower</h1>
+    <p class="page-sub">The mission, the vision, our story</p>
+    <ul class="jump" aria-label="On this page">
+      <li><a href="#story">Story</a></li>
+      <li><a href="#data">Data &amp; images</a></li>
+      <li><a href="#credits">Credits</a></li>
+      <li><a href="#privacy">Privacy</a></li>
+      <li><a href="#terms">Terms</a></li>
+      <li><a href="#disclaimer">Disclaimer</a></li>
+    </ul>
+  </header>
 
-<p>
-Unlike traditional strain lists, the Codex focuses on measurable
-characteristics and specimen-based comparisons, allowing users to discover,
-document, and explore cannabis in a consistent and organized format.
-</p>
-</div>
+  <main id="main">
 
-<h2>Credits</h2>
+    <section class="panel" id="story">
+      <h2>The Codex</h2>
+      <p class="lead">The Super Flower Cannabis Codex is a living cannabis classification system designed to catalogue, compare, and explore cannabis genetics through standardized specimen profiles.</p>
+      <p>Each specimen is assigned a unique Codex entry and evaluated across multiple attributes, creating a structured reference system for collectors, enthusiasts, patients, cultivators, and competitors.</p>
+      <p>Unlike traditional strain lists, the Codex focuses on measurable characteristics and specimen-based comparisons, allowing users to discover, document, and explore cannabis in a consistent and organized format.</p>
+    </section>
 
-<div class="section">
-<p><strong>Super Flower – Cannabis Codex</strong></p>
-<p>Created by Leyton James</p>
-<p>© 2026 Cannabis Codex. All rights reserved.</p>
-</div>
+    <section class="panel" aria-labelledby="ways-h">
+      <h2 id="ways-h">Ways into the Codex</h2>
+      <ul class="ways">
+        <li><a href="https://superflowercodex.com/search.html"><b>Search the Codex</b><span>Search, explore, discover</span></a></li>
+        <li><a href="https://a.co/d/08ixcVcI" target="_blank" rel="noopener noreferrer"><b>The Book</b><span>Physical, digital, all editions</span></a></li>
+        <li><a href="https://superflower.glide.page/dl/9e8302" target="_blank" rel="noopener noreferrer"><b>The App</b><span>Strains, knowledge, tools</span></a></li>
+        <li><a href="https://ebay.io/m/w8uod1" target="_blank" rel="noopener noreferrer"><b>Apparel</b><span>Clothing, accessories, merch</span></a></li>
+      </ul>
+    </section>
 
-<h2>Privacy Policy</h2>
+    <section class="panel" id="data">
+      <h2>Data and Images</h2>
+      <p>Specimen records on the search page are drawn from <strong>CannaLib</strong> through the Super Flower Engine. Where a value is not held in the record, the Codex may fill it from a web search or calculate an estimate, and each value is labelled by where it came from.</p>
+      <p>When a specimen has no photograph in its record, the Codex may show an openly licensed reference photograph of cannabis flower from Wikimedia Commons or Openverse. These are labelled as reference photographs, are not verified as that exact strain, and carry their credit. If no suitable photograph is found, an archival illustration is shown instead.</p>
+    </section>
 
-<div class="section">
-<p>
-The Super Flower Cannabis Codex website does not intentionally collect
-personal information from visitors.
-</p>
+    <section class="panel" id="credits">
+      <h2>Credits</h2>
+      <p><strong>Super Flower &ndash; Cannabis Codex</strong></p>
+      <p>Created by Leyton James</p>
+      <p>Strain data by CannaLib. Reference photographs by Wikimedia Commons and Openverse contributors, credited on each image.</p>
+      <p>&copy; 2026 Cannabis Codex. All rights reserved.</p>
+    </section>
 
-<p>
-If you choose to contact us by email or through linked social media
-platforms, any information you provide will only be used to respond to
-your enquiry.
-</p>
+    <section class="panel" id="privacy">
+      <h2>Privacy Policy</h2>
+      <p>The Super Flower Cannabis Codex website does not intentionally collect personal information from visitors.</p>
+      <p>If you choose to contact us by email or through linked social media platforms, any information you provide will only be used to respond to your enquiry.</p>
+      <p>The search page contacts third-party services (including CannaLib, Wikimedia Commons and Openverse) directly from your browser, and saves small items such as cached results in your own browser storage. This is not sent to us.</p>
+      <p>Third-party services, websites, and platforms linked from this website may collect information in accordance with their own privacy policies.</p>
+    </section>
 
-<p>
-Third-party services, websites, and platforms linked from this website may
-collect information in accordance with their own privacy policies.
-</p>
-</div>
+    <section class="panel" id="terms">
+      <h2>Terms of Use</h2>
+      <p>By accessing and using the Super Flower Cannabis Codex website, application, publications, and related content, you agree to use the information responsibly and in accordance with all applicable laws.</p>
+      <p>The content provided is intended for educational, informational, reference, and entertainment purposes only.</p>
+    </section>
 
-<h2>Terms of Use</h2>
+    <section class="panel" id="disclaimer">
+      <h2>Disclaimer</h2>
+      <p>The Cannabis Codex is intended for educational and entertainment purposes only. Strain information, ratings, classifications, and game features are not medical advice and should not be relied upon as such.</p>
+      <p>The Super Flower Cannabis Codex does not promote, encourage, facilitate, or provide guidance regarding the cultivation, possession, purchase, sale, distribution, or consumption of cannabis or any controlled substance.</p>
+      <p>Reference photographs, web-sourced values and estimates are illustrative and are not a guarantee of any specific strain&rsquo;s appearance or chemistry.</p>
+      <p>Cannabis laws vary by jurisdiction. Users are solely responsible for understanding and complying with the laws applicable to them.</p>
+      <p>The creators and contributors of the Super Flower Cannabis Codex accept no responsibility or liability for actions taken based on information contained within the website, application, publications, or related materials.</p>
+    </section>
 
-<div class="section">
-<p>
-By accessing and using the Super Flower Cannabis Codex website,
-application, publications, and related content, you agree to use the
-information responsibly and in accordance with all applicable laws.
-</p>
+  </main>
 
-<p>
-The content provided is intended for educational, informational,
-reference, and entertainment purposes only.
-</p>
-</div>
+  <a class="home-link" href="https://superflowercodex.com/">Back to Home</a>
 
-<h2>Disclaimer</h2>
-
-<div class="section">
-<p>
-The Cannabis Codex is intended for educational and entertainment purposes
-only. Strain information, ratings, classifications, and game features are
-not medical advice and should not be relied upon as such.
-</p>
-
-<p>
-The Super Flower Cannabis Codex does not promote, encourage, facilitate,
-or provide guidance regarding the cultivation, possession, purchase,
-sale, distribution, or consumption of cannabis or any controlled
-substance.
-</p>
-
-<p>
-Cannabis laws vary by jurisdiction. Users are solely responsible for
-understanding and complying with the laws applicable to them.
-</p>
-
-<p>
-The creators and contributors of the Super Flower Cannabis Codex accept
-no responsibility or liability for actions taken based on information
-contained within the website, application, publications, or related
-materials.
-</p>
-</div>
-
-<a class="button" href="index.html">
-Back to Home
-</a>
-
-<div class="footer">
-Super Flower Cannabis Codex
-</div>
+  <footer class="footer">
+    <ul class="foot-nav">
+      <li><a href="https://superflowercodex.com/">Home</a></li>
+      <li><a href="https://superflowercodex.com/search.html">Search</a></li>
+      <li><a href="https://a.co/d/08ixcVcI" target="_blank" rel="noopener noreferrer">Book</a></li>
+      <li><a href="https://superflower.glide.page/dl/9e8302" target="_blank" rel="noopener noreferrer">App</a></li>
+      <li><a href="https://ebay.io/m/w8uod1" target="_blank" rel="noopener noreferrer">Apparel</a></li>
+      <li><a href="https://superflowercodex.com/contact.html">Contact</a></li>
+      <li><a href="https://superflowercodex.com/about.html" aria-current="page">About</a></li>
+    </ul>
+    Super Flower Cannabis Codex
+  </footer>
 
 </div>
 
 </body>
 </html>
+
