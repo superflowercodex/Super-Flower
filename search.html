@@ -5436,7 +5436,7 @@ async function sfWebFlowerFallback(token, name){
 async function sfTryWebImage(token, list, index, name){
     if(token !== flowerLoadToken){ return; }
     if(index >= list.length){
-        sfShowBudIllustration(token, name);
+        sfParentFallback(token, name);
         return;
     }
     const pic = list[index];
@@ -5474,6 +5474,138 @@ async function sfTryWebImage(token, list, index, name){
     };
     flowerImage.referrerPolicy = "no-referrer";
     flowerImage.alt = name + " bud";
+    flowerImage.src = pic.url;
+}
+
+/* ---------- NEAREST GENETIC FAMILY FALLBACK ----------
+   When no photograph of the strain itself can be found, use photographs of
+   its parent strains (recorded parents first, then web-researched parents).
+   Engine photos of the parent are tried first, then web bud photographs.
+   The illustration is only shown if no parent has an acceptable photo. */
+
+function sfParentNamesFor(name){
+    const self = sfWebKey(name);
+    let list = [];
+    try{
+        const fromRecord = currentRecord ? sfParentsFor(currentRecord) : [];
+        list = Array.isArray(fromRecord) ? fromRecord.slice() : (fromRecord ? [String(fromRecord)] : []);
+    }catch(error){ list = []; }
+    if(!list.length){
+        const web = sfWebCache.get(self);
+        if(web && Array.isArray(web.parents)){ list = web.parents.slice(); }
+    }
+    const seen = new Set();
+    return list
+        .map(p => String(p || "").replace(/\s+/g, " ").trim())
+        .filter(p => p.length >= 2 && !/^(unknown|unnamed|n\/a|none|landrace|not reported|not assigned|clone only)$/i.test(p))
+        .filter(p => {
+            const key = sfWebKey(p);
+            if(!key || key === self || seen.has(key)){ return false; }
+            seen.add(key);
+            return true;
+        })
+        .slice(0, 4);
+}
+
+async function sfParentEnginePictures(parent){
+    const key = sfWebKey(parent);
+    let rows = [];
+    try{ rows = await fetchSearchPage(parent, new AbortController().signal, 8); }catch(error){ rows = []; }
+    const match = (rows || []).find(r => sfWebKey(resolvedFieldValue(r, ["name","strain_name","title","strain"], "")) === key);
+    if(!match){ return []; }
+    let pics = [];
+    try{ pics = pics.concat(extractPictures(match) || []); }catch(error){}
+    const ids = [match.id, match.name_norm, match.name]
+        .map(v => String(v ?? "").trim()).filter(Boolean)
+        .filter((v, i, a) => a.indexOf(v) === i);
+    let full = null;
+    if(SF_ENGINE_ON){
+        for(const id of ids){
+            try{
+                const response = await sfFetch(RECORD_ENDPOINT(id), {method:"GET", headers:getHeaders(), cache:"no-store"});
+                if(response.ok){ full = await response.json(); break; }
+            }catch(error){}
+        }
+    }
+    if(!full){
+        try{ full = await sfBackupGetRecord(match, new AbortController().signal); }catch(error){ full = null; }
+    }
+    if(full){
+        try{ pics = pics.concat(extractPictures(full) || []); }catch(error){}
+    }
+    const seen = new Set();
+    pics = pics.filter(pic => {
+        const url = pic && typeof pic.url === "string" ? pic.url.trim() : "";
+        if(!url || seen.has(url)){ return false; }
+        seen.add(url);
+        return true;
+    });
+    return rankFlowerPictures(pics).slice(0, 4);
+}
+
+async function sfParentFallback(token, name){
+    if(token !== flowerLoadToken){ return; }
+    const parents = sfParentNamesFor(name);
+    if(!parents.length){
+        sfShowBudIllustration(token, name);
+        return;
+    }
+    flowerImage.style.display = "none";
+    flowerCredit.style.display = "none";
+    flowerReferenceLabel.textContent = "NO PHOTO OF THIS STRAIN — SEARCHING PARENTS: " + parents.join(" × ").toUpperCase() + "...";
+    const queue = [];
+    for(const parent of parents){
+        if(token !== flowerLoadToken){ return; }
+        try{
+            const enginePics = await sfParentEnginePictures(parent);
+            enginePics.forEach(pic => queue.push(Object.assign({}, pic, {parent, kind:"engine"})));
+        }catch(error){}
+        if(token !== flowerLoadToken){ return; }
+        try{
+            const webPics = await sfWebImages(parent);
+            webPics.slice(0, 6).forEach(pic => queue.push(Object.assign({}, pic, {parent, kind:"web"})));
+        }catch(error){}
+    }
+    if(token !== flowerLoadToken){ return; }
+    sfTryParentImage(token, queue.slice(0, 24), 0, name);
+}
+
+async function sfTryParentImage(token, queue, index, name){
+    if(token !== flowerLoadToken){ return; }
+    if(index >= queue.length){
+        sfShowBudIllustration(token, name);
+        return;
+    }
+    const pic = queue[index];
+    const next = () => sfTryParentImage(token, queue, index + 1, name);
+    flowerReferenceLabel.textContent = "CHECKING PARENT PHOTOGRAPH " + (index + 1) + " OF " + queue.length + "...";
+    if(pic.kind === "web"){
+        const verdict = await sfProbeBud(pic.url);
+        if(token !== flowerLoadToken){ return; }
+        if(verdict === false || (verdict === null && Number(pic.score || 0) < 30)){ next(); return; }
+    }
+    flowerImage.onload = () => {
+        if(token !== flowerLoadToken){ return; }
+        if(pic.kind === "engine"){
+            if(!imagePassesFlowerQualityCheck(flowerImage)){ next(); return; }
+        }else{
+            if(flowerImage.naturalWidth < 300 || flowerImage.naturalHeight < 300 || !flowerImageHasGoodDimensions(flowerImage)){ next(); return; }
+            /* owned by the PARENT, so the parent's own page and its other children can still share it */
+            if(!sfClaimWebImage(pic, pic.parent)){ next(); return; }
+        }
+        flowerImage.style.filter = "";
+        flowerImage.style.display = "block";
+        flowerReferenceLabel.textContent = "PARENT STRAIN PHOTO — " + String(pic.parent).toUpperCase() + " · NEAREST GENETIC FAMILY, NOT THIS STRAIN";
+        flowerCredit.textContent = (pic.credit || pic.credit_line || pic.source || pic.attribution || pic.author || "SOURCE PHOTOGRAPH");
+        flowerCredit.style.display = "block";
+    };
+    flowerImage.onerror = () => {
+        if(token !== flowerLoadToken){ return; }
+        next();
+    };
+    flowerImage.referrerPolicy = "no-referrer";
+    flowerImage.alt = pic.parent + " bud (parent of " + name + ")";
+    flowerImage.style.filter = "";
     flowerImage.src = pic.url;
 }
 
