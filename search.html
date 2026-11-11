@@ -5507,106 +5507,337 @@ function sfParentNamesFor(name){
         .slice(0, 4);
 }
 
-async function sfParentEnginePictures(parent){
-    const key = sfWebKey(parent);
-    let rows = [];
-    try{ rows = await fetchSearchPage(parent, new AbortController().signal, 8); }catch(error){ rows = []; }
-    const match = (rows || []).find(r => sfWebKey(resolvedFieldValue(r, ["name","strain_name","title","strain"], "")) === key);
-    if(!match){ return []; }
-    let pics = [];
-    try{ pics = pics.concat(extractPictures(match) || []); }catch(error){}
+/* ---------- RELATIVE-STRAIN PHOTO FALLBACK (TIERED) ----------
+   Used only when no photograph of the strain itself is acceptable.
+   TIER 1  parents
+   TIER 2  lineage: grandparents, siblings (shared parent), children / descendants
+   TIER 3  same-name family (e.g. "Blue Dream #4" -> "Blue Dream", "Blue Dream Haze")
+   TIER 4  nearest match on the rest of the data (type, terpenes, THC/CBD, breeder,
+           origin, effects/flavours, shared genetics) among engine candidates
+   Each relative: engine record photos first, then web bud photos.
+   The archival illustration is the last resort. */
+
+const SF_REL_STOP = new Set(["the","of","and","x","strain","cannabis","bud","flower","pheno","phenotype","cut","clone","mix","f1","f2","f3","bx","bx1","bx2","s1","reg","regular","auto","autoflower","feminized","fem","seed","seeds"]);
+const SF_TERP_SEEDS = {
+    terpinolene:["Jack Herer","Durban Poison","Super Silver Haze"],
+    limonene:["Lemon Haze","Sour Diesel","Gelato","Super Lemon Haze"],
+    caryophyllene:["OG Kush","Girl Scout Cookies","Gorilla Glue"],
+    myrcene:["Blue Dream","Granddaddy Purple","Northern Lights","Blueberry"],
+    pinene:["Jack Herer","Pineapple Express","Trainwreck"],
+    linalool:["Purple Urkle","Amnesia Haze","Zkittlez"],
+    ocimene:["Golden Goat","Space Queen"],
+    humulene:["Sour Diesel","White Widow"]
+};
+const SF_TYPE_SEEDS = {
+    sativa:["Haze","Thai","Colombian Gold","Durban Poison"],
+    indica:["Afghani","Hindu Kush","Northern Lights","Granddaddy Purple"],
+    hybrid:["Blue Dream","OG Kush","Skunk #1","Girl Scout Cookies"]
+};
+const sfDossierCache = new Map();
+
+async function sfPool(items, size, fn){
+    const out = new Array(items.length);
+    let i = 0;
+    const workers = Array.from({length: Math.min(size, items.length)}, async () => {
+        while(i < items.length){
+            const at = i++;
+            try{ out[at] = await fn(items[at], at); }catch(error){ out[at] = null; }
+        }
+    });
+    await Promise.all(workers);
+    return out;
+}
+
+function sfRelNames(record, keys){
+    let raw;
+    try{ raw = first(record, keys); }catch(error){ return []; }
+    const out = [];
+    const walk = (v, depth) => {
+        if(v == null || depth > 3 || out.length > 60){ return; }
+        if(typeof v === "string"){
+            v.split(/\s*(?:,|\||•|×|;|\bx\b)\s*/i).forEach(t => out.push(t));
+        }else if(Array.isArray(v)){
+            v.forEach(i => walk(i, depth + 1));
+        }else if(typeof v === "object"){
+            const n = ["name","strain_name","strain","title","display_name"].map(k => v[k]).find(x => typeof x === "string" && x.trim());
+            if(n){ out.push(n); }
+        }
+    };
+    walk(raw, 0);
+    const seen = new Set();
+    return out
+        .map(t => String(t || "").replace(/\s+/g, " ").trim())
+        .filter(t => t.length >= 2 && t.length <= 40 && !isNumericText(t) && !/^(unknown|unnamed|n\/a|none|landrace|not reported|not assigned)$/i.test(t))
+        .filter(t => { const k = sfWebKey(t); if(!k || seen.has(k)){ return false; } seen.add(k); return true; });
+}
+
+async function sfFullRecordFor(match){
     const ids = [match.id, match.name_norm, match.name]
         .map(v => String(v ?? "").trim()).filter(Boolean)
         .filter((v, i, a) => a.indexOf(v) === i);
-    let full = null;
     if(SF_ENGINE_ON){
         for(const id of ids){
             try{
                 const response = await sfFetch(RECORD_ENDPOINT(id), {method:"GET", headers:getHeaders(), cache:"no-store"});
-                if(response.ok){ full = await response.json(); break; }
+                if(response.ok){ return await response.json(); }
             }catch(error){}
         }
     }
-    if(!full){
-        try{ full = await sfBackupGetRecord(match, new AbortController().signal); }catch(error){ full = null; }
+    try{ return await sfBackupGetRecord(match, new AbortController().signal); }catch(error){ return null; }
+}
+
+/* Exact-name engine lookup: record, photos, parents, children. Cached per strain. */
+async function sfDossier(relName){
+    const key = sfWebKey(relName);
+    if(sfDossierCache.has(key)){ return sfDossierCache.get(key); }
+    const job = (async () => {
+        const d = {name: relName, record: null, pics: [], parents: [], children: []};
+        let rows = [];
+        try{ rows = await fetchSearchPage(relName, new AbortController().signal, 8); }catch(error){ rows = []; }
+        const match = (rows || []).find(r => sfWebKey(resolvedFieldValue(r, ["name","strain_name","title","strain"], "")) === key);
+        if(!match){ return d; }
+        d.name = String(resolvedFieldValue(match, ["name","strain_name","title","strain"], relName) || relName);
+        const full = await sfFullRecordFor(match);
+        d.record = full || match;
+        let pics = [];
+        try{ pics = pics.concat(extractPictures(match) || []); }catch(error){}
+        if(full){ try{ pics = pics.concat(extractPictures(full) || []); }catch(error){} }
+        const seen = new Set();
+        pics = pics.filter(pic => {
+            const url = pic && typeof pic.url === "string" ? pic.url.trim() : "";
+            if(!url || seen.has(url)){ return false; }
+            seen.add(url);
+            return true;
+        });
+        try{ d.pics = rankFlowerPictures(pics).slice(0, 4); }catch(error){ d.pics = []; }
+        try{ const par = sfParentsFor(d.record); d.parents = Array.isArray(par) ? par.map(x => String(x || "").trim()).filter(Boolean) : []; }catch(error){}
+        d.children = sfRelNames(d.record, ["children","child","descendants","descendant","offspring","progeny","crosses_into","used_in","bred_into","legacy"]);
+        return d;
+    })();
+    sfDossierCache.set(key, job);
+    return job;
+}
+
+/* ---------- similarity on the rest of the data ---------- */
+
+function sfSimProfile(record, name){
+    const get = keys => { try{ return String(resolvedFieldValue(record, keys, "") || ""); }catch(error){ return ""; } };
+    const nums = t => (String(t || "").match(/\d+(?:\.\d+)?/g) || []).map(Number).filter(n => n <= 40);
+    const mid = l => l.length ? l.reduce((x, y) => x + y, 0) / l.length : null;
+    const typeText = (get(["type","strain_type","category","subspecies"]) || "").toLowerCase();
+    const list = keys => { try{ return findList(record, keys).map(x => String(x).toLowerCase()); }catch(error){ return []; } };
+    let genetics = "";
+    try{ const par = sfParentsFor(record); genetics = Array.isArray(par) ? par.join(" ") : String(par || ""); }catch(error){}
+    return {
+        name: String(name || ""),
+        type: ["indica","sativa","hybrid"].find(k => typeText.includes(k)) || "",
+        breeder: sfWebKey(get(["breeder","breeders","seed_bank","brand"])),
+        origin: get(["origin","country","region","landrace_origin"]).toLowerCase(),
+        thc: mid(nums(get(["thc","thc_range","thc_percent","thc_percentage"]))),
+        cbd: mid(nums(get(["cbd","cbd_range","cbd_percent","cbd_percentage"]))),
+        terpenes: (() => { try{ return sfTerpeneList(record, null); }catch(error){ return []; } })(),
+        traits: list(["effects","flavors","flavours","aromas","aroma","top_effects"]).filter(Boolean),
+        parents: sfRelNames(record, ["parents","parent_strains","parentage","genetics","lineage"]).map(sfWebKey)
+    };
+}
+
+function sfSimScore(a, b){
+    let score = 0;
+    const why = [];
+    if(a.type && b.type && a.type === b.type){ score += 20; why.push("TYPE"); }
+    else if(a.type && b.type && (a.type === "hybrid" || b.type === "hybrid")){ score += 6; }
+    if(a.breeder && b.breeder && a.breeder === b.breeder){ score += 10; why.push("BREEDER"); }
+    const terps = a.terpenes.filter(t => b.terpenes.includes(t));
+    if(terps.length){ score += Math.min(3, terps.length) * 7; why.push("TERPENES"); }
+    if(a.thc != null && b.thc != null){
+        const near = Math.max(0, 10 - Math.abs(a.thc - b.thc));
+        score += near;
+        if(near >= 7){ why.push("THC"); }
     }
-    if(full){
-        try{ pics = pics.concat(extractPictures(full) || []); }catch(error){}
+    if(a.cbd != null && b.cbd != null && Math.abs(a.cbd - b.cbd) <= 1){ score += 4; why.push("CBD"); }
+    const traits = a.traits.filter(t => b.traits.some(u => u.includes(t) || t.includes(u)));
+    if(traits.length){ score += Math.min(4, traits.length) * 3; why.push("EFFECTS/FLAVOUR"); }
+    if(a.origin && b.origin && a.origin.split(/[\s,/]+/).some(w => w.length > 3 && b.origin.includes(w))){ score += 6; why.push("ORIGIN"); }
+    const shared = a.parents.filter(p => p && b.parents.includes(p));
+    if(shared.length){ score += shared.length * 15; why.push("SHARED GENETICS"); }
+    const wa = String(a.name).toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length > 2 && !SF_REL_STOP.has(w));
+    const wb = String(b.name).toLowerCase().split(/[^a-z0-9]+/).filter(w => w.length > 2 && !SF_REL_STOP.has(w));
+    const sharedWords = wa.filter(w => wb.includes(w));
+    if(sharedWords.length){ score += Math.min(2, sharedWords.length) * 10; why.push("NAME"); }
+    return {score, why};
+}
+
+/* ---------- tiers: each returns [{name, relation, note?}] ---------- */
+
+function sfNameFamilyPhrases(name){
+    const words = String(name || "").replace(/[#()'’"]/g, " ").split(/[^A-Za-z0-9]+/)
+        .filter(w => w && !/^\d+$/.test(w) && !SF_REL_STOP.has(w.toLowerCase()));
+    const phrases = [];
+    for(let len = words.length; len >= 1; len--){
+        for(let start = 0; start + len <= words.length; start++){
+            const phrase = words.slice(start, start + len).join(" ");
+            if(phrase.length >= 4 && sfWebKey(phrase) !== sfWebKey(name)){ phrases.push({phrase, words: len}); }
+        }
     }
-    const seen = new Set();
-    pics = pics.filter(pic => {
-        const url = pic && typeof pic.url === "string" ? pic.url.trim() : "";
-        if(!url || seen.has(url)){ return false; }
-        seen.add(url);
-        return true;
+    return phrases.slice(0, 6);
+}
+
+async function sfTierParents(ctx){
+    return sfParentNamesFor(ctx.name).map(n => ({name: n, relation: "PARENT"}));
+}
+
+async function sfTierLineage(ctx){
+    const out = [];
+    const parentDossiers = await sfPool(ctx.parents, 3, p => sfDossier(p));
+    const grand = [], sibs = [];
+    parentDossiers.forEach(d => {
+        if(!d){ return; }
+        d.parents.forEach(g => grand.push(g));
+        d.children.forEach(c => sibs.push(c));
     });
-    return rankFlowerPictures(pics).slice(0, 4);
+    grand.forEach(n => out.push({name: n, relation: "GRANDPARENT"}));
+    sibs.slice(0, 8).forEach(n => out.push({name: n, relation: "SIBLING (SHARED PARENT)"}));
+    const kids = currentRecord ? sfRelNames(currentRecord, ["children","child","descendants","descendant","offspring","progeny","crosses_into","used_in","bred_into","legacy"]) : [];
+    kids.slice(0, 6).forEach(n => out.push({name: n, relation: "CHILD / DESCENDANT"}));
+    return out.slice(0, 12);
+}
+
+async function sfTierFamily(ctx){
+    const phrases = sfNameFamilyPhrases(ctx.name).slice(0, 5);
+    const found = [];
+    await sfPool(phrases, 3, async ({phrase, words}) => {
+        let rows = [];
+        try{ rows = await fetchSearchPage(phrase, new AbortController().signal, 10); }catch(error){ rows = []; }
+        const pk = sfWebKey(phrase);
+        (rows || []).forEach(r => {
+            const n = String(resolvedFieldValue(r, ["name","strain_name","title","strain"], "") || "").trim();
+            if(n && sfWebKey(n).includes(pk)){ found.push({name: n, relation: "SAME-NAME FAMILY", rank: words * 100 - n.length}); }
+        });
+    });
+    return found.sort((x, y) => y.rank - x.rank).slice(0, 8);
+}
+
+async function sfTierNearest(ctx){
+    const base = currentRecord ? sfSimProfile(currentRecord, ctx.name) : {name: ctx.name, type: "", breeder: "", origin: "", thc: null, cbd: null, terpenes: [], traits: [], parents: []};
+    const terms = [];
+    if(base.breeder){ terms.push(String(resolvedFieldValue(currentRecord, ["breeder","breeders","seed_bank","brand"], "") || "")); }
+    if(base.origin){ terms.push(base.origin.split(/[\/,]/)[0].replace(/\(.*?\)/g, "").trim()); }
+    ctx.knownRelatives.slice(0, 4).forEach(n => terms.push(n));
+    sfNameFamilyPhrases(ctx.name).slice(0, 3).forEach(p => terms.push(p.phrase));
+    const pool = new Map();
+    const add = n => { const k = sfWebKey(n); if(k && !ctx.seen.has(k) && !pool.has(k)){ pool.set(k, n); } };
+    await sfPool(terms.filter(t => t && t.length >= 3), 3, async term => {
+        let rows = [];
+        try{ rows = await fetchSearchPage(term, new AbortController().signal, 10); }catch(error){ rows = []; }
+        (rows || []).forEach(r => add(String(resolvedFieldValue(r, ["name","strain_name","title","strain"], "") || "").trim()));
+    });
+    base.terpenes.forEach(t => (SF_TERP_SEEDS[t] || []).forEach(add));
+    (SF_TYPE_SEEDS[base.type || "hybrid"] || []).forEach(add);
+    const names = [...pool.values()].slice(0, 16);
+    const scored = (await sfPool(names, 4, async n => {
+        const d = await sfDossier(n);
+        if(!d || !d.record){ return null; }
+        const sim = sfSimScore(base, sfSimProfile(d.record, d.name));
+        return {name: d.name, relation: "NEAREST DATA MATCH", note: sim.why.join(" · "), score: sim.score + (d.pics.length ? 3 : 0)};
+    })).filter(Boolean).sort((x, y) => y.score - x.score);
+    return scored.slice(0, 5);
+}
+
+/* ---------- queue building + loading ---------- */
+
+async function sfRelativeQueue(token, rels, webLimit){
+    const queue = [];
+    const dossiers = await sfPool(rels, 4, r => sfDossier(r.name));
+    for(let i = 0; i < rels.length; i++){
+        if(token !== flowerLoadToken){ return []; }
+        const r = rels[i], d = dossiers[i];
+        if(d && d.pics.length){
+            d.pics.forEach(pic => queue.push(Object.assign({}, pic, {rel: r, kind: "engine"})));
+        }
+    }
+    for(let i = 0; i < rels.length && i < webLimit; i++){
+        if(token !== flowerLoadToken){ return []; }
+        const r = rels[i];
+        try{
+            const webPics = await sfWebImages(r.name);
+            webPics.slice(0, 5).forEach(pic => queue.push(Object.assign({}, pic, {rel: r, kind: "web"})));
+        }catch(error){}
+    }
+    return queue.slice(0, 30);
+}
+
+async function sfLoadRelativePic(token, pic, name){
+    /* resolves true = shown (or load went stale), false = rejected */
+    if(token !== flowerLoadToken){ return true; }
+    if(pic.kind === "web"){
+        const verdict = await sfProbeBud(pic.url);
+        if(token !== flowerLoadToken){ return true; }
+        if(verdict === false || (verdict === null && Number(pic.score || 0) < 30)){ return false; }
+    }
+    return new Promise(resolve => {
+        let done = false;
+        const finish = result => { if(done){ return; } done = true; clearTimeout(timer); resolve(result); };
+        const timer = setTimeout(() => { flowerImage.onload = null; flowerImage.onerror = null; finish(false); }, 12000);
+        flowerImage.onload = () => {
+            if(token !== flowerLoadToken){ finish(true); return; }
+            if(pic.kind === "engine"){
+                if(!imagePassesFlowerQualityCheck(flowerImage)){ finish(false); return; }
+            }else{
+                if(flowerImage.naturalWidth < 300 || flowerImage.naturalHeight < 300 || !flowerImageHasGoodDimensions(flowerImage)){ finish(false); return; }
+                /* owned by the relative, so it never steals a photo from a strain of its own */
+                if(!sfClaimWebImage(pic, pic.rel.name)){ finish(false); return; }
+            }
+            flowerImage.style.filter = "";
+            flowerImage.style.display = "block";
+            flowerReferenceLabel.textContent = pic.rel.relation + " PHOTO — " + String(pic.rel.name).toUpperCase() + " · NOT THIS STRAIN";
+            flowerCredit.textContent = (pic.credit || pic.credit_line || pic.source || pic.attribution || pic.author || "SOURCE PHOTOGRAPH") +
+                (pic.rel.note ? " · MATCHED ON " + pic.rel.note : "");
+            flowerCredit.style.display = "block";
+            finish(true);
+        };
+        flowerImage.onerror = () => finish(token !== flowerLoadToken);
+        flowerImage.referrerPolicy = "no-referrer";
+        flowerImage.alt = pic.rel.name + " bud (" + pic.rel.relation.toLowerCase() + " of " + name + ")";
+        flowerImage.style.filter = "";
+        flowerImage.src = pic.url;
+    });
 }
 
 async function sfParentFallback(token, name){
     if(token !== flowerLoadToken){ return; }
-    const parents = sfParentNamesFor(name);
-    if(!parents.length){
-        sfShowBudIllustration(token, name);
-        return;
-    }
     flowerImage.style.display = "none";
     flowerCredit.style.display = "none";
-    flowerReferenceLabel.textContent = "NO PHOTO OF THIS STRAIN — SEARCHING PARENTS: " + parents.join(" × ").toUpperCase() + "...";
-    const queue = [];
-    for(const parent of parents){
+    const ctx = {name, seen: new Set([sfWebKey(name)]), parents: [], knownRelatives: []};
+    ctx.parents = sfParentNamesFor(name);
+    const tiers = [
+        ["PARENTS", sfTierParents, 4],
+        ["LINEAGE (GRANDPARENTS / SIBLINGS / CHILDREN)", sfTierLineage, 4],
+        ["SAME-NAME FAMILY", sfTierFamily, 3],
+        ["NEAREST DATA MATCH", sfTierNearest, 3]
+    ];
+    for(const [label, tier, webLimit] of tiers){
         if(token !== flowerLoadToken){ return; }
-        try{
-            const enginePics = await sfParentEnginePictures(parent);
-            enginePics.forEach(pic => queue.push(Object.assign({}, pic, {parent, kind:"engine"})));
-        }catch(error){}
+        flowerReferenceLabel.textContent = "NO PHOTO OF THIS STRAIN — SEARCHING " + label + "...";
+        let rels = [];
+        try{ rels = await tier(ctx); }catch(error){ rels = []; }
         if(token !== flowerLoadToken){ return; }
-        try{
-            const webPics = await sfWebImages(parent);
-            webPics.slice(0, 6).forEach(pic => queue.push(Object.assign({}, pic, {parent, kind:"web"})));
-        }catch(error){}
-    }
-    if(token !== flowerLoadToken){ return; }
-    sfTryParentImage(token, queue.slice(0, 24), 0, name);
-}
-
-async function sfTryParentImage(token, queue, index, name){
-    if(token !== flowerLoadToken){ return; }
-    if(index >= queue.length){
-        sfShowBudIllustration(token, name);
-        return;
-    }
-    const pic = queue[index];
-    const next = () => sfTryParentImage(token, queue, index + 1, name);
-    flowerReferenceLabel.textContent = "CHECKING PARENT PHOTOGRAPH " + (index + 1) + " OF " + queue.length + "...";
-    if(pic.kind === "web"){
-        const verdict = await sfProbeBud(pic.url);
+        rels = rels.filter(r => {
+            const k = sfWebKey(r.name);
+            if(!k || ctx.seen.has(k)){ return false; }
+            ctx.seen.add(k);
+            return true;
+        });
+        rels.forEach(r => ctx.knownRelatives.push(r.name));
+        if(!rels.length){ continue; }
+        const queue = await sfRelativeQueue(token, rels, webLimit);
         if(token !== flowerLoadToken){ return; }
-        if(verdict === false || (verdict === null && Number(pic.score || 0) < 30)){ next(); return; }
-    }
-    flowerImage.onload = () => {
-        if(token !== flowerLoadToken){ return; }
-        if(pic.kind === "engine"){
-            if(!imagePassesFlowerQualityCheck(flowerImage)){ next(); return; }
-        }else{
-            if(flowerImage.naturalWidth < 300 || flowerImage.naturalHeight < 300 || !flowerImageHasGoodDimensions(flowerImage)){ next(); return; }
-            /* owned by the PARENT, so the parent's own page and its other children can still share it */
-            if(!sfClaimWebImage(pic, pic.parent)){ next(); return; }
+        for(let i = 0; i < queue.length; i++){
+            flowerReferenceLabel.textContent = "CHECKING " + label + " PHOTOGRAPH " + (i + 1) + " OF " + queue.length + "...";
+            const ok = await sfLoadRelativePic(token, queue[i], name);
+            if(ok){ return; }
         }
-        flowerImage.style.filter = "";
-        flowerImage.style.display = "block";
-        flowerReferenceLabel.textContent = "PARENT STRAIN PHOTO — " + String(pic.parent).toUpperCase() + " · NEAREST GENETIC FAMILY, NOT THIS STRAIN";
-        flowerCredit.textContent = (pic.credit || pic.credit_line || pic.source || pic.attribution || pic.author || "SOURCE PHOTOGRAPH");
-        flowerCredit.style.display = "block";
-    };
-    flowerImage.onerror = () => {
-        if(token !== flowerLoadToken){ return; }
-        next();
-    };
-    flowerImage.referrerPolicy = "no-referrer";
-    flowerImage.alt = pic.parent + " bud (parent of " + name + ")";
-    flowerImage.style.filter = "";
-    flowerImage.src = pic.url;
+    }
+    sfShowBudIllustration(token, name);
 }
 
 const sfFallbackOwner = new Map();
