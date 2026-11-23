@@ -5129,8 +5129,16 @@ function sfScoreWebImage(pic, name){
     const tokens = String(name || "").toLowerCase().split(/[^a-z0-9]+/).filter(x => x.length > 2);
     const hits = tokens.filter(token => hay.includes(token)).length;
     const fullName = tokens.length > 0 && hits === tokens.length;
-    const budWords = /\bbuds?\b|\bnugs?\b|\bcolas?\b|trichome|macro|close-?up|dried flower|cannabis flower|marijuana flower|\bflower buds?\b/.test(hay);
-    const cannabisWords = /cannabis|marijuana|\bweed\b|\bhemp\b|sativa|indica|\bstrain\b|\bthc\b/.test(hay);
+    /* Strain names can double as scenery (Northern Lights = aurora). Judge the words OTHER than the strain name. */
+    let rest = hay;
+    tokens.forEach(token => { rest = rest.split(token).join(" "); });
+    if(/aurora|borealis|\bsky\b|\bnight\b|\blake\b|\bsea\b|ocean|beach|river|sunset|sunrise|\bstars?\b|galaxy|nebula|space|planet|moon|landscape|mountain|\bdock\b|pier|building|\bcity\b|street|\bcars?\b|animal|\bdog\b|\bcat\b|bird|butterfl|insect|\bbee\b|spider|\brose\b|orchid|tulip|daisy|lily|sunflower|fruit|berry|berries|lemon|orange|mango|apple|grape|banana|pineapple|cherry|peach|candy|dessert|cake|cream|haze\b.*(?:sky|fog)|fog|mist|cloud|\bsnow\b|\bice\b|fire\b.*(?:sky|night)|firework|painting|fabric|dress|\bart\b/.test(rest) && !/cannabis|marijuana|\bbuds?\b/.test(rest)){
+        return -9999;
+    }
+    const budWords = /\bbuds?\b|\bnugs?\b|\bcolas?\b|trichome|macro|close-?up|dried flower|cannabis flower|marijuana flower|\bflower buds?\b/.test(rest);
+    const cannabisWords = /cannabis|marijuana|\bweed\b|\bthc\b|ganja/.test(rest);
+    /* HARD RULE: must explicitly say bud/flower AND cannabis. Name match alone is never enough. */
+    if(!budWords || !cannabisWords){ return -9999; }
     let score = 0;
     score += fullName ? 70 : hits * 6;
     if(budWords){ score += 34; }
@@ -5193,7 +5201,7 @@ function sfFlowerPixelCheck(image){
 
             if(
                 (g >= r * 0.95 && g > b * 1.05 && sat > 0.12) ||
-                (b > g * 1.05 && r >= g && sat > 0.15)
+                (b > g * 1.05 && r >= g && sat > 0.15 && g > 40 && mx < 200)
             ){ plant++; }
 
         }
@@ -5743,11 +5751,59 @@ async function sfTierNearest(ctx){
     return scored.slice(0, 5);
 }
 
+function sfCurrentTypeKey(name){
+    let t = "";
+    try{ t = sfNormType(resolvedFieldValue(currentRecord, ["type","strain_type","classification","category"], "")); }catch(error){}
+    if(!t){ const web = sfWebCache.get(sfWebKey(name)); t = web && web.type ? web.type : ""; }
+    if(!t){
+        try{ t = sfGuessType(String(name || ""), sfTerpeneList(currentRecord, null), []); }catch(error){ t = "hybrid"; }
+    }
+    return t || "hybrid";
+}
+
+/* TIER 5: well-known strains of the same type / terpene profile. Needs no engine record: photos come straight from the web. */
+async function sfTierSeeds(ctx){
+    const typeKey = sfCurrentTypeKey(ctx.name);
+    let terps = [];
+    try{ terps = sfTerpeneList(currentRecord, null); }catch(error){}
+    const web = sfWebCache.get(sfWebKey(ctx.name));
+    ((web && web.terpenes) || []).forEach(t => { if(!terps.includes(t)){ terps.push(t); } });
+    const names = [];
+    terps.slice(0, 3).forEach(t => (SF_TERP_SEEDS[t] || []).forEach(n => names.push(n)));
+    (SF_TYPE_SEEDS[typeKey] || []).forEach(n => names.push(n));
+    const seen = new Set();
+    const uniq = names.filter(n => { const k = sfWebKey(n); if(!k || seen.has(k)){ return false; } seen.add(k); return true; });
+    const extra = (SF_TYPE_SEEDS.hybrid || []).filter(n => !seen.has(sfWebKey(n)));
+    return sfRotate(uniq, stableHash(String(ctx.name))).concat(extra).slice(0, 8)
+        .map(n => ({name: n, relation: "CLOSEST " + typeKey.toUpperCase() + " REFERENCE STRAIN", note: typeKey.toUpperCase() + (terps.length ? " · " + terps.slice(0, 2).join(" · ").toUpperCase() : "")}));
+}
+
+/* LAST RESORT: generic cannabis bud photographs, spread across the pool by strain name so strains do not all share one picture. */
+async function sfGenericBudFallback(token, name){
+    const rel = {name: "cannabis bud", relation: "GENERIC BUD REFERENCE"};
+    let pool = [];
+    try{ pool = await sfWebImages("Cannabis bud"); }catch(error){ pool = []; }
+    if(token !== flowerLoadToken){ return true; }
+    const queue = sfRotate(pool, stableHash(String(name))).slice(0, 8).map(pic => Object.assign({}, pic, {rel, kind: "web"}));
+    for(let i = 0; i < queue.length; i++){
+        flowerReferenceLabel.textContent = "CHECKING GENERIC BUD PHOTOGRAPH " + (i + 1) + " OF " + queue.length + "...";
+        if(await sfLoadRelativePic(token, queue[i], name)){ return true; }
+    }
+    return false;
+}
+
 /* ---------- queue building + loading ---------- */
 
-async function sfRelativeQueue(token, rels, webLimit){
+function sfRotate(list, seed){
+    if(!list.length){ return list; }
+    const k = seed % list.length;
+    return list.slice(k).concat(list.slice(0, k));
+}
+
+async function sfRelativeQueue(token, rels, webLimit, strainName, skipEngine){
     const queue = [];
-    const dossiers = await sfPool(rels, 4, r => sfDossier(r.name));
+    const seed = stableHash(String(strainName || ""));
+    const dossiers = skipEngine ? rels.map(() => null) : await sfPool(rels, 4, r => sfDossier(r.name));
     for(let i = 0; i < rels.length; i++){
         if(token !== flowerLoadToken){ return []; }
         const r = rels[i], d = dossiers[i];
@@ -5760,7 +5816,7 @@ async function sfRelativeQueue(token, rels, webLimit){
         const r = rels[i];
         try{
             const webPics = await sfWebImages(r.name);
-            webPics.slice(0, 5).forEach(pic => queue.push(Object.assign({}, pic, {rel: r, kind: "web"})));
+            sfRotate(webPics.slice(0, 8), seed + i).slice(0, 5).forEach(pic => queue.push(Object.assign({}, pic, {rel: r, kind: "web"})));
         }catch(error){}
     }
     return queue.slice(0, 30);
@@ -5813,9 +5869,10 @@ async function sfParentFallback(token, name){
         ["PARENTS", sfTierParents, 4],
         ["LINEAGE (GRANDPARENTS / SIBLINGS / CHILDREN)", sfTierLineage, 4],
         ["SAME-NAME FAMILY", sfTierFamily, 3],
-        ["NEAREST DATA MATCH", sfTierNearest, 3]
+        ["NEAREST DATA MATCH", sfTierNearest, 3],
+        ["CLOSEST SAME-TYPE STRAINS", sfTierSeeds, 8, true]
     ];
-    for(const [label, tier, webLimit] of tiers){
+    for(const [label, tier, webLimit, skipEngine] of tiers){
         if(token !== flowerLoadToken){ return; }
         flowerReferenceLabel.textContent = "NO PHOTO OF THIS STRAIN — SEARCHING " + label + "...";
         let rels = [];
@@ -5829,7 +5886,7 @@ async function sfParentFallback(token, name){
         });
         rels.forEach(r => ctx.knownRelatives.push(r.name));
         if(!rels.length){ continue; }
-        const queue = await sfRelativeQueue(token, rels, webLimit);
+        const queue = await sfRelativeQueue(token, rels, webLimit, name, skipEngine);
         if(token !== flowerLoadToken){ return; }
         for(let i = 0; i < queue.length; i++){
             flowerReferenceLabel.textContent = "CHECKING " + label + " PHOTOGRAPH " + (i + 1) + " OF " + queue.length + "...";
@@ -5837,7 +5894,10 @@ async function sfParentFallback(token, name){
             if(ok){ return; }
         }
     }
-    sfShowBudIllustration(token, name);
+    if(token !== flowerLoadToken){ return; }
+    if(await sfGenericBudFallback(token, name)){ return; }
+    if(token !== flowerLoadToken){ return; }
+    sfTryFallbackImage(token, 0, name);
 }
 
 const sfFallbackOwner = new Map();
